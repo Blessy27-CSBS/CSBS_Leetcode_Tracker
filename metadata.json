@@ -1,0 +1,8 @@
+{
+  "name": "Remix CSBS LeetCode Tracker",
+  "description": "Student Coding Practice \u0026 Progress Analytics for KGiSL Institute of Technology (Department of Computer Science and Business Systems).",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

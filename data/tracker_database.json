@@ -1,0 +1,1235 @@
+{
+  "students": [
+    {
+      "register_no": "711724UCB136",
+      "student_name": "Pavithra Mirunalini G",
+      "section": "A",
+      "year": "III",
+      "batch": "2024-2028",
+      "username": "Pavithra_Mirunalini",
+      "email": "24ucb136pavithram@kgkite.ac.in",
+      "academic_year": "2024-2028",
+      "active": true,
+      "id": "s_1787891573675_qpiwn",
+      "created_at": "2026-08-28T04:32:53.675Z"
+    },
+    {
+      "register_no": "711724UCB121",
+      "student_name": "KARTHIKA M",
+      "section": "A",
+      "year": "III",
+      "batch": "2024-2028",
+      "username": "Karthika_Marimuthu",
+      "email": "24ucb121karthika@kgkite.ac.in",
+      "academic_year": "2024-2028",
+      "active": true,
+      "id": "s_1787891573700_k7rdx",
+      "created_at": "2026-08-28T04:32:53.701Z"
+    },
+    {
+      "register_no": "711724UCB139",
+      "student_name": "REANOOKA K",
+      "section": "A",
+      "year": "III",
+      "batch": "2024-2028",
+      "username": "REANOOKA_K",
+      "email": "24ucb139reanooka@kgkite.ac.in",
+      "academic_year": "2024-2028",
+      "active": true,
+      "id": "s_1787891573711_xo8xr",
+      "created_at": "2026-08-28T04:32:53.711Z"
+    },
+    {
+      "register_no": "711724UCB125",
+      "student_name": "MADHUMITHA R",
+      "section": "A",
+      "year": "III",
+      "batch": "2024-2028",
+      "username": "Madhu-9025",
+      "email": "24ucb125madhu@kgkite.ac.in",
+      "academic_year": "2024-2028",
+      "active": true,
+      "id": "s_1787891573718_z9bpq",
+      "created_at": "2026-08-28T04:32:53.718Z"
+    },
+    {
+      "register_no": "711724UCB126",
+      "student_name": "Maria Blessy",
+      "section": "A",
+      "year": "III",
+      "batch": "2024-2028",
+      "username": "Maria_Blessy",
+      "email": "24ucb126mariab@kgkite.ac.in",
+      "academic_year": "2024-2028",
+      "active": true,
+      "id": "s_1787892065391_m8040",
+      "created_at": "2026-08-28T04:41:05.391Z"
+    }
+  ],
+  "snapshots": [
+    {
+      "student_id": "s_1787891573675_qpiwn",
+      "captured_at": "2026-08-28T04:44:08.652Z",
+      "total_solved": 12,
+      "easy": 11,
+      "medium": 1,
+      "hard": 0,
+      "acceptance_rate": 94.4,
+      "ranking": 5000001,
+      "reputation": 0,
+      "contest_rating": 0,
+      "contest_rank": 0,
+      "contests_attended": 0,
+      "top_percentage": 0,
+      "streak": 3,
+      "active_days": 6,
+      "last_active": "2026-08-28",
+      "languages": [
+        {
+          "languageName": "Python3",
+          "problemsSolved": 12
+        }
+      ],
+      "skills": [
+        {
+          "tagName": "Array",
+          "problemsSolved": 10,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Simulation",
+          "problemsSolved": 1,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Sorting",
+          "problemsSolved": 5,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Two Pointers",
+          "problemsSolved": 2,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Hash Table",
+          "problemsSolved": 5,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Binary Search",
+          "problemsSolved": 1,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Bit Manipulation",
+          "problemsSolved": 2,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Math",
+          "problemsSolved": 3,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Dynamic Programming",
+          "problemsSolved": 1,
+          "category": "advanced"
+        },
+        {
+          "tagName": "Divide and Conquer",
+          "problemsSolved": 1,
+          "category": "advanced"
+        }
+      ],
+      "badges": [],
+      "submission_calendar": {
+        "1785801600": 4,
+        "1785888000": 1,
+        "1785974400": 1,
+        "1787356800": 4,
+        "1787788800": 3,
+        "1787875200": 5
+      },
+      "engagement_score": 17,
+      "performance_tier": "Beginner",
+      "activity_status": "Active",
+      "status": "SUCCESS",
+      "id": "snap_1787892248653_wu0jp"
+    },
+    {
+      "student_id": "s_1787891573700_k7rdx",
+      "captured_at": "2026-08-28T04:44:09.057Z",
+      "total_solved": 9,
+      "easy": 8,
+      "medium": 1,
+      "hard": 0,
+      "acceptance_rate": 68.8,
+      "ranking": 5000001,
+      "reputation": 0,
+      "contest_rating": 0,
+      "contest_rank": 0,
+      "contests_attended": 0,
+      "top_percentage": 0,
+      "streak": 1,
+      "active_days": 4,
+      "last_active": "2026-08-28",
+      "languages": [
+        {
+          "languageName": "Python",
+          "problemsSolved": 9
+        }
+      ],
+      "skills": [
+        {
+          "tagName": "Array",
+          "problemsSolved": 5,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "String",
+          "problemsSolved": 2,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Sorting",
+          "problemsSolved": 3,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Two Pointers",
+          "problemsSolved": 2,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Hash Table",
+          "problemsSolved": 4,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Binary Search",
+          "problemsSolved": 1,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Bit Manipulation",
+          "problemsSolved": 2,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Math",
+          "problemsSolved": 3,
+          "category": "intermediate"
+        }
+      ],
+      "badges": [],
+      "submission_calendar": {
+        "1784851200": 2,
+        "1786579200": 1,
+        "1787356800": 8,
+        "1787875200": 5
+      },
+      "engagement_score": 16,
+      "performance_tier": "Beginner",
+      "activity_status": "Active",
+      "status": "SUCCESS",
+      "id": "snap_1787892249057_lwa4j"
+    },
+    {
+      "student_id": "s_1787891573675_qpiwn",
+      "captured_at": "2026-08-28T04:47:38.096Z",
+      "total_solved": 12,
+      "easy": 11,
+      "medium": 1,
+      "hard": 0,
+      "acceptance_rate": 94.4,
+      "ranking": 5000001,
+      "reputation": 0,
+      "contest_rating": 0,
+      "contest_rank": 0,
+      "contests_attended": 0,
+      "top_percentage": 0,
+      "streak": 3,
+      "active_days": 6,
+      "last_active": "2026-08-28",
+      "languages": [
+        {
+          "languageName": "Python3",
+          "problemsSolved": 12
+        }
+      ],
+      "skills": [
+        {
+          "tagName": "Array",
+          "problemsSolved": 10,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Simulation",
+          "problemsSolved": 1,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Sorting",
+          "problemsSolved": 5,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Two Pointers",
+          "problemsSolved": 2,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Hash Table",
+          "problemsSolved": 5,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Binary Search",
+          "problemsSolved": 1,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Bit Manipulation",
+          "problemsSolved": 2,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Math",
+          "problemsSolved": 3,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Dynamic Programming",
+          "problemsSolved": 1,
+          "category": "advanced"
+        },
+        {
+          "tagName": "Divide and Conquer",
+          "problemsSolved": 1,
+          "category": "advanced"
+        }
+      ],
+      "badges": [],
+      "submission_calendar": {
+        "1785801600": 4,
+        "1785888000": 1,
+        "1785974400": 1,
+        "1787356800": 4,
+        "1787788800": 3,
+        "1787875200": 5
+      },
+      "engagement_score": 17,
+      "performance_tier": "Beginner",
+      "activity_status": "Active",
+      "status": "SUCCESS",
+      "id": "snap_1787892458097_7hua1"
+    },
+    {
+      "student_id": "s_1787891573700_k7rdx",
+      "captured_at": "2026-08-28T04:47:40.101Z",
+      "total_solved": 10,
+      "easy": 9,
+      "medium": 1,
+      "hard": 0,
+      "acceptance_rate": 66.7,
+      "ranking": 5000001,
+      "reputation": 0,
+      "contest_rating": 0,
+      "contest_rank": 0,
+      "contests_attended": 0,
+      "top_percentage": 0,
+      "streak": 1,
+      "active_days": 4,
+      "last_active": "2026-08-28",
+      "languages": [
+        {
+          "languageName": "Python",
+          "problemsSolved": 10
+        }
+      ],
+      "skills": [
+        {
+          "tagName": "Array",
+          "problemsSolved": 6,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "String",
+          "problemsSolved": 2,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Sorting",
+          "problemsSolved": 3,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Two Pointers",
+          "problemsSolved": 2,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Hash Table",
+          "problemsSolved": 4,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Binary Search",
+          "problemsSolved": 1,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Bit Manipulation",
+          "problemsSolved": 2,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Math",
+          "problemsSolved": 3,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Dynamic Programming",
+          "problemsSolved": 1,
+          "category": "advanced"
+        }
+      ],
+      "badges": [],
+      "submission_calendar": {
+        "1784851200": 2,
+        "1786579200": 1,
+        "1787356800": 8,
+        "1787875200": 7
+      },
+      "engagement_score": 17,
+      "performance_tier": "Beginner",
+      "activity_status": "Active",
+      "status": "SUCCESS",
+      "id": "snap_1787892460101_cb5jh"
+    },
+    {
+      "student_id": "s_1787891573711_xo8xr",
+      "captured_at": "2026-08-28T04:47:42.052Z",
+      "total_solved": 4,
+      "easy": 3,
+      "medium": 1,
+      "hard": 0,
+      "acceptance_rate": 100,
+      "ranking": 5000001,
+      "reputation": 0,
+      "contest_rating": 0,
+      "contest_rank": 0,
+      "contests_attended": 0,
+      "top_percentage": 0,
+      "streak": 1,
+      "active_days": 3,
+      "last_active": "2026-08-28",
+      "languages": [
+        {
+          "languageName": "Python",
+          "problemsSolved": 4
+        }
+      ],
+      "skills": [
+        {
+          "tagName": "Array",
+          "problemsSolved": 2,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "String",
+          "problemsSolved": 2,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Sorting",
+          "problemsSolved": 2,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Stack",
+          "problemsSolved": 1,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Hash Table",
+          "problemsSolved": 3,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Recursion",
+          "problemsSolved": 1,
+          "category": "intermediate"
+        }
+      ],
+      "badges": [],
+      "submission_calendar": {
+        "1787356800": 2,
+        "1787702400": 1,
+        "1787875200": 1
+      },
+      "engagement_score": 16,
+      "performance_tier": "Beginner",
+      "activity_status": "Active",
+      "status": "SUCCESS",
+      "id": "snap_1787892462052_dwfyp"
+    },
+    {
+      "student_id": "s_1787891573718_z9bpq",
+      "captured_at": "2026-08-28T04:47:44.217Z",
+      "total_solved": 1,
+      "easy": 1,
+      "medium": 0,
+      "hard": 0,
+      "acceptance_rate": 33.3,
+      "ranking": 5000001,
+      "reputation": 0,
+      "contest_rating": 0,
+      "contest_rank": 0,
+      "contests_attended": 0,
+      "top_percentage": 0,
+      "streak": 1,
+      "active_days": 1,
+      "last_active": "2026-08-27",
+      "languages": [
+        {
+          "languageName": "Python",
+          "problemsSolved": 1
+        }
+      ],
+      "skills": [
+        {
+          "tagName": "Array",
+          "problemsSolved": 1,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Hash Table",
+          "problemsSolved": 1,
+          "category": "intermediate"
+        }
+      ],
+      "badges": [],
+      "submission_calendar": {
+        "1787788800": 3
+      },
+      "engagement_score": 14,
+      "performance_tier": "Beginner",
+      "activity_status": "Active",
+      "status": "SUCCESS",
+      "id": "snap_1787892464217_0tv2o"
+    },
+    {
+      "student_id": "s_1787892065391_m8040",
+      "captured_at": "2026-08-28T04:47:46.275Z",
+      "total_solved": 30,
+      "easy": 28,
+      "medium": 2,
+      "hard": 0,
+      "acceptance_rate": 80.5,
+      "ranking": 3612191,
+      "reputation": 0,
+      "contest_rating": 0,
+      "contest_rank": 0,
+      "contests_attended": 0,
+      "top_percentage": 0,
+      "streak": 6,
+      "active_days": 20,
+      "last_active": "2026-08-27",
+      "languages": [
+        {
+          "languageName": "Python",
+          "problemsSolved": 14
+        },
+        {
+          "languageName": "MySQL",
+          "problemsSolved": 15
+        },
+        {
+          "languageName": "C",
+          "problemsSolved": 1
+        }
+      ],
+      "skills": [
+        {
+          "tagName": "Array",
+          "problemsSolved": 5,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "String",
+          "problemsSolved": 4,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Sorting",
+          "problemsSolved": 1,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Stack",
+          "problemsSolved": 1,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Linked List",
+          "problemsSolved": 1,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Two Pointers",
+          "problemsSolved": 3,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Hash Table",
+          "problemsSolved": 4,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Recursion",
+          "problemsSolved": 5,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Bit Manipulation",
+          "problemsSolved": 2,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Math",
+          "problemsSolved": 8,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Database",
+          "problemsSolved": 15,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Dynamic Programming",
+          "problemsSolved": 2,
+          "category": "advanced"
+        },
+        {
+          "tagName": "Trie",
+          "problemsSolved": 1,
+          "category": "advanced"
+        }
+      ],
+      "badges": [],
+      "submission_calendar": {
+        "1768780800": 1,
+        "1780876800": 4,
+        "1780963200": 5,
+        "1781136000": 4,
+        "1784419200": 1,
+        "1784505600": 1,
+        "1784592000": 1,
+        "1784678400": 1,
+        "1785369600": 1,
+        "1785456000": 1,
+        "1785542400": 1,
+        "1785628800": 1,
+        "1785888000": 6,
+        "1785974400": 1,
+        "1786060800": 2,
+        "1786147200": 1,
+        "1786233600": 1,
+        "1786320000": 1,
+        "1787356800": 5,
+        "1787788800": 2
+      },
+      "engagement_score": 19,
+      "performance_tier": "Beginner",
+      "activity_status": "Active",
+      "status": "SUCCESS",
+      "id": "snap_1787892466275_efesu"
+    },
+    {
+      "student_id": "s_1787892065391_m8040",
+      "captured_at": "2026-08-28T04:49:21.276Z",
+      "total_solved": 30,
+      "easy": 28,
+      "medium": 2,
+      "hard": 0,
+      "acceptance_rate": 80.5,
+      "ranking": 3612191,
+      "reputation": 0,
+      "contest_rating": 0,
+      "contest_rank": 0,
+      "contests_attended": 0,
+      "top_percentage": 0,
+      "streak": 6,
+      "active_days": 20,
+      "last_active": "2026-08-27",
+      "languages": [
+        {
+          "languageName": "Python",
+          "problemsSolved": 14
+        },
+        {
+          "languageName": "MySQL",
+          "problemsSolved": 15
+        },
+        {
+          "languageName": "C",
+          "problemsSolved": 1
+        }
+      ],
+      "skills": [
+        {
+          "tagName": "Array",
+          "problemsSolved": 5,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "String",
+          "problemsSolved": 4,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Sorting",
+          "problemsSolved": 1,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Stack",
+          "problemsSolved": 1,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Linked List",
+          "problemsSolved": 1,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Two Pointers",
+          "problemsSolved": 3,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Hash Table",
+          "problemsSolved": 4,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Recursion",
+          "problemsSolved": 5,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Bit Manipulation",
+          "problemsSolved": 2,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Math",
+          "problemsSolved": 8,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Database",
+          "problemsSolved": 15,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Dynamic Programming",
+          "problemsSolved": 2,
+          "category": "advanced"
+        },
+        {
+          "tagName": "Trie",
+          "problemsSolved": 1,
+          "category": "advanced"
+        }
+      ],
+      "badges": [],
+      "submission_calendar": {
+        "1768780800": 1,
+        "1780876800": 4,
+        "1780963200": 5,
+        "1781136000": 4,
+        "1784419200": 1,
+        "1784505600": 1,
+        "1784592000": 1,
+        "1784678400": 1,
+        "1785369600": 1,
+        "1785456000": 1,
+        "1785542400": 1,
+        "1785628800": 1,
+        "1785888000": 6,
+        "1785974400": 1,
+        "1786060800": 2,
+        "1786147200": 1,
+        "1786233600": 1,
+        "1786320000": 1,
+        "1787356800": 5,
+        "1787788800": 2
+      },
+      "engagement_score": 19,
+      "performance_tier": "Beginner",
+      "activity_status": "Active",
+      "status": "SUCCESS",
+      "id": "snap_1787892561276_jra0v"
+    }
+  ],
+  "recent_submissions": [
+    {
+      "id": "sub_s_1787891573675_qpiwn_1787892458108_0",
+      "student_id": "s_1787891573675_qpiwn",
+      "title": "Single Number",
+      "titleSlug": "single-number",
+      "timestamp": "1787890593",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787891573675_qpiwn_1787892458108_1",
+      "student_id": "s_1787891573675_qpiwn",
+      "title": "Missing Number",
+      "titleSlug": "missing-number",
+      "timestamp": "1787890445",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787891573675_qpiwn_1787892458108_2",
+      "student_id": "s_1787891573675_qpiwn",
+      "title": "Majority Element",
+      "titleSlug": "majority-element",
+      "timestamp": "1787890055",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787891573675_qpiwn_1787892458108_3",
+      "student_id": "s_1787891573675_qpiwn",
+      "title": "Two Sum",
+      "titleSlug": "two-sum",
+      "timestamp": "1787889793",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787891573675_qpiwn_1787892458108_4",
+      "student_id": "s_1787891573675_qpiwn",
+      "title": "Move Zeroes",
+      "titleSlug": "move-zeroes",
+      "timestamp": "1787819796",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787891573675_qpiwn_1787892458108_5",
+      "student_id": "s_1787891573675_qpiwn",
+      "title": "Best Time to Buy and Sell Stock",
+      "titleSlug": "best-time-to-buy-and-sell-stock",
+      "timestamp": "1787819489",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787891573675_qpiwn_1787892458108_6",
+      "student_id": "s_1787891573675_qpiwn",
+      "title": "3Sum",
+      "titleSlug": "3sum",
+      "timestamp": "1787818599",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787891573675_qpiwn_1787892458108_7",
+      "student_id": "s_1787891573675_qpiwn",
+      "title": "Check Divisibility by Digit Sum and Product",
+      "titleSlug": "check-divisibility-by-digit-sum-and-product",
+      "timestamp": "1787375336",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787891573675_qpiwn_1787892458108_8",
+      "student_id": "s_1787891573675_qpiwn",
+      "title": "Concatenation of Array",
+      "titleSlug": "concatenation-of-array",
+      "timestamp": "1787373125",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787891573675_qpiwn_1787892458108_9",
+      "student_id": "s_1787891573675_qpiwn",
+      "title": "Two Sum",
+      "titleSlug": "two-sum",
+      "timestamp": "1787369304",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787891573675_qpiwn_1787892458108_10",
+      "student_id": "s_1787891573675_qpiwn",
+      "title": "Contains Duplicate",
+      "titleSlug": "contains-duplicate",
+      "timestamp": "1787369282",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787891573675_qpiwn_1787892458108_11",
+      "student_id": "s_1787891573675_qpiwn",
+      "title": "Find Missing Elements",
+      "titleSlug": "find-missing-elements",
+      "timestamp": "1785985989",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787891573675_qpiwn_1787892458108_12",
+      "student_id": "s_1787891573675_qpiwn",
+      "title": "Palindrome Number",
+      "titleSlug": "palindrome-number",
+      "timestamp": "1785900725",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787891573675_qpiwn_1787892458108_13",
+      "student_id": "s_1787891573675_qpiwn",
+      "title": "Find Missing Elements",
+      "titleSlug": "find-missing-elements",
+      "timestamp": "1785848588",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787891573675_qpiwn_1787892458108_14",
+      "student_id": "s_1787891573675_qpiwn",
+      "title": "Two Sum",
+      "titleSlug": "two-sum",
+      "timestamp": "1785818723",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787891573700_k7rdx_1787892460108_0",
+      "student_id": "s_1787891573700_k7rdx",
+      "title": "Best Time to Buy and Sell Stock",
+      "titleSlug": "best-time-to-buy-and-sell-stock",
+      "timestamp": "1787892270",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787891573700_k7rdx_1787892460109_1",
+      "student_id": "s_1787891573700_k7rdx",
+      "title": "Move Zeroes",
+      "titleSlug": "move-zeroes",
+      "timestamp": "1787891964",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787891573700_k7rdx_1787892460109_2",
+      "student_id": "s_1787891573700_k7rdx",
+      "title": "Missing Number",
+      "titleSlug": "missing-number",
+      "timestamp": "1787891564",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787891573700_k7rdx_1787892460109_3",
+      "student_id": "s_1787891573700_k7rdx",
+      "title": "Reverse String",
+      "titleSlug": "reverse-string",
+      "timestamp": "1787890982",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787891573700_k7rdx_1787892460109_4",
+      "student_id": "s_1787891573700_k7rdx",
+      "title": "Valid Anagram",
+      "titleSlug": "valid-anagram",
+      "timestamp": "1787890651",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787891573700_k7rdx_1787892460109_5",
+      "student_id": "s_1787891573700_k7rdx",
+      "title": "Single Number",
+      "titleSlug": "single-number",
+      "timestamp": "1787393428",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787891573700_k7rdx_1787892460109_6",
+      "student_id": "s_1787891573700_k7rdx",
+      "title": "Contains Duplicate",
+      "titleSlug": "contains-duplicate",
+      "timestamp": "1787370802",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787891573700_k7rdx_1787892460109_7",
+      "student_id": "s_1787891573700_k7rdx",
+      "title": "Two Sum",
+      "titleSlug": "two-sum",
+      "timestamp": "1787369293",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787891573700_k7rdx_1787892460109_8",
+      "student_id": "s_1787891573700_k7rdx",
+      "title": "Palindrome Number",
+      "titleSlug": "palindrome-number",
+      "timestamp": "1784867160",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787891573700_k7rdx_1787892460109_9",
+      "student_id": "s_1787891573700_k7rdx",
+      "title": "Reverse Integer",
+      "titleSlug": "reverse-integer",
+      "timestamp": "1784866894",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787891573711_xo8xr_1787892462065_0",
+      "student_id": "s_1787891573711_xo8xr",
+      "title": "Valid Anagram",
+      "titleSlug": "valid-anagram",
+      "timestamp": "1787892010",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787891573711_xo8xr_1787892462065_1",
+      "student_id": "s_1787891573711_xo8xr",
+      "title": "Decode String",
+      "titleSlug": "decode-string",
+      "timestamp": "1787761621",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787891573711_xo8xr_1787892462065_2",
+      "student_id": "s_1787891573711_xo8xr",
+      "title": "Contains Duplicate",
+      "titleSlug": "contains-duplicate",
+      "timestamp": "1787371376",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787891573711_xo8xr_1787892462065_3",
+      "student_id": "s_1787891573711_xo8xr",
+      "title": "Two Sum",
+      "titleSlug": "two-sum",
+      "timestamp": "1787369887",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787891573718_z9bpq_1787892464230_0",
+      "student_id": "s_1787891573718_z9bpq",
+      "title": "Two Sum",
+      "titleSlug": "two-sum",
+      "timestamp": "1787817340",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787892065391_m8040_1787892561281_0",
+      "student_id": "s_1787892065391_m8040",
+      "title": "Best Time to Buy and Sell Stock",
+      "titleSlug": "best-time-to-buy-and-sell-stock",
+      "timestamp": "1787819764",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787892065391_m8040_1787892561281_1",
+      "student_id": "s_1787892065391_m8040",
+      "title": "Move Zeroes",
+      "titleSlug": "move-zeroes",
+      "timestamp": "1787819348",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787892065391_m8040_1787892561281_2",
+      "student_id": "s_1787892065391_m8040",
+      "title": "Contains Duplicate",
+      "titleSlug": "contains-duplicate",
+      "timestamp": "1787369382",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787892065391_m8040_1787892561281_3",
+      "student_id": "s_1787892065391_m8040",
+      "title": "Two Sum",
+      "titleSlug": "two-sum",
+      "timestamp": "1787369185",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787892065391_m8040_1787892561281_4",
+      "student_id": "s_1787892065391_m8040",
+      "title": "Happy Number",
+      "titleSlug": "happy-number",
+      "timestamp": "1786385590",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787892065391_m8040_1787892561281_5",
+      "student_id": "s_1787892065391_m8040",
+      "title": "Power of Four",
+      "titleSlug": "power-of-four",
+      "timestamp": "1786265316",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787892065391_m8040_1787892561281_6",
+      "student_id": "s_1787892065391_m8040",
+      "title": "Power of Three",
+      "titleSlug": "power-of-three",
+      "timestamp": "1786194024",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787892065391_m8040_1787892561281_7",
+      "student_id": "s_1787892065391_m8040",
+      "title": "Power of Two",
+      "titleSlug": "power-of-two",
+      "timestamp": "1786116659",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787892065391_m8040_1787892561281_8",
+      "student_id": "s_1787892065391_m8040",
+      "title": "Reverse String",
+      "titleSlug": "reverse-string",
+      "timestamp": "1786032648",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787892065391_m8040_1787892561281_9",
+      "student_id": "s_1787892065391_m8040",
+      "title": "Rising Temperature",
+      "titleSlug": "rising-temperature",
+      "timestamp": "1785950090",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787892065391_m8040_1787892561281_10",
+      "student_id": "s_1787892065391_m8040",
+      "title": "Big Countries",
+      "titleSlug": "big-countries",
+      "timestamp": "1785949593",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787892065391_m8040_1787892561281_11",
+      "student_id": "s_1787892065391_m8040",
+      "title": "Customer Placing the Largest Number of Orders",
+      "titleSlug": "customer-placing-the-largest-number-of-orders",
+      "timestamp": "1785688512",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787892065391_m8040_1787892561281_12",
+      "student_id": "s_1787892065391_m8040",
+      "title": "Patients With a Condition",
+      "titleSlug": "patients-with-a-condition",
+      "timestamp": "1785602128",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787892065391_m8040_1787892561281_13",
+      "student_id": "s_1787892065391_m8040",
+      "title": "Delete Duplicate Emails",
+      "titleSlug": "delete-duplicate-emails",
+      "timestamp": "1785516403",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787892065391_m8040_1787892561281_14",
+      "student_id": "s_1787892065391_m8040",
+      "title": "Employees Earning More Than Their Managers",
+      "titleSlug": "employees-earning-more-than-their-managers",
+      "timestamp": "1785414278",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    }
+  ],
+  "settings": {
+    "inactivity_threshold_days": 14,
+    "academic_year": "2024-2025",
+    "fetch_delay_ms": 1500,
+    "api_timeout_seconds": 25,
+    "tier_beginner_max": 49,
+    "tier_developing_max": 99,
+    "tier_proficient_max": 199,
+    "weights": {
+      "total_solved": 25,
+      "medium_solved": 20,
+      "hard_solved": 15,
+      "recent_activity": 15,
+      "streak": 10,
+      "contest_participation": 10,
+      "improvement_rate": 5
+    }
+  },
+  "logs": [
+    {
+      "timestamp": "2026-08-28T03:22:20.076Z",
+      "level": "INFO",
+      "message": "System initialized with KGiSL CSBS student dataset."
+    },
+    {
+      "timestamp": "2026-08-28T04:32:53.725Z",
+      "level": "INFO",
+      "message": "Imported 4 students. Encountered 0 validation errors."
+    },
+    {
+      "timestamp": "2026-08-28T04:37:30.397Z",
+      "level": "INFO",
+      "message": "Removed demo student records from database."
+    },
+    {
+      "timestamp": "2026-08-28T04:41:05.406Z",
+      "level": "INFO",
+      "message": "Added student Maria Blessy (711724UCB126) with LeetCode handle Maria_Blessy."
+    },
+    {
+      "timestamp": "2026-08-28T04:47:47.824Z",
+      "level": "INFO",
+      "message": "Batch sync completed. 5/5 profiles updated."
+    },
+    {
+      "timestamp": "2026-08-28T04:49:21.289Z",
+      "level": "INFO",
+      "message": "Successfully updated snapshot for Maria Blessy (Maria_Blessy): 30 solved."
+    }
+  ]
+}
