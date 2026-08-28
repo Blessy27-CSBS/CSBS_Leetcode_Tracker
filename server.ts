@@ -28,7 +28,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -837,4 +837,8 @@ async function startServer() {
   });
 }
 
-startServer();
+if (process.env.VERCEL !== '1' && !process.env.NOW_REGION) {
+  startServer();
+}
+
+export { app };

@@ -8,9 +8,9 @@ import {
   SystemSettings 
 } from '../src/types.js';
 
-const DATA_DIR = path.join(process.cwd(), 'data');
+const DATA_DIR = process.env.VERCEL ? '/tmp/data' : path.join(process.cwd(), 'data');
 const DB_FILE = path.join(DATA_DIR, 'csbs_tracker.db');
-const LEGACY_JSON_FILE = path.join(DATA_DIR, 'tracker_database.json');
+const LEGACY_JSON_FILE = path.join(process.cwd(), 'data', 'tracker_database.json');
 
 const DEFAULT_SETTINGS: SystemSettings = {
   inactivity_threshold_days: 14,
