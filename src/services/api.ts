@@ -9,15 +9,106 @@ import {
   BatchFetchProgress,
   POTDItem,
   CuratedTrack,
-  SchedulerStatus
+  SchedulerStatus,
+  AuthUser,
+  AuthSession,
+  StudentDashboardData
 } from '../types';
 
+const TOKEN_KEY = 'csbs_auth_token';
+
+function getAuthHeaders(): HeadersInit {
+  const token = localStorage.getItem(TOKEN_KEY);
+  return token ? { 'Authorization': `Bearer ${token}` } : {};
+}
+
 export const api = {
+  // Auth
+  setToken(token: string) {
+    localStorage.setItem(TOKEN_KEY, token);
+  },
+
+  getToken(): string | null {
+    return localStorage.getItem(TOKEN_KEY);
+  },
+
+  clearToken() {
+    localStorage.removeItem(TOKEN_KEY);
+  },
+
+  async login(credentials: {
+    identifier?: string;
+    username?: string;
+    password: string;
+    role?: 'staff' | 'student';
+  }): Promise<AuthSession> {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(credentials),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Login failed');
+    if (json.token) {
+      this.setToken(json.token);
+    }
+    return json;
+  },
+
+  async getMe(): Promise<{ user: AuthUser }> {
+    const res = await fetch('/api/auth/me', {
+      headers: { ...getAuthHeaders() },
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to fetch session');
+    return json;
+  },
+
+  async changePassword(newPassword: string, oldPassword?: string): Promise<{ success: boolean; message: string }> {
+    const res = await fetch('/api/auth/change-password', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify({ newPassword, oldPassword }),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to change password');
+    return json;
+  },
+
+  // Student Portal
+  async getStudentDashboard(studentId?: string): Promise<StudentDashboardData> {
+    const url = studentId ? `/api/student/dashboard?studentId=${studentId}` : '/api/student/dashboard';
+    const res = await fetch(url, {
+      headers: { ...getAuthHeaders() },
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to load student dashboard');
+    return json;
+  },
+
+  async syncMyLeetCode(studentId?: string): Promise<{ success: boolean; snapshot: Snapshot; student: StudentWithLatest }> {
+    const res = await fetch('/api/student/sync', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify({ studentId }),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to sync LeetCode profile');
+    return json;
+  },
+
   // Health
   async getHealth() {
     const res = await fetch('/api/health');
     return res.json();
   },
+
 
   // Dashboard
   async getDashboard(): Promise<{

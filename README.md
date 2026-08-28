@@ -9,6 +9,16 @@ A comprehensive, real-time student progress tracking and analytics portal design
 
 ## 🌟 Key Features
 
+- **🔐 Role-Based Authentication & Separate Student / Staff Portals**:
+  - **Student Login**:
+    - **Username**: Student's **Email ID** (e.g. `720723115001@kgkite.ac.in`) or Register Number
+    - **Password**: Student's **Register Number** (e.g. `720723115001`)
+    - Dedicated individual dashboard with personal LeetCode statistics, Problem of the Day challenge, Curated Practice Tracks checklist, live profile sync, recent submissions feed, and class leaderboard standings.
+  - **Staff / Faculty Login**:
+    - **Username**: `staff` (or `admin`)
+    - **Password**: `staff123` (or `admin123`)
+    - Complete department control with all 9 analytics and management modules, student directory, batch sync, intervention queue, Excel exports, and POTD configuration.
+
 - **📊 Real-Time LeetCode Profile Synchronization**:
   - Live querying via LeetCode's public GraphQL API.
   - Automatically fetches Total Solved (Easy / Medium / Hard), Contest Rating, Global Rank, Active Streak, Total Active Days, Acceptance Rate, Badges, and Problem-Solving Calendars.

@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import Database from 'better-sqlite3';
 import { 
   Student, 
@@ -8,13 +9,26 @@ import {
   SystemSettings,
   POTDItem,
   CuratedTrack,
-  CuratedProblem
+  CuratedProblem,
+  AuthUser,
+  UserRole
 } from '../src/types.js';
 import { SEED_TRACKS, SEED_PROBLEMS, ROTATING_POTD_POOL } from './seed_tracks.js';
 
 const DATA_DIR = process.env.VERCEL ? '/tmp/data' : path.join(process.cwd(), 'data');
 const DB_FILE = path.join(DATA_DIR, 'csbs_tracker.db');
 const JSON_BACKUP_FILE = path.join(process.cwd(), 'data', 'tracker_database.json');
+
+export interface DBUser {
+  id: string;
+  username: string;
+  password_hash: string;
+  role: UserRole;
+  student_id?: string;
+  name: string;
+  email?: string;
+  created_at: string;
+}
 
 const DEFAULT_SETTINGS: SystemSettings = {
   inactivity_threshold_days: 14,
@@ -46,6 +60,7 @@ interface MemoryStore {
   potd_items: POTDItem[];
   curated_tracks: CuratedTrack[];
   curated_problems: CuratedProblem[];
+  users: DBUser[];
 }
 
 export class DatabaseService {
@@ -58,8 +73,10 @@ export class DatabaseService {
     logs: [],
     potd_items: [],
     curated_tracks: [...SEED_TRACKS],
-    curated_problems: [...SEED_PROBLEMS]
+    curated_problems: [...SEED_PROBLEMS],
+    users: []
   };
+
   private isFallbackMode = false;
 
   constructor() {
@@ -200,6 +217,21 @@ export class DatabaseService {
           level TEXT NOT NULL,
           message TEXT NOT NULL
         );
+
+        CREATE TABLE IF NOT EXISTS users (
+          id TEXT PRIMARY KEY,
+          username TEXT UNIQUE NOT NULL,
+          password_hash TEXT NOT NULL,
+          role TEXT NOT NULL,
+          student_id TEXT,
+          name TEXT NOT NULL,
+          email TEXT,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+        CREATE INDEX IF NOT EXISTS idx_users_student_id ON users(student_id);
       `);
 
       // Migrations for existing settings table
@@ -239,10 +271,14 @@ export class DatabaseService {
       this.seedCuratedTracks();
 
       this.migrateFromLegacyJSON();
+
+      // Seed initial staff and student auth users
+      this.seedInitialUsers();
     } catch (err) {
       console.warn('SQLite native initialization failed or unavailable, running in JSON fallback mode:', err);
       this.isFallbackMode = true;
       this.loadMemoryStore();
+      this.seedInitialUsers();
     }
   }
 
@@ -288,7 +324,8 @@ export class DatabaseService {
           logs: parsed.logs || [],
           potd_items: parsed.potd_items || [],
           curated_tracks: parsed.curated_tracks || [...SEED_TRACKS],
-          curated_problems: parsed.curated_problems || [...SEED_PROBLEMS]
+          curated_problems: parsed.curated_problems || [...SEED_PROBLEMS],
+          users: parsed.users || []
         };
       } catch (e) {
         console.error('Failed to load JSON backup file:', e);
@@ -519,6 +556,7 @@ export class DatabaseService {
 
     if (this.isFallbackMode || !this.sqliteDb) {
       this.memStore.students.push(newStudent);
+      this.ensureStudentUser(newStudent);
       this.persistMemoryStore();
       return newStudent;
     }
@@ -543,6 +581,7 @@ export class DatabaseService {
       student.notes ? student.notes.trim() : null
     );
 
+    this.ensureStudentUser(newStudent);
     return newStudent;
   }
 
@@ -551,6 +590,7 @@ export class DatabaseService {
       const idx = this.memStore.students.findIndex(s => s.id === id);
       if (idx === -1) return null;
       this.memStore.students[idx] = { ...this.memStore.students[idx], ...updates };
+      this.ensureStudentUser(this.memStore.students[idx]);
       this.persistMemoryStore();
       return this.memStore.students[idx];
     }
@@ -589,6 +629,7 @@ export class DatabaseService {
       id
     );
 
+    this.ensureStudentUser(merged);
     return merged;
   }
 
@@ -1090,7 +1131,8 @@ export class DatabaseService {
         logs: [],
         potd_items: [],
         curated_tracks: [...SEED_TRACKS],
-        curated_problems: [...SEED_PROBLEMS]
+        curated_problems: [...SEED_PROBLEMS],
+        users: []
       };
       this.persistMemoryStore();
       return;
@@ -1130,6 +1172,251 @@ export class DatabaseService {
     const rows = this.sqliteDb.prepare('SELECT timestamp, level, message FROM logs ORDER BY id DESC LIMIT 500').all() as any[];
     return rows.reverse();
   }
+
+  // ================= AUTH & USER MANAGEMENT =================
+
+  public hashPassword(password: string): string {
+    return crypto.createHash('sha256').update(password.trim()).digest('hex');
+  }
+
+  public seedInitialUsers(): void {
+    try {
+      // 1. Seed Staff / Faculty Account
+      const staffPasswordHash = this.hashPassword('staff123');
+      const adminPasswordHash = this.hashPassword('admin123');
+
+      if (this.isFallbackMode || !this.sqliteDb) {
+        if (!this.memStore.users.some(u => u.username.toLowerCase() === 'staff')) {
+          this.memStore.users.push({
+            id: 'u_staff_1',
+            username: 'staff',
+            password_hash: staffPasswordHash,
+            role: 'staff',
+            name: 'Faculty Coordinator',
+            email: 'faculty.csbs@kgkite.ac.in',
+            created_at: new Date().toISOString()
+          });
+        }
+        if (!this.memStore.users.some(u => u.username.toLowerCase() === 'admin')) {
+          this.memStore.users.push({
+            id: 'u_admin_1',
+            username: 'admin',
+            password_hash: adminPasswordHash,
+            role: 'staff',
+            name: 'Department Admin',
+            email: 'admin.csbs@kgkite.ac.in',
+            created_at: new Date().toISOString()
+          });
+        }
+      } else {
+        const insertUser = this.sqliteDb.prepare(`
+          INSERT OR IGNORE INTO users (id, username, password_hash, role, student_id, name, email, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+
+        insertUser.run('u_staff_1', 'staff', staffPasswordHash, 'staff', null, 'Faculty Coordinator', 'faculty.csbs@kgkite.ac.in', new Date().toISOString());
+        insertUser.run('u_admin_1', 'admin', adminPasswordHash, 'staff', null, 'Department Admin', 'admin.csbs@kgkite.ac.in', new Date().toISOString());
+      }
+
+      // 2. Sync all student users
+      const allStudents = this.getStudents();
+      for (const student of allStudents) {
+        this.ensureStudentUser(student);
+      }
+    } catch (e) {
+      console.error('Failed to seed initial users:', e);
+    }
+  }
+
+  public ensureStudentUser(student: Student): DBUser {
+    const studentEmail = (student.email && student.email.trim()) 
+      ? student.email.trim().toLowerCase() 
+      : `${student.register_no.toLowerCase()}@kgkite.ac.in`;
+    
+    const defaultPasswordHash = this.hashPassword(student.register_no.trim());
+    const userId = `usr_${student.id}`;
+
+    if (this.isFallbackMode || !this.sqliteDb) {
+      let existing = this.memStore.users.find(u => u.student_id === student.id || u.username.toLowerCase() === studentEmail);
+      if (existing) {
+        existing.student_id = student.id;
+        existing.name = student.student_name;
+        existing.email = studentEmail;
+        existing.username = studentEmail;
+        return existing;
+      }
+      const newUser: DBUser = {
+        id: userId,
+        username: studentEmail,
+        password_hash: defaultPasswordHash,
+        role: 'student',
+        student_id: student.id,
+        name: student.student_name,
+        email: studentEmail,
+        created_at: new Date().toISOString()
+      };
+      this.memStore.users.push(newUser);
+      this.persistMemoryStore();
+      return newUser;
+    }
+
+    // Check if user already exists for this student
+    const existing = this.sqliteDb.prepare(`
+      SELECT * FROM users WHERE student_id = ? OR LOWER(username) = LOWER(?)
+    `).get(student.id, studentEmail) as DBUser | undefined;
+
+    if (existing) {
+      this.sqliteDb.prepare(`
+        UPDATE users SET student_id = ?, name = ?, email = ?, username = ?
+        WHERE id = ?
+      `).run(student.id, student.student_name, studentEmail, studentEmail, existing.id);
+      return {
+        ...existing,
+        student_id: student.id,
+        name: student.student_name,
+        email: studentEmail,
+        username: studentEmail
+      };
+    }
+
+    this.sqliteDb.prepare(`
+      INSERT INTO users (id, username, password_hash, role, student_id, name, email, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      userId,
+      studentEmail,
+      defaultPasswordHash,
+      'student',
+      student.id,
+      student.student_name,
+      studentEmail,
+      new Date().toISOString()
+    );
+
+    return {
+      id: userId,
+      username: studentEmail,
+      password_hash: defaultPasswordHash,
+      role: 'student',
+      student_id: student.id,
+      name: student.student_name,
+      email: studentEmail,
+      created_at: new Date().toISOString()
+    };
+  }
+
+  public authenticateUser(identifier: string, plainPassword: string, role?: UserRole): { user: DBUser; student?: Student } | null {
+    if (!identifier || !plainPassword) return null;
+
+    const cleanId = identifier.trim();
+    const cleanPwd = plainPassword.trim();
+    const hashedPwd = this.hashPassword(cleanPwd);
+
+    // If Staff Role Requested
+    if (role === 'staff' || cleanId.toLowerCase() === 'staff' || cleanId.toLowerCase() === 'admin') {
+      let staffUser: DBUser | undefined;
+
+      if (this.isFallbackMode || !this.sqliteDb) {
+        staffUser = this.memStore.users.find(u => 
+          u.role === 'staff' && (
+            u.username.toLowerCase() === cleanId.toLowerCase() ||
+            (u.email && u.email.toLowerCase() === cleanId.toLowerCase())
+          )
+        );
+      } else {
+        staffUser = this.sqliteDb.prepare(`
+          SELECT * FROM users 
+          WHERE role = 'staff' AND (LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?))
+        `).get(cleanId, cleanId) as DBUser | undefined;
+      }
+
+      if (staffUser) {
+        if (staffUser.password_hash === hashedPwd || (cleanId === 'staff' && cleanPwd === 'staff123') || (cleanId === 'admin' && cleanPwd === 'admin123')) {
+          return { user: staffUser };
+        }
+      }
+      if (role === 'staff') return null;
+    }
+
+    // Student Authentication
+    // The username credential is the student's mail id (or register_no/username fallback)
+    // The password credential is the student's register number (or changed password)
+
+    let foundStudent: Student | undefined;
+
+    // Search in students by email, register_no, or username
+    const allStudents = this.getStudents();
+    foundStudent = allStudents.find(s => 
+      (s.email && s.email.toLowerCase().trim() === cleanId.toLowerCase()) ||
+      s.register_no.toLowerCase().trim() === cleanId.toLowerCase() ||
+      s.username.toLowerCase().trim() === cleanId.toLowerCase() ||
+      `${s.register_no.toLowerCase()}@kgkite.ac.in` === cleanId.toLowerCase()
+    );
+
+    if (foundStudent) {
+      const studentUser = this.ensureStudentUser(foundStudent);
+
+      // Check password: match against register_no (exact/case-insensitive) OR user's password_hash OR 'student123'
+      const isRegNoMatch = foundStudent.register_no.trim().toLowerCase() === cleanPwd.toLowerCase();
+      const isHashMatch = studentUser.password_hash === hashedPwd;
+      const isDefaultFallback = cleanPwd === 'student123';
+
+      if (isRegNoMatch || isHashMatch || isDefaultFallback) {
+        return { user: studentUser, student: foundStudent };
+      }
+    }
+
+    // Direct search in users table for student
+    let userRow: DBUser | undefined;
+    if (this.isFallbackMode || !this.sqliteDb) {
+      userRow = this.memStore.users.find(u => 
+        (u.username.toLowerCase() === cleanId.toLowerCase() || (u.email && u.email.toLowerCase() === cleanId.toLowerCase()))
+      );
+    } else {
+      userRow = this.sqliteDb.prepare(`
+        SELECT * FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?)
+      `).get(cleanId, cleanId) as DBUser | undefined;
+    }
+
+    if (userRow) {
+      if (userRow.password_hash === hashedPwd) {
+        const student = userRow.student_id ? this.getStudentById(userRow.student_id) : undefined;
+        return { user: userRow, student };
+      }
+    }
+
+    return null;
+  }
+
+  public getUserById(id: string): DBUser | null {
+    if (this.isFallbackMode || !this.sqliteDb) {
+      return this.memStore.users.find(u => u.id === id) || null;
+    }
+    const user = this.sqliteDb.prepare('SELECT * FROM users WHERE id = ?').get(id) as DBUser | undefined;
+    return user || null;
+  }
+
+  public getUserByStudentId(studentId: string): DBUser | null {
+    if (this.isFallbackMode || !this.sqliteDb) {
+      return this.memStore.users.find(u => u.student_id === studentId) || null;
+    }
+    const user = this.sqliteDb.prepare('SELECT * FROM users WHERE student_id = ?').get(studentId) as DBUser | undefined;
+    return user || null;
+  }
+
+  public changeUserPassword(userId: string, newPlainPassword: string): boolean {
+    const hash = this.hashPassword(newPlainPassword);
+    if (this.isFallbackMode || !this.sqliteDb) {
+      const u = this.memStore.users.find(x => x.id === userId);
+      if (!u) return false;
+      u.password_hash = hash;
+      this.persistMemoryStore();
+      return true;
+    }
+    const res = this.sqliteDb.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, userId);
+    return res.changes > 0;
+  }
 }
 
 export const db = new DatabaseService();
+

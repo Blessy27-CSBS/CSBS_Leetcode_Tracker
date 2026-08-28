@@ -244,3 +244,36 @@ export interface BatchFetchProgress {
   }[];
 }
 
+export type UserRole = 'staff' | 'student';
+
+export interface AuthUser {
+  id: string;
+  username: string;
+  role: UserRole;
+  name: string;
+  email?: string;
+  student_id?: string;
+  student?: StudentWithLatest;
+  created_at?: string;
+}
+
+export interface AuthSession {
+  token: string;
+  user: AuthUser;
+}
+
+export interface StudentDashboardData {
+  student: StudentWithLatest;
+  potd: POTDItem & { isSolvedByMe: boolean };
+  tracks: (CuratedTrack & {
+    userSolvedCount: number;
+    userCompletionRate: number;
+  })[];
+  recentSubmissions: RecentSubmission[];
+  rankInSection: number;
+  rankInDepartment: number;
+  totalStudentsDepartment: number;
+  totalStudentsSection: number;
+}
+
+

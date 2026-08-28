@@ -10,6 +10,8 @@ import { SectionsView } from './pages/SectionsView';
 import { InterventionView } from './pages/InterventionView';
 import { ReportsView } from './pages/ReportsView';
 import { SettingsView } from './pages/SettingsView';
+import { LoginView } from './pages/LoginView';
+import { StudentPortalView } from './pages/StudentPortalView';
 
 import { StudentDetailModal } from './components/StudentDetailModal';
 import { StudentFormModal } from './components/StudentFormModal';
@@ -24,11 +26,15 @@ import {
   BatchStat, 
   StudentWithLatest, 
   SystemSettings, 
-  BatchFetchProgress 
+  BatchFetchProgress,
+  AuthUser
 } from './types';
 import { RefreshCw, AlertCircle } from 'lucide-react';
 
 export function App() {
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [authChecking, setAuthChecking] = useState(true);
+
   const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -53,13 +59,39 @@ export function App() {
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
 
-  // Initial Load
+  // Check auth session on startup
   useEffect(() => {
-    loadAllData();
+    const verifySession = async () => {
+      try {
+        setAuthChecking(true);
+        const token = api.getToken();
+        if (token) {
+          const res = await api.getMe();
+          if (res && res.user) {
+            setCurrentUser(res.user);
+          }
+        }
+      } catch (e) {
+        api.clearToken();
+        setCurrentUser(null);
+      } finally {
+        setAuthChecking(false);
+      }
+    };
+    verifySession();
   }, []);
 
-  // Poll batch progress
+  // Initial Load of application data when authenticated
   useEffect(() => {
+    if (currentUser) {
+      loadAllData();
+    }
+  }, [currentUser]);
+
+  // Poll batch progress (only for staff)
+  useEffect(() => {
+    if (currentUser?.role !== 'staff') return;
+
     const checkProgress = async () => {
       try {
         const p = await api.getBatchProgress();
@@ -71,7 +103,7 @@ export function App() {
     checkProgress();
     const interval = setInterval(checkProgress, 3000);
     return () => clearInterval(interval);
-  }, []);
+  }, [currentUser]);
 
   const loadAllData = async () => {
     try {
@@ -97,6 +129,12 @@ export function App() {
     }
   };
 
+  const handleLogout = () => {
+    api.clearToken();
+    setCurrentUser(null);
+    setActiveTab('dashboard');
+  };
+
   const handleOpenStudentDetail = (id: string) => {
     setSelectedStudentId(id);
     setIsDetailOpen(true);
@@ -112,7 +150,7 @@ export function App() {
     setIsFormOpen(true);
   };
 
-  // Render active view
+  // Render active view for faculty/staff
   const renderActiveView = () => {
     if (loading && !summary) {
       return (
@@ -235,6 +273,49 @@ export function App() {
     }
   };
 
+  // 1. Loading session
+  if (authChecking) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-400 space-y-4">
+        <RefreshCw className="w-10 h-10 animate-spin text-blue-500" />
+        <p className="text-sm font-semibold text-slate-300">Checking authentication...</p>
+      </div>
+    );
+  }
+
+  // 2. Unauthenticated -> Show Login View
+  if (!currentUser) {
+    return <LoginView onLoginSuccess={(u) => setCurrentUser(u)} />;
+  }
+
+  // 3. Student Portal View
+  if (currentUser.role === 'student') {
+    return (
+      <div className="min-h-screen bg-[#f8fafc] text-[#1e293b] flex flex-col font-sans antialiased selection:bg-blue-500 selection:text-white">
+        <Header
+          onOpenBatchSync={() => {}}
+          onOpenPrivacy={() => setIsPrivacyOpen(true)}
+          currentUser={currentUser}
+          onLogout={handleLogout}
+        />
+        
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+          <StudentPortalView
+            currentUser={currentUser}
+            allStudents={students}
+            onStudentUpdated={loadAllData}
+          />
+        </main>
+
+        <PrivacyNoticeModal
+          isOpen={isPrivacyOpen}
+          onClose={() => setIsPrivacyOpen(false)}
+        />
+      </div>
+    );
+  }
+
+  // 4. Staff / Faculty Portal with Full Modules
   return (
     <div className="min-h-screen bg-[#f8fafc] text-[#1e293b] flex flex-col font-sans antialiased selection:bg-blue-500 selection:text-white">
       
@@ -245,6 +326,8 @@ export function App() {
         batchProgress={batchProgress}
         onRefreshCurrentView={loadAllData}
         isRefreshing={loading}
+        currentUser={currentUser}
+        onLogout={handleLogout}
       />
 
       {/* Main Layout Area */}
@@ -307,3 +390,4 @@ export function App() {
 }
 
 export default App;
+

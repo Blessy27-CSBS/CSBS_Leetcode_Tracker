@@ -224,6 +224,350 @@ function getAllEnrichedStudents(): StudentWithLatest[] {
   return students.map(s => enrichStudentWithSnapshots(s, snapshots, settings));
 }
 
+// Token helper
+function createAuthToken(user: any): string {
+  const payload = {
+    id: user.id,
+    username: user.username,
+    role: user.role,
+    student_id: user.student_id,
+    timestamp: Date.now()
+  };
+  return Buffer.from(JSON.stringify(payload)).toString('base64');
+}
+
+function parseAuthHeader(req: express.Request): any | null {
+  const auth = req.headers.authorization;
+  if (!auth || !auth.startsWith('Bearer ')) return null;
+  try {
+    const raw = Buffer.from(auth.substring(7), 'base64').toString('utf-8');
+    return JSON.parse(raw);
+  } catch (e) {
+    return null;
+  }
+}
+
+// ================= AUTH ROUTES =================
+
+// 0. Login (Staff or Student)
+app.post('/api/auth/login', (req, res) => {
+  try {
+    const { identifier, username, password, role } = req.body;
+    const loginId = identifier || username;
+
+    if (!loginId || !password) {
+      return res.status(400).json({ error: 'Username/Email and Password are required.' });
+    }
+
+    const authResult = db.authenticateUser(loginId, password, role);
+    if (!authResult) {
+      return res.status(401).json({ 
+        error: role === 'student' 
+          ? 'Invalid student credentials. Please verify your Email ID (username) and Register Number (password).'
+          : 'Invalid staff credentials. Please check your username and password.'
+      });
+    }
+
+    const { user, student } = authResult;
+    const token = createAuthToken(user);
+
+    let enrichedStudent: StudentWithLatest | undefined;
+    if (user.role === 'student' && user.student_id) {
+      const s = student || db.getStudentById(user.student_id);
+      if (s) {
+        const snapshots = db.getSnapshots(s.id);
+        const settings = db.getSettings();
+        enrichedStudent = enrichStudentWithSnapshots(s, snapshots, settings);
+      }
+    }
+
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        name: user.name,
+        email: user.email,
+        student_id: user.student_id,
+        student: enrichedStudent,
+        created_at: user.created_at
+      }
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Login failed.' });
+  }
+});
+
+// 0.1 Current authenticated user
+app.get('/api/auth/me', (req, res) => {
+  try {
+    const session = parseAuthHeader(req);
+    if (!session || !session.id) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const user = db.getUserById(session.id);
+    if (!user) {
+      return res.status(401).json({ error: 'User session expired or user not found' });
+    }
+
+    let enrichedStudent: StudentWithLatest | undefined;
+    if (user.role === 'student' && user.student_id) {
+      const s = db.getStudentById(user.student_id);
+      if (s) {
+        const snapshots = db.getSnapshots(s.id);
+        const settings = db.getSettings();
+        enrichedStudent = enrichStudentWithSnapshots(s, snapshots, settings);
+      }
+    }
+
+    res.json({
+      user: {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        name: user.name,
+        email: user.email,
+        student_id: user.student_id,
+        student: enrichedStudent,
+        created_at: user.created_at
+      }
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to fetch user session.' });
+  }
+});
+
+// 0.2 Change password
+app.post('/api/auth/change-password', (req, res) => {
+  try {
+    const session = parseAuthHeader(req);
+    const { userId, oldPassword, newPassword } = req.body;
+    const targetUserId = session?.id || userId;
+
+    if (!targetUserId || !newPassword) {
+      return res.status(400).json({ error: 'User ID and new password are required.' });
+    }
+
+    const user = db.getUserById(targetUserId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    if (oldPassword) {
+      const checkAuth = db.authenticateUser(user.username, oldPassword, user.role);
+      if (!checkAuth) {
+        return res.status(401).json({ error: 'Current password does not match.' });
+      }
+    }
+
+    const success = db.changeUserPassword(targetUserId, newPassword);
+    if (!success) {
+      return res.status(500).json({ error: 'Failed to update password.' });
+    }
+
+    db.addLog('INFO', `Password updated for user ${user.username} (${user.role}).`);
+    res.json({ success: true, message: 'Password updated successfully.' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to change password.' });
+  }
+});
+
+// ================= STUDENT PORTAL ROUTES =================
+
+// 0.3 Student Personalized Dashboard
+app.get('/api/student/dashboard', (req, res) => {
+  try {
+    const session = parseAuthHeader(req);
+    const studentIdQuery = req.query.studentId as string;
+    const studentId = session?.student_id || studentIdQuery;
+
+    if (!studentId) {
+      return res.status(400).json({ error: 'Student ID required.' });
+    }
+
+    const student = db.getStudentById(studentId);
+    if (!student) {
+      return res.status(404).json({ error: 'Student record not found.' });
+    }
+
+    const snapshots = db.getSnapshots(student.id);
+    const settings = db.getSettings();
+    const enrichedStudent = enrichStudentWithSnapshots(student, snapshots, settings);
+    const recentSubmissions = db.getSubmissions(student.id);
+
+    // Problem of the Day
+    const potd = db.getTodayPOTD();
+    const isPOTDSolved = recentSubmissions.some(s => 
+      (s.titleSlug && s.titleSlug.toLowerCase() === potd.titleSlug.toLowerCase()) ||
+      (s.title && s.title.toLowerCase().trim() === potd.title.toLowerCase().trim())
+    );
+
+    // Curated Tracks with personalized progress
+    const tracks = db.getTracks();
+    const studentTracks = tracks.map(t => {
+      const fullTrack = db.getTrackById(t.id);
+      const problems = fullTrack?.problems || [];
+      
+      let solvedCount = 0;
+      const problemsWithSolved = problems.map(p => {
+        const isSolved = recentSubmissions.some(sub => 
+          (sub.titleSlug && sub.titleSlug.toLowerCase() === p.titleSlug.toLowerCase()) ||
+          (sub.title && sub.title.toLowerCase().trim() === p.title.toLowerCase().trim())
+        );
+        if (isSolved) solvedCount++;
+        return {
+          ...p,
+          isSolvedBySelectedStudent: isSolved
+        };
+      });
+
+      const userRate = problems.length > 0 ? Math.round((solvedCount / problems.length) * 100) : 0;
+
+      return {
+        ...t,
+        totalProblems: problems.length,
+        userSolvedCount: solvedCount,
+        userCompletionRate: userRate,
+        problems: problemsWithSolved
+      };
+    });
+
+    // Rank calculations
+    const allStudents = getAllEnrichedStudents();
+    const deptSorted = [...allStudents].sort((a, b) => 
+      (b.latest_snapshot?.engagement_score || 0) - (a.latest_snapshot?.engagement_score || 0)
+    );
+    const rankInDept = deptSorted.findIndex(s => s.id === student.id) + 1 || 1;
+
+    const sectionStudents = allStudents.filter(s => s.section === student.section);
+    const sectionSorted = [...sectionStudents].sort((a, b) => 
+      (b.latest_snapshot?.engagement_score || 0) - (a.latest_snapshot?.engagement_score || 0)
+    );
+    const rankInSec = sectionSorted.findIndex(s => s.id === student.id) + 1 || 1;
+
+    res.json({
+      student: enrichedStudent,
+      potd: {
+        ...potd,
+        isSolvedByMe: isPOTDSolved
+      },
+      tracks: studentTracks,
+      recentSubmissions,
+      rankInSection: rankInSec,
+      rankInDepartment: rankInDept,
+      totalStudentsDepartment: allStudents.length,
+      totalStudentsSection: sectionStudents.length
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to generate student dashboard.' });
+  }
+});
+
+// 0.4 Student Live LeetCode Sync
+app.post('/api/student/sync', async (req, res) => {
+  try {
+    const session = parseAuthHeader(req);
+    const studentId = session?.student_id || req.body.studentId;
+
+    if (!studentId) {
+      return res.status(400).json({ error: 'Student ID required.' });
+    }
+
+    const student = db.getStudentById(studentId);
+    if (!student) {
+      return res.status(404).json({ error: 'Student not found.' });
+    }
+
+    const settings = db.getSettings();
+    const fetchResult = await fetchLeetCodeProfile(
+      student.username, 
+      settings.api_timeout_seconds * 1000
+    );
+
+    const prevSnapshot = db.getLatestSnapshot(student.id);
+
+    if (fetchResult.status === 'SUCCESS' && fetchResult.data) {
+      const data = fetchResult.data;
+      const daysInactive = getDaysInactive(data.last_active);
+      const activityStatus = getActivityStatus(daysInactive, settings.inactivity_threshold_days);
+      const tier = getPerformanceTier(data.total_solved, settings);
+
+      const impRate = prevSnapshot ? Math.max(0, data.total_solved - prevSnapshot.total_solved) : 0;
+      
+      const engagement = calculateEngagementScore({
+        total_solved: data.total_solved,
+        medium: data.medium,
+        hard: data.hard,
+        streak: data.streak,
+        contest_rating: data.contest_rating,
+        contests_attended: data.contests_attended,
+        days_inactive: daysInactive,
+        improvement_rate: impRate,
+      }, settings);
+
+      const snapshot = db.addSnapshot({
+        student_id: student.id,
+        captured_at: new Date().toISOString(),
+        total_solved: data.total_solved,
+        easy: data.easy,
+        medium: data.medium,
+        hard: data.hard,
+        acceptance_rate: data.acceptance_rate,
+        ranking: data.ranking,
+        reputation: data.reputation,
+        contest_rating: data.contest_rating,
+        contest_rank: data.contest_rank,
+        contests_attended: data.contests_attended,
+        top_percentage: data.top_percentage,
+        streak: data.streak,
+        active_days: data.active_days,
+        last_active: data.last_active,
+        languages: data.languages,
+        skills: data.skills,
+        badges: data.badges,
+        submission_calendar: data.submission_calendar,
+        engagement_score: engagement,
+        performance_tier: tier,
+        activity_status: activityStatus,
+        status: 'SUCCESS',
+      });
+
+      if (data.recent_submissions && data.recent_submissions.length > 0) {
+        db.setSubmissions(student.id, data.recent_submissions.map((s, idx) => ({
+          id: `sub_${student.id}_${Date.now()}_${idx}`,
+          student_id: student.id,
+          title: s.title,
+          titleSlug: s.titleSlug,
+          timestamp: s.timestamp,
+          language: s.lang || 'Unknown',
+          statusDisplay: s.statusDisplay || 'Accepted',
+        })));
+      }
+
+      db.addLog('INFO', `[Student Portal Sync] ${student.student_name} refreshed their LeetCode profile: ${data.total_solved} solved.`);
+
+      const enriched = enrichStudentWithSnapshots(student, [snapshot], settings);
+
+      return res.json({
+        success: true,
+        status: 'SUCCESS',
+        snapshot,
+        student: enriched
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        status: fetchResult.status,
+        error: fetchResult.error || 'Failed to fetch latest LeetCode profile.'
+      });
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Error during student live sync.' });
+  }
+});
+
 // ================= API ROUTES =================
 
 // 1. Health check
