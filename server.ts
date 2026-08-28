@@ -1,7 +1,6 @@
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { createServer as createViteServer } from 'vite';
 import * as XLSX from 'xlsx';
 import { db } from './server/db.js';
 import { fetchLeetCodeProfile } from './server/leetcode.js';
@@ -817,6 +816,7 @@ app.post('/api/settings/clear-history', (req, res) => {
 
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',

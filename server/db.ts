@@ -1,6 +1,5 @@
 import fs from 'fs';
 import path from 'path';
-import DatabaseConstructor, { Database as SQLiteDB } from 'better-sqlite3';
 import { 
   Student, 
   Snapshot, 
@@ -10,7 +9,7 @@ import {
 
 const DATA_DIR = process.env.VERCEL ? '/tmp/data' : path.join(process.cwd(), 'data');
 const DB_FILE = path.join(DATA_DIR, 'csbs_tracker.db');
-const LEGACY_JSON_FILE = path.join(process.cwd(), 'data', 'tracker_database.json');
+const JSON_BACKUP_FILE = path.join(process.cwd(), 'data', 'tracker_database.json');
 
 const DEFAULT_SETTINGS: SystemSettings = {
   inactivity_threshold_days: 14,
@@ -31,150 +30,204 @@ const DEFAULT_SETTINGS: SystemSettings = {
   },
 };
 
+interface MemoryStore {
+  students: Student[];
+  snapshots: Snapshot[];
+  recent_submissions: RecentSubmission[];
+  settings: SystemSettings;
+  logs: { timestamp: string; level: string; message: string }[];
+}
+
 export class DatabaseService {
-  private db: SQLiteDB;
+  private sqliteDb: any = null;
+  private memStore: MemoryStore = {
+    students: [],
+    snapshots: [],
+    recent_submissions: [],
+    settings: DEFAULT_SETTINGS,
+    logs: []
+  };
+  private isFallbackMode = false;
 
   constructor() {
     this.ensureDataDir();
-    this.db = new DatabaseConstructor(DB_FILE);
     this.initDatabase();
-    this.migrateFromLegacyJSON();
   }
 
   private ensureDataDir() {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
+    try {
+      if (!fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+      }
+    } catch (e) {
+      // Ignore if read-only filesystem
     }
   }
 
   private initDatabase() {
-    // Enable WAL mode for performance & concurrent reads
-    this.db.pragma('journal_mode = WAL');
-    this.db.pragma('foreign_keys = ON');
+    try {
+      // Try to initialize better-sqlite3
+      const DatabaseConstructor = require('better-sqlite3');
+      this.sqliteDb = new DatabaseConstructor(DB_FILE);
+      this.sqliteDb.pragma('journal_mode = WAL');
+      this.sqliteDb.pragma('foreign_keys = ON');
 
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS students (
-        id TEXT PRIMARY KEY,
-        register_no TEXT UNIQUE NOT NULL,
-        student_name TEXT NOT NULL,
-        section TEXT NOT NULL DEFAULT 'A',
-        year TEXT NOT NULL DEFAULT 'II',
-        batch TEXT NOT NULL DEFAULT '2023-2027',
-        username TEXT UNIQUE NOT NULL,
-        email TEXT,
-        mentor TEXT,
-        academic_year TEXT NOT NULL DEFAULT '2024-2025',
-        active INTEGER NOT NULL DEFAULT 1,
-        created_at TEXT NOT NULL,
-        notes TEXT
-      );
+      this.sqliteDb.exec(`
+        CREATE TABLE IF NOT EXISTS students (
+          id TEXT PRIMARY KEY,
+          register_no TEXT UNIQUE NOT NULL,
+          student_name TEXT NOT NULL,
+          section TEXT NOT NULL DEFAULT 'A',
+          year TEXT NOT NULL DEFAULT 'II',
+          batch TEXT NOT NULL DEFAULT '2023-2027',
+          username TEXT UNIQUE NOT NULL,
+          email TEXT,
+          mentor TEXT,
+          academic_year TEXT NOT NULL DEFAULT '2024-2025',
+          active INTEGER NOT NULL DEFAULT 1,
+          created_at TEXT NOT NULL,
+          notes TEXT
+        );
 
-      CREATE INDEX IF NOT EXISTS idx_students_regno ON students(register_no);
-      CREATE INDEX IF NOT EXISTS idx_students_username ON students(username);
-      CREATE INDEX IF NOT EXISTS idx_students_section ON students(section);
-      CREATE INDEX IF NOT EXISTS idx_students_year ON students(year);
+        CREATE INDEX IF NOT EXISTS idx_students_regno ON students(register_no);
+        CREATE INDEX IF NOT EXISTS idx_students_username ON students(username);
 
-      CREATE TABLE IF NOT EXISTS snapshots (
-        id TEXT PRIMARY KEY,
-        student_id TEXT NOT NULL,
-        captured_at TEXT NOT NULL,
-        total_solved INTEGER NOT NULL DEFAULT 0,
-        easy INTEGER NOT NULL DEFAULT 0,
-        medium INTEGER NOT NULL DEFAULT 0,
-        hard INTEGER NOT NULL DEFAULT 0,
-        acceptance_rate REAL NOT NULL DEFAULT 0,
-        ranking INTEGER NOT NULL DEFAULT 0,
-        reputation INTEGER NOT NULL DEFAULT 0,
-        contest_rating INTEGER NOT NULL DEFAULT 0,
-        contest_rank INTEGER NOT NULL DEFAULT 0,
-        contests_attended INTEGER NOT NULL DEFAULT 0,
-        top_percentage REAL NOT NULL DEFAULT 0,
-        streak INTEGER NOT NULL DEFAULT 0,
-        active_days INTEGER NOT NULL DEFAULT 0,
-        last_active TEXT,
-        languages TEXT,
-        skills TEXT,
-        badges TEXT,
-        submission_calendar TEXT,
-        engagement_score INTEGER NOT NULL DEFAULT 0,
-        performance_tier TEXT NOT NULL DEFAULT 'Beginner',
-        activity_status TEXT NOT NULL DEFAULT 'No Data',
-        status TEXT NOT NULL DEFAULT 'SUCCESS',
-        error TEXT,
-        FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
-      );
+        CREATE TABLE IF NOT EXISTS snapshots (
+          id TEXT PRIMARY KEY,
+          student_id TEXT NOT NULL,
+          captured_at TEXT NOT NULL,
+          total_solved INTEGER NOT NULL DEFAULT 0,
+          easy INTEGER NOT NULL DEFAULT 0,
+          medium INTEGER NOT NULL DEFAULT 0,
+          hard INTEGER NOT NULL DEFAULT 0,
+          acceptance_rate REAL NOT NULL DEFAULT 0,
+          ranking INTEGER NOT NULL DEFAULT 0,
+          reputation INTEGER NOT NULL DEFAULT 0,
+          contest_rating INTEGER NOT NULL DEFAULT 0,
+          contest_rank INTEGER NOT NULL DEFAULT 0,
+          contests_attended INTEGER NOT NULL DEFAULT 0,
+          top_percentage REAL NOT NULL DEFAULT 0,
+          streak INTEGER NOT NULL DEFAULT 0,
+          active_days INTEGER NOT NULL DEFAULT 0,
+          last_active TEXT,
+          languages TEXT,
+          skills TEXT,
+          badges TEXT,
+          submission_calendar TEXT,
+          engagement_score INTEGER NOT NULL DEFAULT 0,
+          performance_tier TEXT NOT NULL DEFAULT 'Beginner',
+          activity_status TEXT NOT NULL DEFAULT 'No Data',
+          status TEXT NOT NULL DEFAULT 'SUCCESS',
+          error TEXT,
+          FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
+        );
 
-      CREATE INDEX IF NOT EXISTS idx_snapshots_student_id ON snapshots(student_id);
-      CREATE INDEX IF NOT EXISTS idx_snapshots_captured_at ON snapshots(captured_at);
+        CREATE INDEX IF NOT EXISTS idx_snapshots_student_id ON snapshots(student_id);
 
-      CREATE TABLE IF NOT EXISTS recent_submissions (
-        id TEXT PRIMARY KEY,
-        student_id TEXT NOT NULL,
-        title TEXT NOT NULL,
-        titleSlug TEXT NOT NULL,
-        timestamp TEXT NOT NULL,
-        language TEXT NOT NULL,
-        statusDisplay TEXT NOT NULL,
-        FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
-      );
+        CREATE TABLE IF NOT EXISTS recent_submissions (
+          id TEXT PRIMARY KEY,
+          student_id TEXT NOT NULL,
+          title TEXT NOT NULL,
+          titleSlug TEXT NOT NULL,
+          timestamp TEXT NOT NULL,
+          language TEXT NOT NULL,
+          statusDisplay TEXT NOT NULL,
+          FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
+        );
 
-      CREATE INDEX IF NOT EXISTS idx_submissions_student_id ON recent_submissions(student_id);
+        CREATE TABLE IF NOT EXISTS settings (
+          id INTEGER PRIMARY KEY CHECK (id = 1),
+          inactivity_threshold_days INTEGER NOT NULL DEFAULT 14,
+          academic_year TEXT NOT NULL DEFAULT '2024-2025',
+          fetch_delay_ms INTEGER NOT NULL DEFAULT 1500,
+          api_timeout_seconds INTEGER NOT NULL DEFAULT 25,
+          tier_beginner_max INTEGER NOT NULL DEFAULT 49,
+          tier_developing_max INTEGER NOT NULL DEFAULT 99,
+          tier_proficient_max INTEGER NOT NULL DEFAULT 199,
+          weights TEXT NOT NULL
+        );
 
-      CREATE TABLE IF NOT EXISTS settings (
-        id INTEGER PRIMARY KEY CHECK (id = 1),
-        inactivity_threshold_days INTEGER NOT NULL DEFAULT 14,
-        academic_year TEXT NOT NULL DEFAULT '2024-2025',
-        fetch_delay_ms INTEGER NOT NULL DEFAULT 1500,
-        api_timeout_seconds INTEGER NOT NULL DEFAULT 25,
-        tier_beginner_max INTEGER NOT NULL DEFAULT 49,
-        tier_developing_max INTEGER NOT NULL DEFAULT 99,
-        tier_proficient_max INTEGER NOT NULL DEFAULT 199,
-        weights TEXT NOT NULL
-      );
+        CREATE TABLE IF NOT EXISTS logs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          timestamp TEXT NOT NULL,
+          level TEXT NOT NULL,
+          message TEXT NOT NULL
+        );
+      `);
 
-      CREATE TABLE IF NOT EXISTS logs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        timestamp TEXT NOT NULL,
-        level TEXT NOT NULL,
-        message TEXT NOT NULL
-      );
-    `);
+      const settingsRow = this.sqliteDb.prepare('SELECT id FROM settings WHERE id = 1').get();
+      if (!settingsRow) {
+        this.sqliteDb.prepare(`
+          INSERT INTO settings (
+            id, inactivity_threshold_days, academic_year, fetch_delay_ms, api_timeout_seconds,
+            tier_beginner_max, tier_developing_max, tier_proficient_max, weights
+          ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          DEFAULT_SETTINGS.inactivity_threshold_days,
+          DEFAULT_SETTINGS.academic_year,
+          DEFAULT_SETTINGS.fetch_delay_ms,
+          DEFAULT_SETTINGS.api_timeout_seconds,
+          DEFAULT_SETTINGS.tier_beginner_max,
+          DEFAULT_SETTINGS.tier_developing_max,
+          DEFAULT_SETTINGS.tier_proficient_max,
+          JSON.stringify(DEFAULT_SETTINGS.weights)
+        );
+      }
 
-    // Ensure settings record exists
-    const settingsRow = this.db.prepare('SELECT id FROM settings WHERE id = 1').get();
-    if (!settingsRow) {
-      this.db.prepare(`
-        INSERT INTO settings (
-          id, inactivity_threshold_days, academic_year, fetch_delay_ms, api_timeout_seconds,
-          tier_beginner_max, tier_developing_max, tier_proficient_max, weights
-        ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(
-        DEFAULT_SETTINGS.inactivity_threshold_days,
-        DEFAULT_SETTINGS.academic_year,
-        DEFAULT_SETTINGS.fetch_delay_ms,
-        DEFAULT_SETTINGS.api_timeout_seconds,
-        DEFAULT_SETTINGS.tier_beginner_max,
-        DEFAULT_SETTINGS.tier_developing_max,
-        DEFAULT_SETTINGS.tier_proficient_max,
-        JSON.stringify(DEFAULT_SETTINGS.weights)
-      );
+      this.migrateFromLegacyJSON();
+    } catch (err) {
+      console.warn('SQLite native initialization failed or unavailable, running in JSON fallback mode:', err);
+      this.isFallbackMode = true;
+      this.loadMemoryStore();
+    }
+  }
+
+  private loadMemoryStore() {
+    if (fs.existsSync(JSON_BACKUP_FILE)) {
+      try {
+        const raw = fs.readFileSync(JSON_BACKUP_FILE, 'utf-8');
+        const parsed = JSON.parse(raw);
+        this.memStore = {
+          students: parsed.students || [],
+          snapshots: parsed.snapshots || [],
+          recent_submissions: parsed.recent_submissions || [],
+          settings: parsed.settings || DEFAULT_SETTINGS,
+          logs: parsed.logs || []
+        };
+      } catch (e) {
+        console.error('Failed to load JSON backup file:', e);
+      }
+    }
+  }
+
+  private persistMemoryStore() {
+    try {
+      if (process.env.VERCEL) {
+        const tmpJson = '/tmp/tracker_database.json';
+        fs.writeFileSync(tmpJson, JSON.stringify(this.memStore, null, 2), 'utf-8');
+      } else if (fs.existsSync(path.dirname(JSON_BACKUP_FILE))) {
+        fs.writeFileSync(JSON_BACKUP_FILE, JSON.stringify(this.memStore, null, 2), 'utf-8');
+      }
+    } catch (e) {
+      // ignore
     }
   }
 
   private migrateFromLegacyJSON() {
-    const studentCount = (this.db.prepare('SELECT COUNT(*) as c FROM students').get() as { c: number }).c;
-    if (studentCount === 0 && fs.existsSync(LEGACY_JSON_FILE)) {
+    if (this.isFallbackMode || !this.sqliteDb) return;
+    const studentCount = (this.sqliteDb.prepare('SELECT COUNT(*) as c FROM students').get() as { c: number }).c;
+    if (studentCount === 0 && fs.existsSync(JSON_BACKUP_FILE)) {
       try {
-        const raw = fs.readFileSync(LEGACY_JSON_FILE, 'utf-8');
+        const raw = fs.readFileSync(JSON_BACKUP_FILE, 'utf-8');
         const legacy = JSON.parse(raw);
         if (legacy && Array.isArray(legacy.students) && legacy.students.length > 0) {
-          const insertStudent = this.db.prepare(`
+          const insertStudent = this.sqliteDb.prepare(`
             INSERT OR REPLACE INTO students (
               id, register_no, student_name, section, year, batch, username, email, mentor, academic_year, active, created_at, notes
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `);
 
-          const insertSnapshot = this.db.prepare(`
+          const insertSnapshot = this.sqliteDb.prepare(`
             INSERT OR REPLACE INTO snapshots (
               id, student_id, captured_at, total_solved, easy, medium, hard, acceptance_rate,
               ranking, reputation, contest_rating, contest_rank, contests_attended, top_percentage,
@@ -183,13 +236,13 @@ export class DatabaseService {
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `);
 
-          const insertSub = this.db.prepare(`
+          const insertSub = this.sqliteDb.prepare(`
             INSERT OR REPLACE INTO recent_submissions (
               id, student_id, title, titleSlug, timestamp, language, statusDisplay
             ) VALUES (?, ?, ?, ?, ?, ?, ?)
           `);
 
-          const migrateTx = this.db.transaction(() => {
+          const migrateTx = this.sqliteDb.transaction(() => {
             for (const s of legacy.students) {
               insertStudent.run(
                 s.id,
@@ -257,17 +310,19 @@ export class DatabaseService {
           });
 
           migrateTx();
-          this.addLog('INFO', `Migrated ${legacy.students.length} students into SQLite database.`);
         }
       } catch (err) {
-        console.error('Failed to migrate from legacy JSON:', err);
+        console.error('Failed to migrate legacy JSON to SQLite:', err);
       }
     }
   }
 
   // Students CRUD
   public getStudents(): Student[] {
-    const rows = this.db.prepare('SELECT * FROM students ORDER BY student_name ASC').all() as any[];
+    if (this.isFallbackMode || !this.sqliteDb) {
+      return this.memStore.students;
+    }
+    const rows = this.sqliteDb.prepare('SELECT * FROM students ORDER BY student_name ASC').all() as any[];
     return rows.map(r => ({
       id: r.id,
       register_no: r.register_no,
@@ -286,7 +341,10 @@ export class DatabaseService {
   }
 
   public getStudentById(id: string): Student | undefined {
-    const r = this.db.prepare('SELECT * FROM students WHERE id = ?').get(id) as any;
+    if (this.isFallbackMode || !this.sqliteDb) {
+      return this.memStore.students.find(s => s.id === id);
+    }
+    const r = this.sqliteDb.prepare('SELECT * FROM students WHERE id = ?').get(id) as any;
     if (!r) return undefined;
     return {
       id: r.id,
@@ -306,7 +364,10 @@ export class DatabaseService {
   }
 
   public getStudentByUsername(username: string): Student | undefined {
-    const r = this.db.prepare('SELECT * FROM students WHERE LOWER(username) = LOWER(?)').get(username) as any;
+    if (this.isFallbackMode || !this.sqliteDb) {
+      return this.memStore.students.find(s => s.username.toLowerCase() === username.toLowerCase());
+    }
+    const r = this.sqliteDb.prepare('SELECT * FROM students WHERE LOWER(username) = LOWER(?)').get(username) as any;
     if (!r) return undefined;
     return {
       id: r.id,
@@ -326,7 +387,10 @@ export class DatabaseService {
   }
 
   public getStudentByRegisterNo(regNo: string): Student | undefined {
-    const r = this.db.prepare('SELECT * FROM students WHERE LOWER(register_no) = LOWER(?)').get(regNo) as any;
+    if (this.isFallbackMode || !this.sqliteDb) {
+      return this.memStore.students.find(s => s.register_no.toLowerCase() === regNo.toLowerCase());
+    }
+    const r = this.sqliteDb.prepare('SELECT * FROM students WHERE LOWER(register_no) = LOWER(?)').get(regNo) as any;
     if (!r) return undefined;
     return {
       id: r.id,
@@ -350,7 +414,20 @@ export class DatabaseService {
     const created_at = new Date().toISOString();
     const active = student.active ?? true;
 
-    this.db.prepare(`
+    const newStudent: Student = {
+      ...student,
+      id,
+      created_at,
+      active,
+    };
+
+    if (this.isFallbackMode || !this.sqliteDb) {
+      this.memStore.students.push(newStudent);
+      this.persistMemoryStore();
+      return newStudent;
+    }
+
+    this.sqliteDb.prepare(`
       INSERT INTO students (
         id, register_no, student_name, section, year, batch, username, email, mentor, academic_year, active, created_at, notes
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -370,21 +447,24 @@ export class DatabaseService {
       student.notes ? student.notes.trim() : null
     );
 
-    return {
-      ...student,
-      id,
-      created_at,
-      active,
-    };
+    return newStudent;
   }
 
   public updateStudent(id: string, updates: Partial<Student>): Student | null {
+    if (this.isFallbackMode || !this.sqliteDb) {
+      const idx = this.memStore.students.findIndex(s => s.id === id);
+      if (idx === -1) return null;
+      this.memStore.students[idx] = { ...this.memStore.students[idx], ...updates };
+      this.persistMemoryStore();
+      return this.memStore.students[idx];
+    }
+
     const existing = this.getStudentById(id);
     if (!existing) return null;
 
     const merged = { ...existing, ...updates };
 
-    this.db.prepare(`
+    this.sqliteDb.prepare(`
       UPDATE students SET
         register_no = ?,
         student_name = ?,
@@ -417,17 +497,35 @@ export class DatabaseService {
   }
 
   public deleteStudent(id: string): boolean {
-    const res = this.db.prepare('DELETE FROM students WHERE id = ?').run(id);
+    if (this.isFallbackMode || !this.sqliteDb) {
+      const initLen = this.memStore.students.length;
+      this.memStore.students = this.memStore.students.filter(s => s.id !== id);
+      this.memStore.snapshots = this.memStore.snapshots.filter(s => s.student_id !== id);
+      this.memStore.recent_submissions = this.memStore.recent_submissions.filter(s => s.student_id !== id);
+      this.persistMemoryStore();
+      return this.memStore.students.length < initLen;
+    }
+
+    const res = this.sqliteDb.prepare('DELETE FROM students WHERE id = ?').run(id);
     return res.changes > 0;
   }
 
   // Snapshots
   public getSnapshots(studentId?: string): Snapshot[] {
+    if (this.isFallbackMode || !this.sqliteDb) {
+      if (studentId) {
+        return this.memStore.snapshots
+          .filter(s => s.student_id === studentId)
+          .sort((a, b) => new Date(a.captured_at).getTime() - new Date(b.captured_at).getTime());
+      }
+      return this.memStore.snapshots;
+    }
+
     let rows: any[];
     if (studentId) {
-      rows = this.db.prepare('SELECT * FROM snapshots WHERE student_id = ? ORDER BY datetime(captured_at) ASC').all(studentId);
+      rows = this.sqliteDb.prepare('SELECT * FROM snapshots WHERE student_id = ? ORDER BY datetime(captured_at) ASC').all(studentId);
     } else {
-      rows = this.db.prepare('SELECT * FROM snapshots ORDER BY datetime(captured_at) ASC').all();
+      rows = this.sqliteDb.prepare('SELECT * FROM snapshots ORDER BY datetime(captured_at) ASC').all();
     }
 
     return rows.map(r => ({
@@ -461,7 +559,12 @@ export class DatabaseService {
   }
 
   public getLatestSnapshot(studentId: string): Snapshot | undefined {
-    const r = this.db.prepare('SELECT * FROM snapshots WHERE student_id = ? ORDER BY datetime(captured_at) DESC LIMIT 1').get(studentId) as any;
+    if (this.isFallbackMode || !this.sqliteDb) {
+      const list = this.getSnapshots(studentId);
+      return list.length > 0 ? list[list.length - 1] : undefined;
+    }
+
+    const r = this.sqliteDb.prepare('SELECT * FROM snapshots WHERE student_id = ? ORDER BY datetime(captured_at) DESC LIMIT 1').get(studentId) as any;
     if (!r) return undefined;
     return {
       id: r.id,
@@ -494,7 +597,12 @@ export class DatabaseService {
   }
 
   public getPreviousSnapshot(studentId: string): Snapshot | undefined {
-    const rows = this.db.prepare('SELECT * FROM snapshots WHERE student_id = ? ORDER BY datetime(captured_at) DESC LIMIT 2').all(studentId) as any[];
+    if (this.isFallbackMode || !this.sqliteDb) {
+      const list = this.getSnapshots(studentId);
+      return list.length > 1 ? list[list.length - 2] : undefined;
+    }
+
+    const rows = this.sqliteDb.prepare('SELECT * FROM snapshots WHERE student_id = ? ORDER BY datetime(captured_at) DESC LIMIT 2').all(studentId) as any[];
     if (rows.length < 2) return undefined;
     const r = rows[1];
     return {
@@ -529,8 +637,18 @@ export class DatabaseService {
 
   public addSnapshot(snapshot: Omit<Snapshot, 'id'>): Snapshot {
     const id = `snap_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const newSnap: Snapshot = {
+      ...snapshot,
+      id,
+    };
 
-    this.db.prepare(`
+    if (this.isFallbackMode || !this.sqliteDb) {
+      this.memStore.snapshots.push(newSnap);
+      this.persistMemoryStore();
+      return newSnap;
+    }
+
+    this.sqliteDb.prepare(`
       INSERT INTO snapshots (
         id, student_id, captured_at, total_solved, easy, medium, hard, acceptance_rate,
         ranking, reputation, contest_rating, contest_rank, contests_attended, top_percentage,
@@ -566,23 +684,33 @@ export class DatabaseService {
       snapshot.error || null
     );
 
-    return {
-      ...snapshot,
-      id,
-    };
+    return newSnap;
   }
 
   public deleteSnapshots(studentId?: string): void {
+    if (this.isFallbackMode || !this.sqliteDb) {
+      if (studentId) {
+        this.memStore.snapshots = this.memStore.snapshots.filter(s => s.student_id !== studentId);
+      } else {
+        this.memStore.snapshots = [];
+      }
+      this.persistMemoryStore();
+      return;
+    }
+
     if (studentId) {
-      this.db.prepare('DELETE FROM snapshots WHERE student_id = ?').run(studentId);
+      this.sqliteDb.prepare('DELETE FROM snapshots WHERE student_id = ?').run(studentId);
     } else {
-      this.db.prepare('DELETE FROM snapshots').run();
+      this.sqliteDb.prepare('DELETE FROM snapshots').run();
     }
   }
 
   // Recent Submissions
   public getSubmissions(studentId: string): RecentSubmission[] {
-    const rows = this.db.prepare('SELECT * FROM recent_submissions WHERE student_id = ? ORDER BY id DESC').all(studentId) as any[];
+    if (this.isFallbackMode || !this.sqliteDb) {
+      return this.memStore.recent_submissions.filter(r => r.student_id === studentId);
+    }
+    const rows = this.sqliteDb.prepare('SELECT * FROM recent_submissions WHERE student_id = ? ORDER BY id DESC').all(studentId) as any[];
     return rows.map(r => ({
       id: r.id,
       student_id: r.student_id,
@@ -595,14 +723,21 @@ export class DatabaseService {
   }
 
   public setSubmissions(studentId: string, subs: RecentSubmission[]): void {
-    const insertSub = this.db.prepare(`
+    if (this.isFallbackMode || !this.sqliteDb) {
+      this.memStore.recent_submissions = this.memStore.recent_submissions.filter(r => r.student_id !== studentId);
+      this.memStore.recent_submissions.push(...subs);
+      this.persistMemoryStore();
+      return;
+    }
+
+    const insertSub = this.sqliteDb.prepare(`
       INSERT OR REPLACE INTO recent_submissions (
         id, student_id, title, titleSlug, timestamp, language, statusDisplay
       ) VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
 
-    const tx = this.db.transaction(() => {
-      this.db.prepare('DELETE FROM recent_submissions WHERE student_id = ?').run(studentId);
+    const tx = this.sqliteDb.transaction(() => {
+      this.sqliteDb.prepare('DELETE FROM recent_submissions WHERE student_id = ?').run(studentId);
       for (const sub of subs) {
         insertSub.run(
           sub.id,
@@ -621,7 +756,10 @@ export class DatabaseService {
 
   // Settings
   public getSettings(): SystemSettings {
-    const r = this.db.prepare('SELECT * FROM settings WHERE id = 1').get() as any;
+    if (this.isFallbackMode || !this.sqliteDb) {
+      return this.memStore.settings || DEFAULT_SETTINGS;
+    }
+    const r = this.sqliteDb.prepare('SELECT * FROM settings WHERE id = 1').get() as any;
     if (!r) return DEFAULT_SETTINGS;
     return {
       inactivity_threshold_days: r.inactivity_threshold_days,
@@ -639,7 +777,13 @@ export class DatabaseService {
     const current = this.getSettings();
     const updated = { ...current, ...newSettings };
 
-    this.db.prepare(`
+    if (this.isFallbackMode || !this.sqliteDb) {
+      this.memStore.settings = updated;
+      this.persistMemoryStore();
+      return updated;
+    }
+
+    this.sqliteDb.prepare(`
       UPDATE settings SET
         inactivity_threshold_days = ?,
         academic_year = ?,
@@ -664,24 +808,41 @@ export class DatabaseService {
     return updated;
   }
 
-  // Reset / Clear
+  // Reset
   public resetToDemo(): void {
-    this.db.transaction(() => {
-      this.db.prepare('DELETE FROM snapshots').run();
-      this.db.prepare('DELETE FROM recent_submissions').run();
-      this.db.prepare('DELETE FROM students').run();
+    if (this.isFallbackMode || !this.sqliteDb) {
+      this.memStore = {
+        students: [],
+        snapshots: [],
+        recent_submissions: [],
+        settings: DEFAULT_SETTINGS,
+        logs: []
+      };
+      this.persistMemoryStore();
+      return;
+    }
+
+    this.sqliteDb.transaction(() => {
+      this.sqliteDb.prepare('DELETE FROM snapshots').run();
+      this.sqliteDb.prepare('DELETE FROM recent_submissions').run();
+      this.sqliteDb.prepare('DELETE FROM students').run();
       this.updateSettings(DEFAULT_SETTINGS);
     })();
   }
 
   // Logs
   public addLog(level: string, message: string): void {
-    this.db.prepare(`
+    if (this.isFallbackMode || !this.sqliteDb) {
+      this.memStore.logs.push({ timestamp: new Date().toISOString(), level, message });
+      if (this.memStore.logs.length > 500) this.memStore.logs = this.memStore.logs.slice(-500);
+      return;
+    }
+
+    this.sqliteDb.prepare(`
       INSERT INTO logs (timestamp, level, message) VALUES (?, ?, ?)
     `).run(new Date().toISOString(), level, message);
 
-    // Keep latest 1000 logs
-    this.db.prepare(`
+    this.sqliteDb.prepare(`
       DELETE FROM logs WHERE id NOT IN (
         SELECT id FROM logs ORDER BY id DESC LIMIT 1000
       )
@@ -689,7 +850,10 @@ export class DatabaseService {
   }
 
   public getLogs(): { timestamp: string; level: string; message: string }[] {
-    const rows = this.db.prepare('SELECT timestamp, level, message FROM logs ORDER BY id DESC LIMIT 500').all() as any[];
+    if (this.isFallbackMode || !this.sqliteDb) {
+      return [...this.memStore.logs].reverse();
+    }
+    const rows = this.sqliteDb.prepare('SELECT timestamp, level, message FROM logs ORDER BY id DESC LIMIT 500').all() as any[];
     return rows.reverse();
   }
 }
