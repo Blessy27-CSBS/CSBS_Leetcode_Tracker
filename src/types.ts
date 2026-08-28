@@ -109,6 +109,61 @@ export interface SystemSettings {
     contest_participation: number; // default 10
     improvement_rate: number; // default 5
   };
+  auto_sync_enabled?: boolean; // default false
+  auto_sync_interval_hours?: number; // default 12 (6, 12, 24)
+}
+
+export interface POTDItem {
+  id: string;
+  date: string; // YYYY-MM-DD
+  title: string;
+  titleSlug: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  topic: string;
+  acceptanceRate?: number;
+  leetcodeUrl: string;
+  hint?: string;
+  solvedCount?: number;
+  solvedStudents?: {
+    studentId: string;
+    studentName: string;
+    registerNo: string;
+    section: string;
+    username: string;
+    solvedAt?: string;
+  }[];
+}
+
+export interface CuratedProblem {
+  id: string;
+  trackId: string;
+  title: string;
+  titleSlug: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  topic: string;
+  orderIndex: number;
+  leetcodeUrl: string;
+  solvedCount?: number;
+  isSolvedBySelectedStudent?: boolean;
+}
+
+export interface CuratedTrack {
+  id: string;
+  title: string;
+  description: string;
+  totalProblems: number;
+  icon?: string;
+  category: 'blind75' | 'top150' | 'csbs_core' | 'custom';
+  problems?: CuratedProblem[];
+  departmentCompletionRate?: number;
+}
+
+export interface SchedulerStatus {
+  isEnabled: boolean;
+  intervalHours: number;
+  lastRunAt: string | null;
+  nextRunAt: string | null;
+  isRunning: boolean;
 }
 
 export interface DashboardSummary {
@@ -188,3 +243,4 @@ export interface BatchFetchProgress {
     type: 'info' | 'success' | 'warn' | 'error';
   }[];
 }
+

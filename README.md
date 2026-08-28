@@ -22,6 +22,19 @@ A comprehensive, real-time student progress tracking and analytics portal design
   - Powered by `better-sqlite3` with Write-Ahead Logging (WAL) for ultra-fast local persistence.
   - Zero-configuration storage located in `data/csbs_tracker.db` with structured relational schema and indexing.
 
+- **🔥 Department Problem of the Day (POTD) & Daily Streak Hub**:
+  - Daily curated challenge with countdown timer, topic tags, difficulty badges, and direct LeetCode solve links.
+  - Live Department Solver Roster showing real-time student completions and completion percentages.
+  - Coordinator tools to set or customize department daily challenges and provide faculty intuition hints.
+
+- **📚 Curated Problem Tracks (Blind 75, Top 150, CSBS Core)**:
+  - Structured algorithmic topic roadmaps (Arrays, Two Pointers, Sliding Window, Trees, Graphs, DP).
+  - Department and student-level completion statistics and practice links.
+
+- **⏰ Automated Scheduled Background Profile Synchronization**:
+  - Background cron-like scheduler (Every 6h, 12h, 24h, or off) with built-in rate-limiting and delay buffer.
+  - Live telemetry, last-run records, and next-run countdown timers in Settings.
+
 - **🏆 Dynamic Leaderboards & Benchmarks**:
   - Configurable ranking by Engagement Score, Total Solved, Medium/Hard problems, Contest Rating, or Monthly Improvement.
   - Performance Tier Classification: *Beginner*, *Developing*, *Proficient*, and *Advanced*.
@@ -112,6 +125,12 @@ npm run start
 | :--- | :--- | :--- |
 | `GET` | `/api/health` | Service health status check |
 | `GET` | `/api/dashboard` | Aggregated KPIs, difficulty splits, and timeline data |
+| `GET` | `/api/potd` | Today's Problem of the Day & verified student solvers |
+| `POST` | `/api/potd` | Set / override department Problem of the Day |
+| `GET` | `/api/tracks` | Curated tracks list with department completion rates |
+| `GET` | `/api/tracks/:id` | Specific track problem roadmap with solver metrics |
+| `GET` | `/api/scheduler/status` | Current background auto-sync state and next run time |
+| `POST` | `/api/scheduler/config` | Update background auto-sync schedule & enable toggle |
 | `GET` | `/api/students` | List filtered student records with latest statistics |
 | `POST` | `/api/students` | Add a single student |
 | `PUT` | `/api/students/:id` | Update student profile details |

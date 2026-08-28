@@ -9,9 +9,12 @@ import {
   HelpCircle, 
   Brain,
   Shield,
-  Gauge
+  Gauge,
+  Clock,
+  RefreshCw,
+  Zap
 } from 'lucide-react';
-import { SystemSettings } from '../types';
+import { SystemSettings, SchedulerStatus } from '../types';
 import { api } from '../services/api';
 
 interface SettingsViewProps {
@@ -29,6 +32,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [resetting, setResetting] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [error, setError] = useState('');
+  const [schedulerStatus, setSchedulerStatus] = useState<SchedulerStatus | null>(null);
 
   // Sample student test calculator state
   const [testEasy, setTestEasy] = useState(60);
@@ -39,7 +43,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   useEffect(() => {
     setFormData(settings);
+    loadSchedulerStatus();
   }, [settings]);
+
+  const loadSchedulerStatus = async () => {
+    try {
+      const status = await api.getSchedulerStatus();
+      setSchedulerStatus(status);
+    } catch (e) {
+      // ignore
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -132,6 +146,89 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <span>{error}</span>
           </div>
         )}
+
+        {/* SECTION 0: AUTOMATED BACKGROUND SYNC (CRON ENGINE) */}
+        <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+            <div className="flex items-center space-x-2 text-xs font-bold text-slate-800">
+              <Clock className="w-4 h-4 text-indigo-600" />
+              <span>Automated Scheduled Background Profile Sync</span>
+            </div>
+            {formData.auto_sync_enabled ? (
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                Auto-Sync Active
+              </span>
+            ) : (
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-500 border border-slate-200">
+                Disabled (Manual Only)
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-3">
+              <label className="flex items-start gap-3 p-3 rounded-lg bg-slate-50 border border-slate-200 cursor-pointer hover:bg-slate-100/70 transition">
+                <input
+                  type="checkbox"
+                  checked={formData.auto_sync_enabled ?? false}
+                  onChange={e => setFormData({ ...formData, auto_sync_enabled: e.target.checked })}
+                  className="mt-0.5 w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 cursor-pointer"
+                />
+                <div className="text-xs">
+                  <span className="font-bold text-slate-800 block">Enable Automatic LeetCode Sync</span>
+                  <span className="text-slate-500 text-[11px]">
+                    Periodically updates all active student profiles in the background without needing manual sync clicks.
+                  </span>
+                </div>
+              </label>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                  Sync Frequency
+                </label>
+                <select
+                  disabled={!formData.auto_sync_enabled}
+                  value={formData.auto_sync_interval_hours || 12}
+                  onChange={e => setFormData({ ...formData, auto_sync_interval_hours: parseInt(e.target.value) || 12 })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-1.5 text-xs text-slate-800 focus:outline-hidden focus:border-blue-500 disabled:opacity-50 cursor-pointer"
+                >
+                  <option value={6}>Every 6 Hours (4x per day)</option>
+                  <option value={12}>Every 12 Hours (Twice daily - Recommended)</option>
+                  <option value={24}>Every 24 Hours (Nightly sync)</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Live Telemetry Card */}
+            <div className="p-3.5 rounded-lg bg-indigo-50/60 border border-indigo-100 space-y-2 text-xs">
+              <span className="font-bold text-indigo-900 block text-xs">Background Worker Status</span>
+              <div className="space-y-1.5 text-[11px]">
+                <div className="flex justify-between text-slate-600">
+                  <span>Engine State:</span>
+                  <span className="font-semibold text-slate-800">
+                    {schedulerStatus?.isRunning ? '⚡ Sync In Progress' : formData.auto_sync_enabled ? 'Ready / Scheduled' : 'Disabled'}
+                  </span>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>Last Background Run:</span>
+                  <span className="font-mono text-slate-700">
+                    {schedulerStatus?.lastRunAt ? new Date(schedulerStatus.lastRunAt).toLocaleTimeString() : 'None since server start'}
+                  </span>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>Next Scheduled Run:</span>
+                  <span className="font-mono text-indigo-700 font-bold">
+                    {formData.auto_sync_enabled && schedulerStatus?.nextRunAt ? new Date(schedulerStatus.nextRunAt).toLocaleString() : 'Not scheduled'}
+                  </span>
+                </div>
+              </div>
+              <p className="text-[10px] text-indigo-700/80 pt-1 border-t border-indigo-100">
+                ✓ Throttled via API delay ({formData.fetch_delay_ms || 1500}ms) to ensure safety against LeetCode limits.
+              </p>
+            </div>
+          </div>
+        </div>
 
         {/* SECTION 1: INACTIVITY THRESHOLD & GENERAL */}
         <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-3.5">

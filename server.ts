@@ -21,7 +21,15 @@ import {
   generateStudentTemplateCSV, 
   generateStudentsCSV 
 } from './server/reports.js';
-import { BatchFetchProgress, StudentWithLatest } from './src/types.js';
+import { 
+  BatchFetchProgress, 
+  StudentWithLatest, 
+  Student, 
+  POTDItem, 
+  CuratedTrack, 
+  CuratedProblem, 
+  SchedulerStatus 
+} from './src/types.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -41,6 +49,172 @@ let batchProgress: BatchFetchProgress = {
   failed: 0,
   logs: [],
 };
+
+// Scheduler State
+const schedulerState = {
+  lastRunAt: null as string | null,
+  nextRunAt: null as string | null,
+};
+
+function calculateNextRunTime(intervalHours: number, fromDate: Date = new Date()): string {
+  return new Date(fromDate.getTime() + intervalHours * 3600 * 1000).toISOString();
+}
+
+// Background scheduler ticker - checks every 30 seconds
+setInterval(async () => {
+  try {
+    const settings = db.getSettings();
+    if (!settings.auto_sync_enabled || batchProgress.is_running) return;
+
+    const now = Date.now();
+    const intervalHours = settings.auto_sync_interval_hours || 12;
+
+    if (!schedulerState.nextRunAt) {
+      schedulerState.nextRunAt = calculateNextRunTime(intervalHours);
+    }
+
+    if (schedulerState.nextRunAt && now >= new Date(schedulerState.nextRunAt).getTime()) {
+      const activeStudents = db.getStudents().filter(s => s.active);
+      if (activeStudents.length > 0) {
+        schedulerState.lastRunAt = new Date().toISOString();
+        schedulerState.nextRunAt = calculateNextRunTime(intervalHours);
+        db.addLog('INFO', `⏰ [Auto-Sync] Scheduled LeetCode synchronization triggered for ${activeStudents.length} students.`);
+        runBatchFetchWorker(activeStudents, 'Scheduled Background Auto-Sync');
+      }
+    }
+  } catch (e) {
+    console.error('Scheduler interval error:', e);
+  }
+}, 30000);
+
+async function runBatchFetchWorker(studentsToFetch: Student[], reason: string = 'Manual Batch Sync') {
+  if (batchProgress.is_running) return;
+
+  const settings = db.getSettings();
+  batchProgress = {
+    is_running: true,
+    total: studentsToFetch.length,
+    processed: 0,
+    successful: 0,
+    failed: 0,
+    started_at: new Date().toISOString(),
+    logs: [
+      {
+        timestamp: new Date().toISOString(),
+        message: `Started ${reason} for ${studentsToFetch.length} students with ${settings.fetch_delay_ms}ms delay.`,
+        type: 'info',
+      }
+    ],
+  };
+
+  db.addLog('INFO', `Started ${reason} for ${studentsToFetch.length} students.`);
+
+  for (const student of studentsToFetch) {
+    if (!batchProgress.is_running) break; // Allow cancel
+
+    batchProgress.current_student = `${student.student_name} (${student.username})`;
+    try {
+      const fetchResult = await fetchLeetCodeProfile(
+        student.username,
+        settings.api_timeout_seconds * 1000
+      );
+
+      const prevSnapshot = db.getLatestSnapshot(student.id);
+
+      if (fetchResult.status === 'SUCCESS' && fetchResult.data) {
+        const data = fetchResult.data;
+        const daysInactive = getDaysInactive(data.last_active);
+        const activityStatus = getActivityStatus(daysInactive, settings.inactivity_threshold_days);
+        const tier = getPerformanceTier(data.total_solved, settings);
+
+        const impRate = prevSnapshot ? Math.max(0, data.total_solved - prevSnapshot.total_solved) : 0;
+        const engagement = calculateEngagementScore({
+          total_solved: data.total_solved,
+          medium: data.medium,
+          hard: data.hard,
+          streak: data.streak,
+          contest_rating: data.contest_rating,
+          contests_attended: data.contests_attended,
+          days_inactive: daysInactive,
+          improvement_rate: impRate,
+        }, settings);
+
+        db.addSnapshot({
+          student_id: student.id,
+          captured_at: new Date().toISOString(),
+          total_solved: data.total_solved,
+          easy: data.easy,
+          medium: data.medium,
+          hard: data.hard,
+          acceptance_rate: data.acceptance_rate,
+          ranking: data.ranking,
+          reputation: data.reputation,
+          contest_rating: data.contest_rating,
+          contest_rank: data.contest_rank,
+          contests_attended: data.contests_attended,
+          top_percentage: data.top_percentage,
+          streak: data.streak,
+          active_days: data.active_days,
+          last_active: data.last_active,
+          languages: data.languages,
+          skills: data.skills,
+          badges: data.badges,
+          submission_calendar: data.submission_calendar,
+          engagement_score: engagement,
+          performance_tier: tier,
+          activity_status: activityStatus,
+          status: 'SUCCESS',
+        });
+
+        if (data.recent_submissions && data.recent_submissions.length > 0) {
+          db.setSubmissions(student.id, data.recent_submissions.map((s, idx) => ({
+            id: `sub_${student.id}_${Date.now()}_${idx}`,
+            student_id: student.id,
+            title: s.title,
+            titleSlug: s.titleSlug,
+            timestamp: s.timestamp,
+            language: s.lang || 'Unknown',
+            statusDisplay: s.statusDisplay || 'Accepted',
+          })));
+        }
+
+        batchProgress.successful++;
+        batchProgress.logs.push({
+          timestamp: new Date().toISOString(),
+          message: `[SUCCESS] ${student.student_name}: ${data.total_solved} solved (Easy: ${data.easy}, Med: ${data.medium}, Hard: ${data.hard}).`,
+          type: 'success',
+        });
+      } else {
+        batchProgress.failed++;
+        batchProgress.logs.push({
+          timestamp: new Date().toISOString(),
+          message: `[${fetchResult.status}] ${student.student_name} (@${student.username}): ${fetchResult.error || 'Failed'}`,
+          type: 'warn',
+        });
+      }
+    } catch (err: any) {
+      batchProgress.failed++;
+      batchProgress.logs.push({
+        timestamp: new Date().toISOString(),
+        message: `[ERROR] ${student.student_name}: ${err.message}`,
+        type: 'error',
+      });
+    }
+
+    batchProgress.processed++;
+    await new Promise(r => setTimeout(r, settings.fetch_delay_ms));
+  }
+
+  batchProgress.is_running = false;
+  batchProgress.completed_at = new Date().toISOString();
+  batchProgress.current_student = undefined;
+  batchProgress.logs.push({
+    timestamp: new Date().toISOString(),
+    message: `Batch sync completed: ${batchProgress.successful} successful, ${batchProgress.failed} errors.`,
+    type: 'info',
+  });
+  db.addLog('INFO', `Batch sync finished: ${batchProgress.successful}/${batchProgress.total} updated.`);
+}
 
 // Helper to get enriched student records
 function getAllEnrichedStudents(): StudentWithLatest[] {
@@ -498,138 +672,14 @@ app.post('/api/fetch/all', async (req, res) => {
     return res.status(400).json({ error: 'No active students found matching the selected criteria.' });
   }
 
-  const settings = db.getSettings();
-  batchProgress = {
-    is_running: true,
-    total: studentsToFetch.length,
-    processed: 0,
-    successful: 0,
-    failed: 0,
-    started_at: new Date().toISOString(),
-    logs: [
-      {
-        timestamp: new Date().toISOString(),
-        message: `Started batch synchronization for ${studentsToFetch.length} students with ${settings.fetch_delay_ms}ms delay.`,
-        type: 'info',
-      }
-    ],
-  };
-
-  // Immediate response to acknowledge task start
+  // Immediate response acknowledging start
   res.json({
     message: 'Batch synchronization started in background.',
     total: studentsToFetch.length,
   });
 
   // Execute asynchronously
-  (async () => {
-    for (const student of studentsToFetch) {
-      if (!batchProgress.is_running) break; // Allow cancel
-
-      batchProgress.current_student = `${student.student_name} (${student.username})`;
-      try {
-        const fetchResult = await fetchLeetCodeProfile(
-          student.username,
-          settings.api_timeout_seconds * 1000
-        );
-
-        const prevSnapshot = db.getLatestSnapshot(student.id);
-
-        if (fetchResult.status === 'SUCCESS' && fetchResult.data) {
-          const data = fetchResult.data;
-          const daysInactive = getDaysInactive(data.last_active);
-          const activityStatus = getActivityStatus(daysInactive, settings.inactivity_threshold_days);
-          const tier = getPerformanceTier(data.total_solved, settings);
-
-          const impRate = prevSnapshot ? Math.max(0, data.total_solved - prevSnapshot.total_solved) : 0;
-          const engagement = calculateEngagementScore({
-            total_solved: data.total_solved,
-            medium: data.medium,
-            hard: data.hard,
-            streak: data.streak,
-            contest_rating: data.contest_rating,
-            contests_attended: data.contests_attended,
-            days_inactive: daysInactive,
-            improvement_rate: impRate,
-          }, settings);
-
-          db.addSnapshot({
-            student_id: student.id,
-            captured_at: new Date().toISOString(),
-            total_solved: data.total_solved,
-            easy: data.easy,
-            medium: data.medium,
-            hard: data.hard,
-            acceptance_rate: data.acceptance_rate,
-            ranking: data.ranking,
-            reputation: data.reputation,
-            contest_rating: data.contest_rating,
-            contest_rank: data.contest_rank,
-            contests_attended: data.contests_attended,
-            top_percentage: data.top_percentage,
-            streak: data.streak,
-            active_days: data.active_days,
-            last_active: data.last_active,
-            languages: data.languages,
-            skills: data.skills,
-            badges: data.badges,
-            submission_calendar: data.submission_calendar,
-            engagement_score: engagement,
-            performance_tier: tier,
-            activity_status: activityStatus,
-            status: 'SUCCESS',
-          });
-
-          if (data.recent_submissions && data.recent_submissions.length > 0) {
-            db.setSubmissions(student.id, data.recent_submissions.map((s, idx) => ({
-              id: `sub_${student.id}_${Date.now()}_${idx}`,
-              student_id: student.id,
-              title: s.title,
-              titleSlug: s.titleSlug,
-              timestamp: s.timestamp,
-              language: s.lang || 'Unknown',
-              statusDisplay: s.statusDisplay || 'Accepted',
-            })));
-          }
-
-          batchProgress.successful++;
-          batchProgress.logs.push({
-            timestamp: new Date().toISOString(),
-            message: `[SUCCESS] ${student.student_name}: ${data.total_solved} solved (Easy: ${data.easy}, Med: ${data.medium}, Hard: ${data.hard}).`,
-            type: 'success',
-          });
-        } else {
-          batchProgress.failed++;
-          batchProgress.logs.push({
-            timestamp: new Date().toISOString(),
-            message: `[${fetchResult.status}] ${student.student_name} (@${student.username}): ${fetchResult.error || 'Failed'}`,
-            type: 'warn',
-          });
-        }
-      } catch (err: any) {
-        batchProgress.failed++;
-        batchProgress.logs.push({
-          timestamp: new Date().toISOString(),
-          message: `[ERROR] ${student.student_name}: ${err.message}`,
-          type: 'error',
-        });
-      }
-
-      batchProgress.processed++;
-      // Delay between requests to avoid rate limits
-      await new Promise(r => setTimeout(r, settings.fetch_delay_ms));
-    }
-
-    batchProgress.is_running = false;
-    batchProgress.completed_at = new Date().toISOString();
-    batchProgress.current_student = undefined;
-    batchProgress.logs.push({
-      timestamp: new Date().toISOString(),
-      message: `Batch sync completed: ${batchProgress.successful} successful, ${batchProgress.failed} errors.`,
-      type: 'info',
-    });
-    db.addLog('INFO', `Batch sync completed. ${batchProgress.successful}/${batchProgress.total} profiles updated.`);
-  })();
+  runBatchFetchWorker(studentsToFetch, 'Faculty Triggered Batch Sync');
 });
 
 // 12. Batch Fetch Progress
@@ -649,6 +699,212 @@ app.post('/api/fetch/cancel', (req, res) => {
     return res.json({ message: 'Batch synchronization stopped.' });
   }
   res.json({ message: 'No active batch synchronization.' });
+});
+
+// ================= POTD & CURATED TRACKS ENDPOINTS =================
+
+// 14. POTD - Get Today's Challenge + Student Completion
+app.get('/api/potd', (req, res) => {
+  try {
+    const potd = db.getTodayPOTD();
+    const students = getAllEnrichedStudents();
+    
+    // Check which students have solved this problem
+    const solvedStudents: any[] = [];
+    
+    for (const student of students) {
+      const subs = db.getSubmissions(student.id);
+      const found = subs.find(s => 
+        (s.titleSlug && s.titleSlug.toLowerCase() === potd.titleSlug.toLowerCase()) ||
+        (s.title && s.title.toLowerCase().trim() === potd.title.toLowerCase().trim())
+      );
+      if (found) {
+        solvedStudents.push({
+          studentId: student.id,
+          studentName: student.student_name,
+          registerNo: student.register_no,
+          section: student.section,
+          username: student.username,
+          solvedAt: found.timestamp,
+        });
+      }
+    }
+
+    res.json({
+      potd: {
+        ...potd,
+        solvedCount: solvedStudents.length,
+        solvedStudents,
+      },
+      departmentTotalStudents: students.length,
+      completionRate: students.length > 0 ? Math.round((solvedStudents.length / students.length) * 100) : 0,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to fetch Problem of the Day.' });
+  }
+});
+
+// 15. POTD - Set / Override Problem of the Day
+app.post('/api/potd', (req, res) => {
+  try {
+    const { date, title, titleSlug, difficulty, topic, acceptanceRate, leetcodeUrl, hint } = req.body;
+    if (!title || !titleSlug) {
+      return res.status(400).json({ error: 'Title and titleSlug are required.' });
+    }
+    const d = date || new Date().toISOString().split('T')[0];
+    const potd: POTDItem = {
+      id: `potd-${d}`,
+      date: d,
+      title: title.trim(),
+      titleSlug: titleSlug.trim(),
+      difficulty: difficulty || 'Medium',
+      topic: topic || 'DSA',
+      acceptanceRate: Number(acceptanceRate) || 50,
+      leetcodeUrl: leetcodeUrl || `https://leetcode.com/problems/${titleSlug}/`,
+      hint: hint || '',
+    };
+    db.setPOTD(potd);
+    db.addLog('INFO', `Custom Department POTD set for ${d}: ${title}`);
+    res.json({ success: true, potd });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to update Problem of the Day.' });
+  }
+});
+
+// 16. Curated Tracks - Get All Tracks with Department Stats
+app.get('/api/tracks', (req, res) => {
+  try {
+    const tracks = db.getTracks();
+    const students = getAllEnrichedStudents();
+    const totalStudents = Math.max(1, students.length);
+
+    // Compute progress across tracks
+    const tracksWithStats = tracks.map(t => {
+      const fullTrack = db.getTrackById(t.id);
+      const problems = fullTrack?.problems || [];
+      
+      let totalSolvedCount = 0;
+      problems.forEach(p => {
+        // Count how many students solved this problem
+        let solvedThisProblem = 0;
+        for (const s of students) {
+          const subs = db.getSubmissions(s.id);
+          if (subs.some(sub => 
+            (sub.titleSlug && sub.titleSlug.toLowerCase() === p.titleSlug.toLowerCase()) ||
+            (sub.title && sub.title.toLowerCase().trim() === p.title.toLowerCase().trim())
+          )) {
+            solvedThisProblem++;
+          }
+        }
+        totalSolvedCount += solvedThisProblem;
+      });
+
+      const maxPossibleSolves = problems.length * totalStudents;
+      const deptRate = maxPossibleSolves > 0 ? Math.round((totalSolvedCount / maxPossibleSolves) * 100) : 0;
+
+      return {
+        ...t,
+        totalProblems: problems.length,
+        departmentCompletionRate: deptRate,
+      };
+    });
+
+    res.json(tracksWithStats);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to fetch curated tracks.' });
+  }
+});
+
+// 17. Curated Tracks - Get Specific Track with Problem List & Per-Problem Solver Stats
+app.get('/api/tracks/:id', (req, res) => {
+  try {
+    const track = db.getTrackById(req.params.id);
+    if (!track) {
+      return res.status(404).json({ error: 'Track not found.' });
+    }
+
+    const { studentId } = req.query;
+    const students = getAllEnrichedStudents();
+    const selectedStudentSubs = studentId ? db.getSubmissions(String(studentId)) : [];
+
+    const enrichedProblems = track.problems.map(p => {
+      // Calculate how many department students solved this problem
+      let solvedCount = 0;
+      for (const s of students) {
+        const subs = db.getSubmissions(s.id);
+        if (subs.some(sub => 
+          (sub.titleSlug && sub.titleSlug.toLowerCase() === p.titleSlug.toLowerCase()) ||
+          (sub.title && sub.title.toLowerCase().trim() === p.title.toLowerCase().trim())
+        )) {
+          solvedCount++;
+        }
+      }
+
+      const isSolvedBySelectedStudent = selectedStudentSubs.some(sub => 
+        (sub.titleSlug && sub.titleSlug.toLowerCase() === p.titleSlug.toLowerCase()) ||
+        (sub.title && sub.title.toLowerCase().trim() === p.title.toLowerCase().trim())
+      );
+
+      return {
+        ...p,
+        solvedCount,
+        isSolvedBySelectedStudent,
+      };
+    });
+
+    res.json({
+      ...track,
+      problems: enrichedProblems,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to fetch track details.' });
+  }
+});
+
+// ================= SCHEDULER CONTROLS =================
+
+// 18. Scheduler - Get Status
+app.get('/api/scheduler/status', (req, res) => {
+  const settings = db.getSettings();
+  res.json({
+    isEnabled: Boolean(settings.auto_sync_enabled),
+    intervalHours: settings.auto_sync_interval_hours || 12,
+    lastRunAt: schedulerState.lastRunAt,
+    nextRunAt: schedulerState.nextRunAt,
+    isRunning: batchProgress.is_running,
+  });
+});
+
+// 19. Scheduler - Update Config
+app.post('/api/scheduler/config', (req, res) => {
+  try {
+    const { enabled, intervalHours } = req.body;
+    const updated = db.updateSettings({
+      auto_sync_enabled: Boolean(enabled),
+      auto_sync_interval_hours: Number(intervalHours) || 12,
+    });
+
+    if (updated.auto_sync_enabled) {
+      schedulerState.nextRunAt = calculateNextRunTime(updated.auto_sync_interval_hours || 12);
+      db.addLog('INFO', `Scheduled auto-sync configured: Every ${updated.auto_sync_interval_hours} hours. Next sync: ${schedulerState.nextRunAt}`);
+    } else {
+      schedulerState.nextRunAt = null;
+      db.addLog('INFO', 'Scheduled background auto-sync disabled.');
+    }
+
+    res.json({
+      success: true,
+      scheduler: {
+        isEnabled: updated.auto_sync_enabled,
+        intervalHours: updated.auto_sync_interval_hours,
+        lastRunAt: schedulerState.lastRunAt,
+        nextRunAt: schedulerState.nextRunAt,
+        isRunning: batchProgress.is_running,
+      }
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to update scheduler configuration.' });
+  }
 });
 
 // 14. Leaderboard with configurable ranking

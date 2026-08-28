@@ -1,11 +1,16 @@
 import fs from 'fs';
 import path from 'path';
+import Database from 'better-sqlite3';
 import { 
   Student, 
   Snapshot, 
   RecentSubmission, 
-  SystemSettings 
+  SystemSettings,
+  POTDItem,
+  CuratedTrack,
+  CuratedProblem
 } from '../src/types.js';
+import { SEED_TRACKS, SEED_PROBLEMS, ROTATING_POTD_POOL } from './seed_tracks.js';
 
 const DATA_DIR = process.env.VERCEL ? '/tmp/data' : path.join(process.cwd(), 'data');
 const DB_FILE = path.join(DATA_DIR, 'csbs_tracker.db');
@@ -19,6 +24,8 @@ const DEFAULT_SETTINGS: SystemSettings = {
   tier_beginner_max: 49,
   tier_developing_max: 99,
   tier_proficient_max: 199,
+  auto_sync_enabled: false,
+  auto_sync_interval_hours: 12,
   weights: {
     total_solved: 25,
     medium_solved: 20,
@@ -36,6 +43,9 @@ interface MemoryStore {
   recent_submissions: RecentSubmission[];
   settings: SystemSettings;
   logs: { timestamp: string; level: string; message: string }[];
+  potd_items: POTDItem[];
+  curated_tracks: CuratedTrack[];
+  curated_problems: CuratedProblem[];
 }
 
 export class DatabaseService {
@@ -45,7 +55,10 @@ export class DatabaseService {
     snapshots: [],
     recent_submissions: [],
     settings: DEFAULT_SETTINGS,
-    logs: []
+    logs: [],
+    potd_items: [],
+    curated_tracks: [...SEED_TRACKS],
+    curated_problems: [...SEED_PROBLEMS]
   };
   private isFallbackMode = false;
 
@@ -66,9 +79,8 @@ export class DatabaseService {
 
   private initDatabase() {
     try {
-      // Try to initialize better-sqlite3
-      const DatabaseConstructor = require('better-sqlite3');
-      this.sqliteDb = new DatabaseConstructor(DB_FILE);
+      // Initialize better-sqlite3 with WAL mode
+      this.sqliteDb = new Database(DB_FILE);
       this.sqliteDb.pragma('journal_mode = WAL');
       this.sqliteDb.pragma('foreign_keys = ON');
 
@@ -144,7 +156,42 @@ export class DatabaseService {
           tier_beginner_max INTEGER NOT NULL DEFAULT 49,
           tier_developing_max INTEGER NOT NULL DEFAULT 99,
           tier_proficient_max INTEGER NOT NULL DEFAULT 199,
+          auto_sync_enabled INTEGER NOT NULL DEFAULT 0,
+          auto_sync_interval_hours INTEGER NOT NULL DEFAULT 12,
           weights TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS potd_items (
+          id TEXT PRIMARY KEY,
+          date TEXT UNIQUE NOT NULL,
+          title TEXT NOT NULL,
+          titleSlug TEXT NOT NULL,
+          difficulty TEXT NOT NULL,
+          topic TEXT NOT NULL,
+          acceptanceRate REAL,
+          leetcodeUrl TEXT NOT NULL,
+          hint TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS curated_tracks (
+          id TEXT PRIMARY KEY,
+          title TEXT NOT NULL,
+          description TEXT NOT NULL,
+          category TEXT NOT NULL,
+          icon TEXT,
+          totalProblems INTEGER NOT NULL DEFAULT 0
+        );
+
+        CREATE TABLE IF NOT EXISTS curated_problems (
+          id TEXT PRIMARY KEY,
+          trackId TEXT NOT NULL,
+          title TEXT NOT NULL,
+          titleSlug TEXT NOT NULL,
+          difficulty TEXT NOT NULL,
+          topic TEXT NOT NULL,
+          orderIndex INTEGER NOT NULL,
+          leetcodeUrl TEXT NOT NULL,
+          FOREIGN KEY (trackId) REFERENCES curated_tracks(id) ON DELETE CASCADE
         );
 
         CREATE TABLE IF NOT EXISTS logs (
@@ -155,13 +202,25 @@ export class DatabaseService {
         );
       `);
 
+      // Migrations for existing settings table
+      try {
+        this.sqliteDb.exec('ALTER TABLE settings ADD COLUMN auto_sync_enabled INTEGER NOT NULL DEFAULT 0;');
+      } catch (e) {
+        // already exists
+      }
+      try {
+        this.sqliteDb.exec('ALTER TABLE settings ADD COLUMN auto_sync_interval_hours INTEGER NOT NULL DEFAULT 12;');
+      } catch (e) {
+        // already exists
+      }
+
       const settingsRow = this.sqliteDb.prepare('SELECT id FROM settings WHERE id = 1').get();
       if (!settingsRow) {
         this.sqliteDb.prepare(`
           INSERT INTO settings (
             id, inactivity_threshold_days, academic_year, fetch_delay_ms, api_timeout_seconds,
-            tier_beginner_max, tier_developing_max, tier_proficient_max, weights
-          ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?)
+            tier_beginner_max, tier_developing_max, tier_proficient_max, auto_sync_enabled, auto_sync_interval_hours, weights
+          ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
           DEFAULT_SETTINGS.inactivity_threshold_days,
           DEFAULT_SETTINGS.academic_year,
@@ -170,15 +229,49 @@ export class DatabaseService {
           DEFAULT_SETTINGS.tier_beginner_max,
           DEFAULT_SETTINGS.tier_developing_max,
           DEFAULT_SETTINGS.tier_proficient_max,
+          DEFAULT_SETTINGS.auto_sync_enabled ? 1 : 0,
+          DEFAULT_SETTINGS.auto_sync_interval_hours || 12,
           JSON.stringify(DEFAULT_SETTINGS.weights)
         );
       }
+
+      // Seed curated tracks and problems if empty
+      this.seedCuratedTracks();
 
       this.migrateFromLegacyJSON();
     } catch (err) {
       console.warn('SQLite native initialization failed or unavailable, running in JSON fallback mode:', err);
       this.isFallbackMode = true;
       this.loadMemoryStore();
+    }
+  }
+
+  private seedCuratedTracks() {
+    if (this.isFallbackMode || !this.sqliteDb) return;
+    try {
+      const trackCount = (this.sqliteDb.prepare('SELECT COUNT(*) as c FROM curated_tracks').get() as { c: number }).c;
+      if (trackCount === 0) {
+        const insertTrack = this.sqliteDb.prepare(`
+          INSERT OR REPLACE INTO curated_tracks (id, title, description, category, icon, totalProblems)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `);
+        const insertProb = this.sqliteDb.prepare(`
+          INSERT OR REPLACE INTO curated_problems (id, trackId, title, titleSlug, difficulty, topic, orderIndex, leetcodeUrl)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+
+        const seedTx = this.sqliteDb.transaction(() => {
+          for (const t of SEED_TRACKS) {
+            insertTrack.run(t.id, t.title, t.description, t.category, t.icon || 'Code', t.totalProblems);
+          }
+          for (const p of SEED_PROBLEMS) {
+            insertProb.run(p.id, p.trackId, p.title, p.titleSlug, p.difficulty, p.topic, p.orderIndex, p.leetcodeUrl);
+          }
+        });
+        seedTx();
+      }
+    } catch (e) {
+      console.error('Failed to seed curated tracks:', e);
     }
   }
 
@@ -192,7 +285,10 @@ export class DatabaseService {
           snapshots: parsed.snapshots || [],
           recent_submissions: parsed.recent_submissions || [],
           settings: parsed.settings || DEFAULT_SETTINGS,
-          logs: parsed.logs || []
+          logs: parsed.logs || [],
+          potd_items: parsed.potd_items || [],
+          curated_tracks: parsed.curated_tracks || [...SEED_TRACKS],
+          curated_problems: parsed.curated_problems || [...SEED_PROBLEMS]
         };
       } catch (e) {
         console.error('Failed to load JSON backup file:', e);
@@ -769,6 +865,8 @@ export class DatabaseService {
       tier_beginner_max: r.tier_beginner_max,
       tier_developing_max: r.tier_developing_max,
       tier_proficient_max: r.tier_proficient_max,
+      auto_sync_enabled: Boolean(r.auto_sync_enabled),
+      auto_sync_interval_hours: r.auto_sync_interval_hours || 12,
       weights: r.weights ? JSON.parse(r.weights) : DEFAULT_SETTINGS.weights,
     };
   }
@@ -792,6 +890,8 @@ export class DatabaseService {
         tier_beginner_max = ?,
         tier_developing_max = ?,
         tier_proficient_max = ?,
+        auto_sync_enabled = ?,
+        auto_sync_interval_hours = ?,
         weights = ?
       WHERE id = 1
     `).run(
@@ -802,10 +902,181 @@ export class DatabaseService {
       updated.tier_beginner_max,
       updated.tier_developing_max,
       updated.tier_proficient_max,
+      updated.auto_sync_enabled ? 1 : 0,
+      updated.auto_sync_interval_hours || 12,
       JSON.stringify(updated.weights)
     );
 
     return updated;
+  }
+
+  // POTD (Problem of the Day)
+  public getTodayPOTD(): POTDItem {
+    const today = new Date().toISOString().split('T')[0];
+
+    if (this.isFallbackMode || !this.sqliteDb) {
+      let item = this.memStore.potd_items.find(p => p.date === today);
+      if (!item) {
+        // Pick deterministic item based on day
+        const dayIdx = Math.abs(this.hashCode(today)) % ROTATING_POTD_POOL.length;
+        const template = ROTATING_POTD_POOL[dayIdx];
+        item = {
+          id: `potd-${today}`,
+          date: today,
+          ...template,
+        };
+        this.memStore.potd_items.push(item);
+        this.persistMemoryStore();
+      }
+      return item;
+    }
+
+    const row = this.sqliteDb.prepare('SELECT * FROM potd_items WHERE date = ?').get(today) as any;
+    if (row) {
+      return {
+        id: row.id,
+        date: row.date,
+        title: row.title,
+        titleSlug: row.titleSlug,
+        difficulty: row.difficulty,
+        topic: row.topic,
+        acceptanceRate: row.acceptanceRate,
+        leetcodeUrl: row.leetcodeUrl,
+        hint: row.hint,
+      };
+    }
+
+    // Pick deterministic item based on day from pool
+    const dayIdx = Math.abs(this.hashCode(today)) % ROTATING_POTD_POOL.length;
+    const template = ROTATING_POTD_POOL[dayIdx];
+    const newPOTD: POTDItem = {
+      id: `potd-${today}`,
+      date: today,
+      ...template,
+    };
+
+    try {
+      this.sqliteDb.prepare(`
+        INSERT OR REPLACE INTO potd_items (id, date, title, titleSlug, difficulty, topic, acceptanceRate, leetcodeUrl, hint)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        newPOTD.id,
+        newPOTD.date,
+        newPOTD.title,
+        newPOTD.titleSlug,
+        newPOTD.difficulty,
+        newPOTD.topic,
+        newPOTD.acceptanceRate || 50,
+        newPOTD.leetcodeUrl,
+        newPOTD.hint || ''
+      );
+    } catch (e) {
+      console.error('Failed to insert auto-generated POTD:', e);
+    }
+
+    return newPOTD;
+  }
+
+  public setPOTD(item: POTDItem): void {
+    if (this.isFallbackMode || !this.sqliteDb) {
+      this.memStore.potd_items = this.memStore.potd_items.filter(p => p.date !== item.date);
+      this.memStore.potd_items.push(item);
+      this.persistMemoryStore();
+      return;
+    }
+
+    this.sqliteDb.prepare(`
+      INSERT OR REPLACE INTO potd_items (id, date, title, titleSlug, difficulty, topic, acceptanceRate, leetcodeUrl, hint)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      item.id || `potd-${item.date}`,
+      item.date,
+      item.title,
+      item.titleSlug,
+      item.difficulty,
+      item.topic,
+      item.acceptanceRate || 50,
+      item.leetcodeUrl,
+      item.hint || ''
+    );
+  }
+
+  public getPOTDHistory(limit: number = 30): POTDItem[] {
+    if (this.isFallbackMode || !this.sqliteDb) {
+      return [...this.memStore.potd_items].sort((a, b) => b.date.localeCompare(a.date)).slice(0, limit);
+    }
+    const rows = this.sqliteDb.prepare('SELECT * FROM potd_items ORDER BY date DESC LIMIT ?').all(limit) as any[];
+    return rows.map(r => ({
+      id: r.id,
+      date: r.date,
+      title: r.title,
+      titleSlug: r.titleSlug,
+      difficulty: r.difficulty,
+      topic: r.topic,
+      acceptanceRate: r.acceptanceRate,
+      leetcodeUrl: r.leetcodeUrl,
+      hint: r.hint,
+    }));
+  }
+
+  // Curated Tracks
+  public getTracks(): CuratedTrack[] {
+    if (this.isFallbackMode || !this.sqliteDb) {
+      return this.memStore.curated_tracks || SEED_TRACKS;
+    }
+    const tracks = this.sqliteDb.prepare('SELECT * FROM curated_tracks').all() as any[];
+    return tracks.map(t => {
+      const probCount = (this.sqliteDb.prepare('SELECT COUNT(*) as c FROM curated_problems WHERE trackId = ?').get(t.id) as { c: number }).c;
+      return {
+        id: t.id,
+        title: t.title,
+        description: t.description,
+        category: t.category,
+        icon: t.icon,
+        totalProblems: probCount || t.totalProblems,
+      };
+    });
+  }
+
+  public getTrackById(trackId: string): (CuratedTrack & { problems: CuratedProblem[] }) | null {
+    if (this.isFallbackMode || !this.sqliteDb) {
+      const track = (this.memStore.curated_tracks || SEED_TRACKS).find(t => t.id === trackId);
+      if (!track) return null;
+      const problems = (this.memStore.curated_problems || SEED_PROBLEMS).filter(p => p.trackId === trackId);
+      return { ...track, problems };
+    }
+
+    const track = this.sqliteDb.prepare('SELECT * FROM curated_tracks WHERE id = ?').get(trackId) as any;
+    if (!track) return null;
+
+    const problems = this.sqliteDb.prepare('SELECT * FROM curated_problems WHERE trackId = ? ORDER BY orderIndex ASC').all(trackId) as any[];
+    return {
+      id: track.id,
+      title: track.title,
+      description: track.description,
+      category: track.category,
+      icon: track.icon,
+      totalProblems: problems.length,
+      problems: problems.map(p => ({
+        id: p.id,
+        trackId: p.trackId,
+        title: p.title,
+        titleSlug: p.titleSlug,
+        difficulty: p.difficulty,
+        topic: p.topic,
+        orderIndex: p.orderIndex,
+        leetcodeUrl: p.leetcodeUrl,
+      }))
+    };
+  }
+
+  private hashCode(str: string): number {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = (hash << 5) - hash + str.charCodeAt(i);
+      hash |= 0;
+    }
+    return hash;
   }
 
   // Reset
@@ -816,7 +1087,10 @@ export class DatabaseService {
         snapshots: [],
         recent_submissions: [],
         settings: DEFAULT_SETTINGS,
-        logs: []
+        logs: [],
+        potd_items: [],
+        curated_tracks: [...SEED_TRACKS],
+        curated_problems: [...SEED_PROBLEMS]
       };
       this.persistMemoryStore();
       return;

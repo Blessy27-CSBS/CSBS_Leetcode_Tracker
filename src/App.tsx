@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { Sidebar, NavTab } from './components/Sidebar';
 import { DashboardView } from './pages/DashboardView';
+import { TracksView } from './pages/TracksView';
 import { StudentsView } from './pages/StudentsView';
 import { LeaderboardView } from './pages/LeaderboardView';
 import { ProgressView } from './pages/ProgressView';
@@ -153,6 +154,14 @@ export function App() {
             onOpenAddStudent={handleOpenAddStudent}
             onSelectStudent={handleOpenStudentDetail}
             onNavigateTab={setActiveTab}
+          />
+        );
+
+      case 'tracks':
+        return (
+          <TracksView
+            students={students}
+            onOpenStudentDetail={handleOpenStudentDetail}
           />
         );
 

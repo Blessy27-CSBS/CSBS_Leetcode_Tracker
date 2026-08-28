@@ -6,7 +6,10 @@ import {
   SectionStat, 
   BatchStat, 
   SystemSettings, 
-  BatchFetchProgress 
+  BatchFetchProgress,
+  POTDItem,
+  CuratedTrack,
+  SchedulerStatus
 } from '../types';
 
 export const api = {
@@ -197,4 +200,59 @@ export const api = {
     });
     if (!res.ok) throw new Error('Failed to clear snapshots');
   },
+
+  // Problem of the Day (POTD)
+  async getPOTD(): Promise<{
+    potd: POTDItem;
+    departmentTotalStudents: number;
+    completionRate: number;
+  }> {
+    const res = await fetch('/api/potd');
+    if (!res.ok) throw new Error('Failed to load Problem of the Day');
+    return res.json();
+  },
+
+  async setPOTD(data: Partial<POTDItem>): Promise<{ success: boolean; potd: POTDItem }> {
+    const res = await fetch('/api/potd', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to set Problem of the Day');
+    return json;
+  },
+
+  // Curated Problem Tracks
+  async getTracks(): Promise<CuratedTrack[]> {
+    const res = await fetch('/api/tracks');
+    if (!res.ok) throw new Error('Failed to load curated tracks');
+    return res.json();
+  },
+
+  async getTrackDetails(trackId: string, studentId?: string): Promise<CuratedTrack> {
+    const url = studentId ? `/api/tracks/${trackId}?studentId=${studentId}` : `/api/tracks/${trackId}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Failed to load track details');
+    return res.json();
+  },
+
+  // Scheduler Controls
+  async getSchedulerStatus(): Promise<SchedulerStatus> {
+    const res = await fetch('/api/scheduler/status');
+    if (!res.ok) throw new Error('Failed to fetch scheduler status');
+    return res.json();
+  },
+
+  async updateSchedulerConfig(enabled: boolean, intervalHours: number): Promise<{ success: boolean; scheduler: SchedulerStatus }> {
+    const res = await fetch('/api/scheduler/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled, intervalHours }),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to update scheduler configuration');
+    return json;
+  },
 };
+

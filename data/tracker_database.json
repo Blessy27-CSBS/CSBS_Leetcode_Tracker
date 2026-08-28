@@ -773,11 +773,491 @@
       "activity_status": "Active",
       "status": "SUCCESS",
       "id": "snap_1787892561276_jra0v"
+    },
+    {
+      "student_id": "s_1787891573675_qpiwn",
+      "captured_at": "2026-08-28T12:27:27.329Z",
+      "total_solved": 15,
+      "easy": 14,
+      "medium": 1,
+      "hard": 0,
+      "acceptance_rate": 95.2,
+      "ranking": 5000001,
+      "reputation": 0,
+      "contest_rating": 0,
+      "contest_rank": 0,
+      "contests_attended": 0,
+      "top_percentage": 0,
+      "streak": 3,
+      "active_days": 6,
+      "last_active": "2026-08-28",
+      "languages": [
+        {
+          "languageName": "Python3",
+          "problemsSolved": 15
+        }
+      ],
+      "skills": [
+        {
+          "tagName": "Array",
+          "problemsSolved": 11,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "String",
+          "problemsSolved": 3,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Simulation",
+          "problemsSolved": 1,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Sorting",
+          "problemsSolved": 5,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Two Pointers",
+          "problemsSolved": 4,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Hash Table",
+          "problemsSolved": 5,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Binary Search",
+          "problemsSolved": 1,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Bit Manipulation",
+          "problemsSolved": 2,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Math",
+          "problemsSolved": 3,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Dynamic Programming",
+          "problemsSolved": 1,
+          "category": "advanced"
+        },
+        {
+          "tagName": "Divide and Conquer",
+          "problemsSolved": 1,
+          "category": "advanced"
+        },
+        {
+          "tagName": "Trie",
+          "problemsSolved": 1,
+          "category": "advanced"
+        }
+      ],
+      "badges": [],
+      "submission_calendar": {
+        "1785801600": 4,
+        "1785888000": 1,
+        "1785974400": 1,
+        "1787356800": 4,
+        "1787788800": 3,
+        "1787875200": 8
+      },
+      "engagement_score": 18,
+      "performance_tier": "Beginner",
+      "activity_status": "Active",
+      "status": "SUCCESS",
+      "id": "snap_1787920047330_glie2"
+    },
+    {
+      "student_id": "s_1787891573700_k7rdx",
+      "captured_at": "2026-08-28T12:27:29.445Z",
+      "total_solved": 11,
+      "easy": 10,
+      "medium": 1,
+      "hard": 0,
+      "acceptance_rate": 61.9,
+      "ranking": 5000001,
+      "reputation": 0,
+      "contest_rating": 0,
+      "contest_rank": 0,
+      "contests_attended": 0,
+      "top_percentage": 0,
+      "streak": 1,
+      "active_days": 4,
+      "last_active": "2026-08-28",
+      "languages": [
+        {
+          "languageName": "Python",
+          "problemsSolved": 11
+        }
+      ],
+      "skills": [
+        {
+          "tagName": "Array",
+          "problemsSolved": 7,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "String",
+          "problemsSolved": 2,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Sorting",
+          "problemsSolved": 4,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Two Pointers",
+          "problemsSolved": 2,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Hash Table",
+          "problemsSolved": 5,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Binary Search",
+          "problemsSolved": 1,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Bit Manipulation",
+          "problemsSolved": 2,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Math",
+          "problemsSolved": 3,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Dynamic Programming",
+          "problemsSolved": 1,
+          "category": "advanced"
+        },
+        {
+          "tagName": "Divide and Conquer",
+          "problemsSolved": 1,
+          "category": "advanced"
+        }
+      ],
+      "badges": [],
+      "submission_calendar": {
+        "1784851200": 2,
+        "1786579200": 1,
+        "1787356800": 8,
+        "1787875200": 10
+      },
+      "engagement_score": 17,
+      "performance_tier": "Beginner",
+      "activity_status": "Active",
+      "status": "SUCCESS",
+      "id": "snap_1787920049445_bifus"
+    },
+    {
+      "student_id": "s_1787891573711_xo8xr",
+      "captured_at": "2026-08-28T12:27:32.197Z",
+      "total_solved": 7,
+      "easy": 6,
+      "medium": 1,
+      "hard": 0,
+      "acceptance_rate": 100,
+      "ranking": 5000001,
+      "reputation": 0,
+      "contest_rating": 0,
+      "contest_rank": 0,
+      "contests_attended": 0,
+      "top_percentage": 0,
+      "streak": 1,
+      "active_days": 3,
+      "last_active": "2026-08-28",
+      "languages": [
+        {
+          "languageName": "Python",
+          "problemsSolved": 7
+        }
+      ],
+      "skills": [
+        {
+          "tagName": "Array",
+          "problemsSolved": 5,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "String",
+          "problemsSolved": 2,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Sorting",
+          "problemsSolved": 3,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Stack",
+          "problemsSolved": 1,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Two Pointers",
+          "problemsSolved": 1,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Hash Table",
+          "problemsSolved": 4,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Recursion",
+          "problemsSolved": 1,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Dynamic Programming",
+          "problemsSolved": 1,
+          "category": "advanced"
+        },
+        {
+          "tagName": "Divide and Conquer",
+          "problemsSolved": 1,
+          "category": "advanced"
+        }
+      ],
+      "badges": [],
+      "submission_calendar": {
+        "1787356800": 2,
+        "1787702400": 1,
+        "1787875200": 4
+      },
+      "engagement_score": 17,
+      "performance_tier": "Beginner",
+      "activity_status": "Active",
+      "status": "SUCCESS",
+      "id": "snap_1787920052197_2xqm0"
+    },
+    {
+      "student_id": "s_1787891573718_z9bpq",
+      "captured_at": "2026-08-28T12:27:34.299Z",
+      "total_solved": 3,
+      "easy": 3,
+      "medium": 0,
+      "hard": 0,
+      "acceptance_rate": 50,
+      "ranking": 5000001,
+      "reputation": 0,
+      "contest_rating": 0,
+      "contest_rank": 0,
+      "contests_attended": 0,
+      "top_percentage": 0,
+      "streak": 2,
+      "active_days": 2,
+      "last_active": "2026-08-28",
+      "languages": [
+        {
+          "languageName": "Python",
+          "problemsSolved": 3
+        }
+      ],
+      "skills": [
+        {
+          "tagName": "Array",
+          "problemsSolved": 2,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "String",
+          "problemsSolved": 1,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Sorting",
+          "problemsSolved": 2,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Hash Table",
+          "problemsSolved": 3,
+          "category": "intermediate"
+        }
+      ],
+      "badges": [],
+      "submission_calendar": {
+        "1787788800": 3,
+        "1787875200": 3
+      },
+      "engagement_score": 16,
+      "performance_tier": "Beginner",
+      "activity_status": "Active",
+      "status": "SUCCESS",
+      "id": "snap_1787920054299_y0k7x"
+    },
+    {
+      "student_id": "s_1787892065391_m8040",
+      "captured_at": "2026-08-28T12:27:36.374Z",
+      "total_solved": 30,
+      "easy": 28,
+      "medium": 2,
+      "hard": 0,
+      "acceptance_rate": 80.5,
+      "ranking": 3614369,
+      "reputation": 0,
+      "contest_rating": 0,
+      "contest_rank": 0,
+      "contests_attended": 0,
+      "top_percentage": 0,
+      "streak": 6,
+      "active_days": 20,
+      "last_active": "2026-08-27",
+      "languages": [
+        {
+          "languageName": "Python",
+          "problemsSolved": 14
+        },
+        {
+          "languageName": "MySQL",
+          "problemsSolved": 15
+        },
+        {
+          "languageName": "C",
+          "problemsSolved": 1
+        }
+      ],
+      "skills": [
+        {
+          "tagName": "Array",
+          "problemsSolved": 5,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "String",
+          "problemsSolved": 4,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Sorting",
+          "problemsSolved": 1,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Stack",
+          "problemsSolved": 1,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Linked List",
+          "problemsSolved": 1,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Two Pointers",
+          "problemsSolved": 3,
+          "category": "fundamental"
+        },
+        {
+          "tagName": "Hash Table",
+          "problemsSolved": 4,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Recursion",
+          "problemsSolved": 5,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Bit Manipulation",
+          "problemsSolved": 2,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Math",
+          "problemsSolved": 8,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Database",
+          "problemsSolved": 15,
+          "category": "intermediate"
+        },
+        {
+          "tagName": "Dynamic Programming",
+          "problemsSolved": 2,
+          "category": "advanced"
+        },
+        {
+          "tagName": "Trie",
+          "problemsSolved": 1,
+          "category": "advanced"
+        }
+      ],
+      "badges": [],
+      "submission_calendar": {
+        "1768780800": 1,
+        "1780876800": 4,
+        "1780963200": 5,
+        "1781136000": 4,
+        "1784419200": 1,
+        "1784505600": 1,
+        "1784592000": 1,
+        "1784678400": 1,
+        "1785369600": 1,
+        "1785456000": 1,
+        "1785542400": 1,
+        "1785628800": 1,
+        "1785888000": 6,
+        "1785974400": 1,
+        "1786060800": 2,
+        "1786147200": 1,
+        "1786233600": 1,
+        "1786320000": 1,
+        "1787356800": 5,
+        "1787788800": 2
+      },
+      "engagement_score": 19,
+      "performance_tier": "Beginner",
+      "activity_status": "Active",
+      "status": "SUCCESS",
+      "id": "snap_1787920056374_2l60k"
     }
   ],
   "recent_submissions": [
     {
-      "id": "sub_s_1787891573675_qpiwn_1787892458108_0",
+      "id": "sub_s_1787891573675_qpiwn_1787920047343_0",
+      "student_id": "s_1787891573675_qpiwn",
+      "title": "Reverse String",
+      "titleSlug": "reverse-string",
+      "timestamp": "1787896205",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787891573675_qpiwn_1787920047343_1",
+      "student_id": "s_1787891573675_qpiwn",
+      "title": "Longest Common Prefix",
+      "titleSlug": "longest-common-prefix",
+      "timestamp": "1787893657",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787891573675_qpiwn_1787920047343_2",
+      "student_id": "s_1787891573675_qpiwn",
+      "title": "Valid Palindrome",
+      "titleSlug": "valid-palindrome",
+      "timestamp": "1787892790",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787891573675_qpiwn_1787920047343_3",
       "student_id": "s_1787891573675_qpiwn",
       "title": "Single Number",
       "titleSlug": "single-number",
@@ -786,7 +1266,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787891573675_qpiwn_1787892458108_1",
+      "id": "sub_s_1787891573675_qpiwn_1787920047343_4",
       "student_id": "s_1787891573675_qpiwn",
       "title": "Missing Number",
       "titleSlug": "missing-number",
@@ -795,7 +1275,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787891573675_qpiwn_1787892458108_2",
+      "id": "sub_s_1787891573675_qpiwn_1787920047343_5",
       "student_id": "s_1787891573675_qpiwn",
       "title": "Majority Element",
       "titleSlug": "majority-element",
@@ -804,7 +1284,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787891573675_qpiwn_1787892458108_3",
+      "id": "sub_s_1787891573675_qpiwn_1787920047343_6",
       "student_id": "s_1787891573675_qpiwn",
       "title": "Two Sum",
       "titleSlug": "two-sum",
@@ -813,7 +1293,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787891573675_qpiwn_1787892458108_4",
+      "id": "sub_s_1787891573675_qpiwn_1787920047343_7",
       "student_id": "s_1787891573675_qpiwn",
       "title": "Move Zeroes",
       "titleSlug": "move-zeroes",
@@ -822,7 +1302,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787891573675_qpiwn_1787892458108_5",
+      "id": "sub_s_1787891573675_qpiwn_1787920047343_8",
       "student_id": "s_1787891573675_qpiwn",
       "title": "Best Time to Buy and Sell Stock",
       "titleSlug": "best-time-to-buy-and-sell-stock",
@@ -831,7 +1311,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787891573675_qpiwn_1787892458108_6",
+      "id": "sub_s_1787891573675_qpiwn_1787920047343_9",
       "student_id": "s_1787891573675_qpiwn",
       "title": "3Sum",
       "titleSlug": "3sum",
@@ -840,7 +1320,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787891573675_qpiwn_1787892458108_7",
+      "id": "sub_s_1787891573675_qpiwn_1787920047343_10",
       "student_id": "s_1787891573675_qpiwn",
       "title": "Check Divisibility by Digit Sum and Product",
       "titleSlug": "check-divisibility-by-digit-sum-and-product",
@@ -849,7 +1329,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787891573675_qpiwn_1787892458108_8",
+      "id": "sub_s_1787891573675_qpiwn_1787920047343_11",
       "student_id": "s_1787891573675_qpiwn",
       "title": "Concatenation of Array",
       "titleSlug": "concatenation-of-array",
@@ -858,7 +1338,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787891573675_qpiwn_1787892458108_9",
+      "id": "sub_s_1787891573675_qpiwn_1787920047343_12",
       "student_id": "s_1787891573675_qpiwn",
       "title": "Two Sum",
       "titleSlug": "two-sum",
@@ -867,7 +1347,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787891573675_qpiwn_1787892458108_10",
+      "id": "sub_s_1787891573675_qpiwn_1787920047343_13",
       "student_id": "s_1787891573675_qpiwn",
       "title": "Contains Duplicate",
       "titleSlug": "contains-duplicate",
@@ -876,7 +1356,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787891573675_qpiwn_1787892458108_11",
+      "id": "sub_s_1787891573675_qpiwn_1787920047343_14",
       "student_id": "s_1787891573675_qpiwn",
       "title": "Find Missing Elements",
       "titleSlug": "find-missing-elements",
@@ -885,34 +1365,16 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787891573675_qpiwn_1787892458108_12",
-      "student_id": "s_1787891573675_qpiwn",
-      "title": "Palindrome Number",
-      "titleSlug": "palindrome-number",
-      "timestamp": "1785900725",
+      "id": "sub_s_1787891573700_k7rdx_1787920049509_0",
+      "student_id": "s_1787891573700_k7rdx",
+      "title": "Majority Element",
+      "titleSlug": "majority-element",
+      "timestamp": "1787892614",
       "language": "Unknown",
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787891573675_qpiwn_1787892458108_13",
-      "student_id": "s_1787891573675_qpiwn",
-      "title": "Find Missing Elements",
-      "titleSlug": "find-missing-elements",
-      "timestamp": "1785848588",
-      "language": "Unknown",
-      "statusDisplay": "Accepted"
-    },
-    {
-      "id": "sub_s_1787891573675_qpiwn_1787892458108_14",
-      "student_id": "s_1787891573675_qpiwn",
-      "title": "Two Sum",
-      "titleSlug": "two-sum",
-      "timestamp": "1785818723",
-      "language": "Unknown",
-      "statusDisplay": "Accepted"
-    },
-    {
-      "id": "sub_s_1787891573700_k7rdx_1787892460108_0",
+      "id": "sub_s_1787891573700_k7rdx_1787920049509_1",
       "student_id": "s_1787891573700_k7rdx",
       "title": "Best Time to Buy and Sell Stock",
       "titleSlug": "best-time-to-buy-and-sell-stock",
@@ -921,7 +1383,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787891573700_k7rdx_1787892460109_1",
+      "id": "sub_s_1787891573700_k7rdx_1787920049509_2",
       "student_id": "s_1787891573700_k7rdx",
       "title": "Move Zeroes",
       "titleSlug": "move-zeroes",
@@ -930,7 +1392,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787891573700_k7rdx_1787892460109_2",
+      "id": "sub_s_1787891573700_k7rdx_1787920049509_3",
       "student_id": "s_1787891573700_k7rdx",
       "title": "Missing Number",
       "titleSlug": "missing-number",
@@ -939,7 +1401,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787891573700_k7rdx_1787892460109_3",
+      "id": "sub_s_1787891573700_k7rdx_1787920049509_4",
       "student_id": "s_1787891573700_k7rdx",
       "title": "Reverse String",
       "titleSlug": "reverse-string",
@@ -948,7 +1410,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787891573700_k7rdx_1787892460109_4",
+      "id": "sub_s_1787891573700_k7rdx_1787920049509_5",
       "student_id": "s_1787891573700_k7rdx",
       "title": "Valid Anagram",
       "titleSlug": "valid-anagram",
@@ -957,7 +1419,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787891573700_k7rdx_1787892460109_5",
+      "id": "sub_s_1787891573700_k7rdx_1787920049509_6",
       "student_id": "s_1787891573700_k7rdx",
       "title": "Single Number",
       "titleSlug": "single-number",
@@ -966,7 +1428,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787891573700_k7rdx_1787892460109_6",
+      "id": "sub_s_1787891573700_k7rdx_1787920049509_7",
       "student_id": "s_1787891573700_k7rdx",
       "title": "Contains Duplicate",
       "titleSlug": "contains-duplicate",
@@ -975,7 +1437,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787891573700_k7rdx_1787892460109_7",
+      "id": "sub_s_1787891573700_k7rdx_1787920049509_8",
       "student_id": "s_1787891573700_k7rdx",
       "title": "Two Sum",
       "titleSlug": "two-sum",
@@ -984,7 +1446,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787891573700_k7rdx_1787892460109_8",
+      "id": "sub_s_1787891573700_k7rdx_1787920049509_9",
       "student_id": "s_1787891573700_k7rdx",
       "title": "Palindrome Number",
       "titleSlug": "palindrome-number",
@@ -993,7 +1455,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787891573700_k7rdx_1787892460109_9",
+      "id": "sub_s_1787891573700_k7rdx_1787920049509_10",
       "student_id": "s_1787891573700_k7rdx",
       "title": "Reverse Integer",
       "titleSlug": "reverse-integer",
@@ -1002,7 +1464,34 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787891573711_xo8xr_1787892462065_0",
+      "id": "sub_s_1787891573711_xo8xr_1787920052211_0",
+      "student_id": "s_1787891573711_xo8xr",
+      "title": "Majority Element",
+      "titleSlug": "majority-element",
+      "timestamp": "1787894843",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787891573711_xo8xr_1787920052211_1",
+      "student_id": "s_1787891573711_xo8xr",
+      "title": "Move Zeroes",
+      "titleSlug": "move-zeroes",
+      "timestamp": "1787893218",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787891573711_xo8xr_1787920052211_2",
+      "student_id": "s_1787891573711_xo8xr",
+      "title": "Best Time to Buy and Sell Stock",
+      "titleSlug": "best-time-to-buy-and-sell-stock",
+      "timestamp": "1787892775",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787891573711_xo8xr_1787920052211_3",
       "student_id": "s_1787891573711_xo8xr",
       "title": "Valid Anagram",
       "titleSlug": "valid-anagram",
@@ -1011,7 +1500,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787891573711_xo8xr_1787892462065_1",
+      "id": "sub_s_1787891573711_xo8xr_1787920052211_4",
       "student_id": "s_1787891573711_xo8xr",
       "title": "Decode String",
       "titleSlug": "decode-string",
@@ -1020,7 +1509,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787891573711_xo8xr_1787892462065_2",
+      "id": "sub_s_1787891573711_xo8xr_1787920052211_5",
       "student_id": "s_1787891573711_xo8xr",
       "title": "Contains Duplicate",
       "titleSlug": "contains-duplicate",
@@ -1029,7 +1518,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787891573711_xo8xr_1787892462065_3",
+      "id": "sub_s_1787891573711_xo8xr_1787920052211_6",
       "student_id": "s_1787891573711_xo8xr",
       "title": "Two Sum",
       "titleSlug": "two-sum",
@@ -1038,7 +1527,25 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787891573718_z9bpq_1787892464230_0",
+      "id": "sub_s_1787891573718_z9bpq_1787920054313_0",
+      "student_id": "s_1787891573718_z9bpq",
+      "title": "Valid Anagram",
+      "titleSlug": "valid-anagram",
+      "timestamp": "1787894243",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787891573718_z9bpq_1787920054313_1",
+      "student_id": "s_1787891573718_z9bpq",
+      "title": "Contains Duplicate",
+      "titleSlug": "contains-duplicate",
+      "timestamp": "1787893710",
+      "language": "Unknown",
+      "statusDisplay": "Accepted"
+    },
+    {
+      "id": "sub_s_1787891573718_z9bpq_1787920054313_2",
       "student_id": "s_1787891573718_z9bpq",
       "title": "Two Sum",
       "titleSlug": "two-sum",
@@ -1047,7 +1554,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787892065391_m8040_1787892561281_0",
+      "id": "sub_s_1787892065391_m8040_1787920056380_0",
       "student_id": "s_1787892065391_m8040",
       "title": "Best Time to Buy and Sell Stock",
       "titleSlug": "best-time-to-buy-and-sell-stock",
@@ -1056,7 +1563,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787892065391_m8040_1787892561281_1",
+      "id": "sub_s_1787892065391_m8040_1787920056380_1",
       "student_id": "s_1787892065391_m8040",
       "title": "Move Zeroes",
       "titleSlug": "move-zeroes",
@@ -1065,7 +1572,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787892065391_m8040_1787892561281_2",
+      "id": "sub_s_1787892065391_m8040_1787920056380_2",
       "student_id": "s_1787892065391_m8040",
       "title": "Contains Duplicate",
       "titleSlug": "contains-duplicate",
@@ -1074,7 +1581,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787892065391_m8040_1787892561281_3",
+      "id": "sub_s_1787892065391_m8040_1787920056380_3",
       "student_id": "s_1787892065391_m8040",
       "title": "Two Sum",
       "titleSlug": "two-sum",
@@ -1083,7 +1590,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787892065391_m8040_1787892561281_4",
+      "id": "sub_s_1787892065391_m8040_1787920056380_4",
       "student_id": "s_1787892065391_m8040",
       "title": "Happy Number",
       "titleSlug": "happy-number",
@@ -1092,7 +1599,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787892065391_m8040_1787892561281_5",
+      "id": "sub_s_1787892065391_m8040_1787920056380_5",
       "student_id": "s_1787892065391_m8040",
       "title": "Power of Four",
       "titleSlug": "power-of-four",
@@ -1101,7 +1608,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787892065391_m8040_1787892561281_6",
+      "id": "sub_s_1787892065391_m8040_1787920056380_6",
       "student_id": "s_1787892065391_m8040",
       "title": "Power of Three",
       "titleSlug": "power-of-three",
@@ -1110,7 +1617,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787892065391_m8040_1787892561281_7",
+      "id": "sub_s_1787892065391_m8040_1787920056380_7",
       "student_id": "s_1787892065391_m8040",
       "title": "Power of Two",
       "titleSlug": "power-of-two",
@@ -1119,7 +1626,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787892065391_m8040_1787892561281_8",
+      "id": "sub_s_1787892065391_m8040_1787920056380_8",
       "student_id": "s_1787892065391_m8040",
       "title": "Reverse String",
       "titleSlug": "reverse-string",
@@ -1128,7 +1635,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787892065391_m8040_1787892561281_9",
+      "id": "sub_s_1787892065391_m8040_1787920056380_9",
       "student_id": "s_1787892065391_m8040",
       "title": "Rising Temperature",
       "titleSlug": "rising-temperature",
@@ -1137,7 +1644,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787892065391_m8040_1787892561281_10",
+      "id": "sub_s_1787892065391_m8040_1787920056380_10",
       "student_id": "s_1787892065391_m8040",
       "title": "Big Countries",
       "titleSlug": "big-countries",
@@ -1146,7 +1653,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787892065391_m8040_1787892561281_11",
+      "id": "sub_s_1787892065391_m8040_1787920056380_11",
       "student_id": "s_1787892065391_m8040",
       "title": "Customer Placing the Largest Number of Orders",
       "titleSlug": "customer-placing-the-largest-number-of-orders",
@@ -1155,7 +1662,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787892065391_m8040_1787892561281_12",
+      "id": "sub_s_1787892065391_m8040_1787920056380_12",
       "student_id": "s_1787892065391_m8040",
       "title": "Patients With a Condition",
       "titleSlug": "patients-with-a-condition",
@@ -1164,7 +1671,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787892065391_m8040_1787892561281_13",
+      "id": "sub_s_1787892065391_m8040_1787920056380_13",
       "student_id": "s_1787892065391_m8040",
       "title": "Delete Duplicate Emails",
       "titleSlug": "delete-duplicate-emails",
@@ -1173,7 +1680,7 @@
       "statusDisplay": "Accepted"
     },
     {
-      "id": "sub_s_1787892065391_m8040_1787892561281_14",
+      "id": "sub_s_1787892065391_m8040_1787920056380_14",
       "student_id": "s_1787892065391_m8040",
       "title": "Employees Earning More Than Their Managers",
       "titleSlug": "employees-earning-more-than-their-managers",
@@ -1230,6 +1737,582 @@
       "timestamp": "2026-08-28T04:49:21.289Z",
       "level": "INFO",
       "message": "Successfully updated snapshot for Maria Blessy (Maria_Blessy): 30 solved."
+    },
+    {
+      "timestamp": "2026-08-28T12:27:26.370Z",
+      "level": "INFO",
+      "message": "Started Faculty Triggered Batch Sync for 5 students."
+    }
+  ],
+  "potd_items": [
+    {
+      "id": "potd-2026-08-28",
+      "date": "2026-08-28",
+      "title": "Valid Parentheses",
+      "titleSlug": "valid-parentheses",
+      "difficulty": "Easy",
+      "topic": "Stack",
+      "acceptanceRate": 40.8,
+      "leetcodeUrl": "https://leetcode.com/problems/valid-parentheses/",
+      "hint": "Push opening brackets to stack and pop matching pairs when closing brackets are encountered."
+    }
+  ],
+  "curated_tracks": [
+    {
+      "id": "blind75",
+      "title": "Blind 75 Essential DSA",
+      "description": "The definitive curated list of 75 high-impact questions covering all essential algorithmic patterns.",
+      "category": "blind75",
+      "icon": "Flame",
+      "totalProblems": 28
+    },
+    {
+      "id": "top150",
+      "title": "LeetCode Top Interview 150",
+      "description": "Classic interview questions asked by top tech giants (FAANG, Tier-1 Product Companies).",
+      "category": "top150",
+      "icon": "Trophy",
+      "totalProblems": 20
+    },
+    {
+      "id": "csbs_core",
+      "title": "CSBS Department Placement Core",
+      "description": "Targeted foundation & intermediate mastery problems specifically designed for CSBS semester cohorts.",
+      "category": "csbs_core",
+      "icon": "BookOpen",
+      "totalProblems": 15
+    }
+  ],
+  "curated_problems": [
+    {
+      "id": "b75-1",
+      "trackId": "blind75",
+      "title": "Two Sum",
+      "titleSlug": "two-sum",
+      "difficulty": "Easy",
+      "topic": "Arrays & Hashing",
+      "orderIndex": 1,
+      "leetcodeUrl": "https://leetcode.com/problems/two-sum/"
+    },
+    {
+      "id": "b75-2",
+      "trackId": "blind75",
+      "title": "Contains Duplicate",
+      "titleSlug": "contains-duplicate",
+      "difficulty": "Easy",
+      "topic": "Arrays & Hashing",
+      "orderIndex": 2,
+      "leetcodeUrl": "https://leetcode.com/problems/contains-duplicate/"
+    },
+    {
+      "id": "b75-3",
+      "trackId": "blind75",
+      "title": "Valid Anagram",
+      "titleSlug": "valid-anagram",
+      "difficulty": "Easy",
+      "topic": "Arrays & Hashing",
+      "orderIndex": 3,
+      "leetcodeUrl": "https://leetcode.com/problems/valid-anagram/"
+    },
+    {
+      "id": "b75-4",
+      "trackId": "blind75",
+      "title": "Group Anagrams",
+      "titleSlug": "group-anagrams",
+      "difficulty": "Medium",
+      "topic": "Arrays & Hashing",
+      "orderIndex": 4,
+      "leetcodeUrl": "https://leetcode.com/problems/group-anagrams/"
+    },
+    {
+      "id": "b75-5",
+      "trackId": "blind75",
+      "title": "Top K Frequent Elements",
+      "titleSlug": "top-k-frequent-elements",
+      "difficulty": "Medium",
+      "topic": "Arrays & Hashing",
+      "orderIndex": 5,
+      "leetcodeUrl": "https://leetcode.com/problems/top-k-frequent-elements/"
+    },
+    {
+      "id": "b75-6",
+      "trackId": "blind75",
+      "title": "Product of Array Except Self",
+      "titleSlug": "product-of-array-except-self",
+      "difficulty": "Medium",
+      "topic": "Arrays & Hashing",
+      "orderIndex": 6,
+      "leetcodeUrl": "https://leetcode.com/problems/product-of-array-except-self/"
+    },
+    {
+      "id": "b75-7",
+      "trackId": "blind75",
+      "title": "Longest Consecutive Sequence",
+      "titleSlug": "longest-consecutive-sequence",
+      "difficulty": "Medium",
+      "topic": "Arrays & Hashing",
+      "orderIndex": 7,
+      "leetcodeUrl": "https://leetcode.com/problems/longest-consecutive-sequence/"
+    },
+    {
+      "id": "b75-8",
+      "trackId": "blind75",
+      "title": "Valid Palindrome",
+      "titleSlug": "valid-palindrome",
+      "difficulty": "Easy",
+      "topic": "Two Pointers",
+      "orderIndex": 8,
+      "leetcodeUrl": "https://leetcode.com/problems/valid-palindrome/"
+    },
+    {
+      "id": "b75-9",
+      "trackId": "blind75",
+      "title": "3Sum",
+      "titleSlug": "3sum",
+      "difficulty": "Medium",
+      "topic": "Two Pointers",
+      "orderIndex": 9,
+      "leetcodeUrl": "https://leetcode.com/problems/3sum/"
+    },
+    {
+      "id": "b75-10",
+      "trackId": "blind75",
+      "title": "Container With Most Water",
+      "titleSlug": "container-with-most-water",
+      "difficulty": "Medium",
+      "topic": "Two Pointers",
+      "orderIndex": 10,
+      "leetcodeUrl": "https://leetcode.com/problems/container-with-most-water/"
+    },
+    {
+      "id": "b75-11",
+      "trackId": "blind75",
+      "title": "Best Time to Buy and Sell Stock",
+      "titleSlug": "best-time-to-buy-and-sell-stock",
+      "difficulty": "Easy",
+      "topic": "Sliding Window",
+      "orderIndex": 11,
+      "leetcodeUrl": "https://leetcode.com/problems/best-time-to-buy-and-sell-stock/"
+    },
+    {
+      "id": "b75-12",
+      "trackId": "blind75",
+      "title": "Longest Substring Without Repeating Characters",
+      "titleSlug": "longest-substring-without-repeating-characters",
+      "difficulty": "Medium",
+      "topic": "Sliding Window",
+      "orderIndex": 12,
+      "leetcodeUrl": "https://leetcode.com/problems/longest-substring-without-repeating-characters/"
+    },
+    {
+      "id": "b75-13",
+      "trackId": "blind75",
+      "title": "Longest Repeating Character Replacement",
+      "titleSlug": "longest-repeating-character-replacement",
+      "difficulty": "Medium",
+      "topic": "Sliding Window",
+      "orderIndex": 13,
+      "leetcodeUrl": "https://leetcode.com/problems/longest-repeating-character-replacement/"
+    },
+    {
+      "id": "b75-14",
+      "trackId": "blind75",
+      "title": "Valid Parentheses",
+      "titleSlug": "valid-parentheses",
+      "difficulty": "Easy",
+      "topic": "Stack",
+      "orderIndex": 14,
+      "leetcodeUrl": "https://leetcode.com/problems/valid-parentheses/"
+    },
+    {
+      "id": "b75-15",
+      "trackId": "blind75",
+      "title": "Find Minimum in Rotated Sorted Array",
+      "titleSlug": "find-minimum-in-rotated-sorted-array",
+      "difficulty": "Medium",
+      "topic": "Binary Search",
+      "orderIndex": 15,
+      "leetcodeUrl": "https://leetcode.com/problems/find-minimum-in-rotated-sorted-array/"
+    },
+    {
+      "id": "b75-16",
+      "trackId": "blind75",
+      "title": "Search in Rotated Sorted Array",
+      "titleSlug": "search-in-rotated-sorted-array",
+      "difficulty": "Medium",
+      "topic": "Binary Search",
+      "orderIndex": 16,
+      "leetcodeUrl": "https://leetcode.com/problems/search-in-rotated-sorted-array/"
+    },
+    {
+      "id": "b75-17",
+      "trackId": "blind75",
+      "title": "Reverse Linked List",
+      "titleSlug": "reverse-linked-list",
+      "difficulty": "Easy",
+      "topic": "Linked List",
+      "orderIndex": 17,
+      "leetcodeUrl": "https://leetcode.com/problems/reverse-linked-list/"
+    },
+    {
+      "id": "b75-18",
+      "trackId": "blind75",
+      "title": "Merge Two Sorted Lists",
+      "titleSlug": "merge-two-sorted-lists",
+      "difficulty": "Easy",
+      "topic": "Linked List",
+      "orderIndex": 18,
+      "leetcodeUrl": "https://leetcode.com/problems/merge-two-sorted-lists/"
+    },
+    {
+      "id": "b75-19",
+      "trackId": "blind75",
+      "title": "Linked List Cycle",
+      "titleSlug": "linked-list-cycle",
+      "difficulty": "Easy",
+      "topic": "Linked List",
+      "orderIndex": 19,
+      "leetcodeUrl": "https://leetcode.com/problems/linked-list-cycle/"
+    },
+    {
+      "id": "b75-20",
+      "trackId": "blind75",
+      "title": "Remove Nth Node From End of List",
+      "titleSlug": "remove-nth-node-from-end-of-list",
+      "difficulty": "Medium",
+      "topic": "Linked List",
+      "orderIndex": 20,
+      "leetcodeUrl": "https://leetcode.com/problems/remove-nth-node-from-end-of-list/"
+    },
+    {
+      "id": "b75-21",
+      "trackId": "blind75",
+      "title": "Invert Binary Tree",
+      "titleSlug": "invert-binary-tree",
+      "difficulty": "Easy",
+      "topic": "Trees",
+      "orderIndex": 21,
+      "leetcodeUrl": "https://leetcode.com/problems/invert-binary-tree/"
+    },
+    {
+      "id": "b75-22",
+      "trackId": "blind75",
+      "title": "Maximum Depth of Binary Tree",
+      "titleSlug": "maximum-depth-of-binary-tree",
+      "difficulty": "Easy",
+      "topic": "Trees",
+      "orderIndex": 22,
+      "leetcodeUrl": "https://leetcode.com/problems/maximum-depth-of-binary-tree/"
+    },
+    {
+      "id": "b75-23",
+      "trackId": "blind75",
+      "title": "Same Tree",
+      "titleSlug": "same-tree",
+      "difficulty": "Easy",
+      "topic": "Trees",
+      "orderIndex": 23,
+      "leetcodeUrl": "https://leetcode.com/problems/same-tree/"
+    },
+    {
+      "id": "b75-24",
+      "trackId": "blind75",
+      "title": "Binary Tree Level Order Traversal",
+      "titleSlug": "binary-tree-level-order-traversal",
+      "difficulty": "Medium",
+      "topic": "Trees",
+      "orderIndex": 24,
+      "leetcodeUrl": "https://leetcode.com/problems/binary-tree-level-order-traversal/"
+    },
+    {
+      "id": "b75-25",
+      "trackId": "blind75",
+      "title": "Validate Binary Search Tree",
+      "titleSlug": "validate-binary-search-tree",
+      "difficulty": "Medium",
+      "topic": "Trees",
+      "orderIndex": 25,
+      "leetcodeUrl": "https://leetcode.com/problems/validate-binary-search-tree/"
+    },
+    {
+      "id": "b75-26",
+      "trackId": "blind75",
+      "title": "Number of Islands",
+      "titleSlug": "number-of-islands",
+      "difficulty": "Medium",
+      "topic": "Graphs",
+      "orderIndex": 26,
+      "leetcodeUrl": "https://leetcode.com/problems/number-of-islands/"
+    },
+    {
+      "id": "b75-27",
+      "trackId": "blind75",
+      "title": "Climbing Stairs",
+      "titleSlug": "climbing-stairs",
+      "difficulty": "Easy",
+      "topic": "Dynamic Programming",
+      "orderIndex": 27,
+      "leetcodeUrl": "https://leetcode.com/problems/climbing-stairs/"
+    },
+    {
+      "id": "b75-28",
+      "trackId": "blind75",
+      "title": "Coin Change",
+      "titleSlug": "coin-change",
+      "difficulty": "Medium",
+      "topic": "Dynamic Programming",
+      "orderIndex": 28,
+      "leetcodeUrl": "https://leetcode.com/problems/coin-change/"
+    },
+    {
+      "id": "t150-1",
+      "trackId": "top150",
+      "title": "Majority Element",
+      "titleSlug": "majority-element",
+      "difficulty": "Easy",
+      "topic": "Array / String",
+      "orderIndex": 1,
+      "leetcodeUrl": "https://leetcode.com/problems/majority-element/"
+    },
+    {
+      "id": "t150-2",
+      "trackId": "top150",
+      "title": "Rotate Array",
+      "titleSlug": "rotate-array",
+      "difficulty": "Medium",
+      "topic": "Array / String",
+      "orderIndex": 2,
+      "leetcodeUrl": "https://leetcode.com/problems/rotate-array/"
+    },
+    {
+      "id": "t150-3",
+      "trackId": "top150",
+      "title": "Best Time to Buy and Sell Stock II",
+      "titleSlug": "best-time-to-buy-and-sell-stock-ii",
+      "difficulty": "Medium",
+      "topic": "Array / String",
+      "orderIndex": 3,
+      "leetcodeUrl": "https://leetcode.com/problems/best-time-to-buy-and-sell-stock-ii/"
+    },
+    {
+      "id": "t150-4",
+      "trackId": "top150",
+      "title": "Jump Game II",
+      "titleSlug": "jump-game-ii",
+      "difficulty": "Medium",
+      "topic": "Array / String",
+      "orderIndex": 4,
+      "leetcodeUrl": "https://leetcode.com/problems/jump-game-ii/"
+    },
+    {
+      "id": "t150-5",
+      "trackId": "top150",
+      "title": "Roman to Integer",
+      "titleSlug": "roman-to-integer",
+      "difficulty": "Easy",
+      "topic": "Math",
+      "orderIndex": 5,
+      "leetcodeUrl": "https://leetcode.com/problems/roman-to-integer/"
+    },
+    {
+      "id": "t150-6",
+      "trackId": "top150",
+      "title": "Is Subsequence",
+      "titleSlug": "is-subsequence",
+      "difficulty": "Easy",
+      "topic": "Two Pointers",
+      "orderIndex": 6,
+      "leetcodeUrl": "https://leetcode.com/problems/is-subsequence/"
+    },
+    {
+      "id": "t150-7",
+      "trackId": "top150",
+      "title": "Two Sum II - Input Array Is Sorted",
+      "titleSlug": "two-sum-ii-input-array-is-sorted",
+      "difficulty": "Medium",
+      "topic": "Two Pointers",
+      "orderIndex": 7,
+      "leetcodeUrl": "https://leetcode.com/problems/two-sum-ii-input-array-is-sorted/"
+    },
+    {
+      "id": "t150-8",
+      "trackId": "top150",
+      "title": "Ransom Note",
+      "titleSlug": "ransom-note",
+      "difficulty": "Easy",
+      "topic": "Hashmap",
+      "orderIndex": 8,
+      "leetcodeUrl": "https://leetcode.com/problems/ransom-note/"
+    },
+    {
+      "id": "t150-9",
+      "trackId": "top150",
+      "title": "Word Pattern",
+      "titleSlug": "word-pattern",
+      "difficulty": "Easy",
+      "topic": "Hashmap",
+      "orderIndex": 9,
+      "leetcodeUrl": "https://leetcode.com/problems/word-pattern/"
+    },
+    {
+      "id": "t150-10",
+      "trackId": "top150",
+      "title": "Summary Ranges",
+      "titleSlug": "summary-ranges",
+      "difficulty": "Easy",
+      "topic": "Intervals",
+      "orderIndex": 10,
+      "leetcodeUrl": "https://leetcode.com/problems/summary-ranges/"
+    },
+    {
+      "id": "csbs-1",
+      "trackId": "csbs_core",
+      "title": "Two Sum",
+      "titleSlug": "two-sum",
+      "difficulty": "Easy",
+      "topic": "Arrays",
+      "orderIndex": 1,
+      "leetcodeUrl": "https://leetcode.com/problems/two-sum/"
+    },
+    {
+      "id": "csbs-2",
+      "trackId": "csbs_core",
+      "title": "Majority Element",
+      "titleSlug": "majority-element",
+      "difficulty": "Easy",
+      "topic": "Arrays",
+      "orderIndex": 2,
+      "leetcodeUrl": "https://leetcode.com/problems/majority-element/"
+    },
+    {
+      "id": "csbs-3",
+      "trackId": "csbs_core",
+      "title": "Move Zeroes",
+      "titleSlug": "move-zeroes",
+      "difficulty": "Easy",
+      "topic": "Arrays",
+      "orderIndex": 3,
+      "leetcodeUrl": "https://leetcode.com/problems/move-zeroes/"
+    },
+    {
+      "id": "csbs-4",
+      "trackId": "csbs_core",
+      "title": "Valid Parentheses",
+      "titleSlug": "valid-parentheses",
+      "difficulty": "Easy",
+      "topic": "Stack",
+      "orderIndex": 4,
+      "leetcodeUrl": "https://leetcode.com/problems/valid-parentheses/"
+    },
+    {
+      "id": "csbs-5",
+      "trackId": "csbs_core",
+      "title": "Implement Queue using Stacks",
+      "titleSlug": "implement-queue-using-stacks",
+      "difficulty": "Easy",
+      "topic": "Stack",
+      "orderIndex": 5,
+      "leetcodeUrl": "https://leetcode.com/problems/implement-queue-using-stacks/"
+    },
+    {
+      "id": "csbs-6",
+      "trackId": "csbs_core",
+      "title": "Reverse Linked List",
+      "titleSlug": "reverse-linked-list",
+      "difficulty": "Easy",
+      "topic": "Linked List",
+      "orderIndex": 6,
+      "leetcodeUrl": "https://leetcode.com/problems/reverse-linked-list/"
+    },
+    {
+      "id": "csbs-7",
+      "trackId": "csbs_core",
+      "title": "Middle of the Linked List",
+      "titleSlug": "middle-of-the-linked-list",
+      "difficulty": "Easy",
+      "topic": "Linked List",
+      "orderIndex": 7,
+      "leetcodeUrl": "https://leetcode.com/problems/middle-of-the-linked-list/"
+    },
+    {
+      "id": "csbs-8",
+      "trackId": "csbs_core",
+      "title": "Maximum Subarray (Kadane)",
+      "titleSlug": "maximum-subarray",
+      "difficulty": "Medium",
+      "topic": "Arrays",
+      "orderIndex": 8,
+      "leetcodeUrl": "https://leetcode.com/problems/maximum-subarray/"
+    },
+    {
+      "id": "csbs-9",
+      "trackId": "csbs_core",
+      "title": "Sort Colors (Dutch National Flag)",
+      "titleSlug": "sort-colors",
+      "difficulty": "Medium",
+      "topic": "Two Pointers",
+      "orderIndex": 9,
+      "leetcodeUrl": "https://leetcode.com/problems/sort-colors/"
+    },
+    {
+      "id": "csbs-10",
+      "trackId": "csbs_core",
+      "title": "Binary Search",
+      "titleSlug": "binary-search",
+      "difficulty": "Easy",
+      "topic": "Binary Search",
+      "orderIndex": 10,
+      "leetcodeUrl": "https://leetcode.com/problems/binary-search/"
+    },
+    {
+      "id": "csbs-11",
+      "trackId": "csbs_core",
+      "title": "Search a 2D Matrix",
+      "titleSlug": "search-a-2d-matrix",
+      "difficulty": "Medium",
+      "topic": "Binary Search",
+      "orderIndex": 11,
+      "leetcodeUrl": "https://leetcode.com/problems/search-a-2d-matrix/"
+    },
+    {
+      "id": "csbs-12",
+      "trackId": "csbs_core",
+      "title": "Climbing Stairs",
+      "titleSlug": "climbing-stairs",
+      "difficulty": "Easy",
+      "topic": "Dynamic Programming",
+      "orderIndex": 12,
+      "leetcodeUrl": "https://leetcode.com/problems/climbing-stairs/"
+    },
+    {
+      "id": "csbs-13",
+      "trackId": "csbs_core",
+      "title": "Coin Change",
+      "titleSlug": "coin-change",
+      "difficulty": "Medium",
+      "topic": "Dynamic Programming",
+      "orderIndex": 13,
+      "leetcodeUrl": "https://leetcode.com/problems/coin-change/"
+    },
+    {
+      "id": "csbs-14",
+      "trackId": "csbs_core",
+      "title": "Number of Islands",
+      "titleSlug": "number-of-islands",
+      "difficulty": "Medium",
+      "topic": "Graphs",
+      "orderIndex": 14,
+      "leetcodeUrl": "https://leetcode.com/problems/number-of-islands/"
+    },
+    {
+      "id": "csbs-15",
+      "trackId": "csbs_core",
+      "title": "Invert Binary Tree",
+      "titleSlug": "invert-binary-tree",
+      "difficulty": "Easy",
+      "topic": "Trees",
+      "orderIndex": 15,
+      "leetcodeUrl": "https://leetcode.com/problems/invert-binary-tree/"
     }
   ]
 }

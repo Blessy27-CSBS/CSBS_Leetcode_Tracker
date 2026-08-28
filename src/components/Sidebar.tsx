@@ -8,11 +8,13 @@ import {
   AlertCircle, 
   FileSpreadsheet, 
   Sliders,
-  Sparkles
+  Sparkles,
+  Flame
 } from 'lucide-react';
 
 export type NavTab = 
   | 'dashboard'
+  | 'tracks'
   | 'students'
   | 'leaderboard'
   | 'progress'
@@ -36,6 +38,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const analyticsItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, badge: null },
+    { id: 'tracks', label: 'Daily POTD & Tracks', icon: Flame, badge: '🔥', badgeColor: 'bg-orange-500/20 text-orange-400' },
     { id: 'leaderboard', label: 'Leaderboard', icon: Trophy, badge: null },
     { id: 'progress', label: 'Most Improved', icon: TrendingUp, badge: null },
     { id: 'sections', label: 'Sections', icon: Grid, badge: null },
