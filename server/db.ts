@@ -1331,7 +1331,7 @@ export class DatabaseService {
       }
 
       if (staffUser) {
-        if (staffUser.password_hash === hashedPwd || (cleanId === 'staff' && cleanPwd === 'staff123') || (cleanId === 'admin' && cleanPwd === 'admin123')) {
+        if (staffUser.password_hash === hashedPwd) {
           return { user: staffUser };
         }
       }
@@ -1340,7 +1340,7 @@ export class DatabaseService {
 
     // Student Authentication
     // The username credential is the student's mail id (or register_no/username fallback)
-    // The password credential is the student's register number (or changed password)
+    // The password credential is the student's register number (default on creation) or updated password
 
     let foundStudent: Student | undefined;
 
@@ -1356,12 +1356,12 @@ export class DatabaseService {
     if (foundStudent) {
       const studentUser = this.ensureStudentUser(foundStudent);
 
-      // Check password: match against register_no (exact/case-insensitive) OR user's password_hash OR 'student123'
-      const isRegNoMatch = foundStudent.register_no.trim().toLowerCase() === cleanPwd.toLowerCase();
+      // Check password: match strictly against user's stored password_hash.
+      // Initially, the stored hash matches the student's register number.
+      // When the student changes their password, only the new password will match.
       const isHashMatch = studentUser.password_hash === hashedPwd;
-      const isDefaultFallback = cleanPwd === 'student123';
 
-      if (isRegNoMatch || isHashMatch || isDefaultFallback) {
+      if (isHashMatch) {
         return { user: studentUser, student: foundStudent };
       }
     }

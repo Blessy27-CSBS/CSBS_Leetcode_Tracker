@@ -263,7 +263,7 @@ app.post('/api/auth/login', (req, res) => {
     if (!authResult) {
       return res.status(401).json({ 
         error: role === 'student' 
-          ? 'Invalid student credentials. Please verify your Email ID (username) and Register Number (password).'
+          ? 'Invalid student credentials. Please verify your Email ID / Username and Password.'
           : 'Invalid staff credentials. Please check your username and password.'
       });
     }

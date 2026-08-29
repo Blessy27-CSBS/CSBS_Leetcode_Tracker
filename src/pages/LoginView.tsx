@@ -214,7 +214,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             <div className="leading-relaxed">
               {activeRole === 'student' ? (
                 <span>
-                  <strong>Student Login:</strong> Sign in with your <strong>College Mail ID</strong> as username and your <strong>Register Number</strong> as password.
+                  <strong>Student Login:</strong> Sign in with your <strong>College Mail ID</strong> as username and your <strong>Register Number</strong> as default password (or updated password).
                 </span>
               ) : (
                 <span>
@@ -266,7 +266,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             {/* Password */}
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-slate-700">
-                {activeRole === 'student' ? 'Password (Your Register Number)' : 'Password'}
+                {activeRole === 'student' ? 'Password (Default: Register Number)' : 'Password'}
               </label>
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-600 transition-colors">
@@ -276,7 +276,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder={activeRole === 'student' ? 'Enter your Register Number' : 'Enter staff password'}
+                  placeholder={activeRole === 'student' ? 'Enter password (default: Register Number)' : 'Enter staff password'}
                   required
                   className="w-full pl-10 pr-10 py-2.5 bg-slate-50/80 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-2xs"
                 />
