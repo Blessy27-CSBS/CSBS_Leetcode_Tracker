@@ -1,167 +1,152 @@
 # 🚀 CSBS LeetCode Tracker
 
-> **Department of Computer Science & Business Systems (CSBS)**  
-> **KGiSL Institute of Technology**
+## Project title and overview
+**CSBS LeetCode Tracker** is a comprehensive, real-time student progress tracking and analytics portal. It is designed for faculty and department coordinators to monitor, analyze, and boost competitive programming engagement on LeetCode among students.
 
-A comprehensive, real-time student progress tracking and analytics portal designed for faculty and department coordinators to monitor, analyze, and boost competitive programming engagement on LeetCode.
+## Problem statement / purpose
+Tracking student engagement in competitive programming platforms manually is tedious and scales poorly. The purpose of this system is to automate the retrieval of LeetCode metrics, provide actionable insights to faculty regarding student performance, and motivate students through leaderboards, curated practice tracks, and daily challenges. 
 
----
+## Key features
+- **Role-Based Portals**: Distinct dashboards for students and staff.
+- **Automated LeetCode Synchronization**: Real-time stats retrieval via LeetCode's public GraphQL API.
+- **Background Auto-Sync**: Built-in scheduler for fetching student profiles at configurable intervals.
+- **Problem of the Day (POTD)**: Daily challenges tailored for the department.
+- **Curated Practice Tracks**: Built-in tracking for Blind 75, Top 150, and CSBS Core problem sets.
+- **Dynamic Leaderboards**: Ranking students by Engagement Score, Total Solved, and Contest Rating.
+- **Intervention System**: Automated detection of inactive or at-risk students for academic intervention.
+- **Data Import & Export**: Bulk import via Excel/CSV and comprehensive 9-sheet Excel department reports.
 
-## 🌟 Key Features
+## System architecture
+The application utilizes a monolithic architecture where a Node.js/Express backend serves both the API endpoints and the React frontend.
+- **Frontend**: A Single Page Application (SPA) built with React 19 and Vite. It consumes the REST API provided by the backend.
+- **Backend**: An Express.js server that handles routing, authentication, external API calls to LeetCode, and data persistence.
+- **Database**: A local SQLite database utilizing Write-Ahead Logging (WAL) for fast, zero-configuration data storage.
 
-- **🔐 Role-Based Authentication & Separate Student / Staff Portals**:
-  - **Student Login**:
-    - **Username**: Student's **Email ID** (e.g. `720723115001@kgkite.ac.in`) or Register Number
-    - **Password**: Student's **Register Number** (e.g. `720723115001`)
-    - Dedicated individual dashboard with personal LeetCode statistics, Problem of the Day challenge, Curated Practice Tracks checklist, live profile sync, recent submissions feed, and class leaderboard standings.
-  - **Staff / Faculty Login**:
-    - **Username**: `staff` (or `admin`)
-    - **Password**: `staff123` (or `admin123`)
-    - Complete department control with all 9 analytics and management modules, student directory, batch sync, intervention queue, Excel exports, and POTD configuration.
+## Application workflow
+1. **Onboarding**: Staff import a roster of students using a CSV or Excel template.
+2. **Synchronization**: The backend scheduler periodically pulls the latest problem-solving metrics from LeetCode for all active students.
+3. **Student View**: Students log in using their email and register number to view their personal dashboard, standing, and daily tasks.
+4. **Staff View**: Faculty log in to access department-wide analytics, monitor batch progress, download reports, and identify students requiring intervention.
 
-- **📊 Real-Time LeetCode Profile Synchronization**:
-  - Live querying via LeetCode's public GraphQL API.
-  - Automatically fetches Total Solved (Easy / Medium / Hard), Contest Rating, Global Rank, Active Streak, Total Active Days, Acceptance Rate, Badges, and Problem-Solving Calendars.
+## Student and staff capabilities
+- **Student Capabilities**:
+  - View individual LeetCode statistics and progress graphs.
+  - See their rank on the department leaderboard.
+  - Access the Problem of the Day and Curated Tracks.
+  - View recent LeetCode submissions.
+- **Staff Capabilities**:
+  - Full CRUD operations on student records.
+  - Trigger manual batch synchronization.
+  - Access the Intervention Queue to track inactive students.
+  - Configure the Problem of the Day and auto-sync settings.
+  - Export data to CSV and comprehensive Excel reports.
 
-- **📥 Seamless Bulk Import & Data Management**:
-  - Bulk roster import via **Excel (`.xlsx`, `.xls`)** or **CSV**.
-  - Built-in downloadable pre-formatted import templates.
-  - Duplicate detection by College Register Number and LeetCode handle.
+## Analytics and performance metrics
+The system calculates and tracks several key metrics:
+- **Total Solved**: Breakdown by Easy, Medium, and Hard difficulties.
+- **Engagement Score**: A composite metric based on problems solved, streak, and contest participation.
+- **Performance Tier**: Categorization into *Beginner*, *Developing*, *Proficient*, or *Advanced*.
+- **Days Inactive**: Tracks the number of days since the last LeetCode submission.
+- **Activity Status / Risk Level**: Identifies students as Active, At Risk, or Inactive.
 
-- **🗄️ Embedded SQLite Database**:
-  - Powered by `better-sqlite3` with Write-Ahead Logging (WAL) for ultra-fast local persistence.
-  - Zero-configuration storage located in `data/csbs_tracker.db` with structured relational schema and indexing.
+## Technology stack
+- **Frontend**: React 19, TypeScript, TailwindCSS v4, Recharts, Lucide Icons, Motion, Vite.
+- **Backend**: Node.js, Express, TypeScript, tsx, esbuild.
+- **Database**: SQLite (via `better-sqlite3`).
+- **Data Processing**: `xlsx` (SheetJS) for report generation.
 
-- **🔥 Department Problem of the Day (POTD) & Daily Streak Hub**:
-  - Daily curated challenge with countdown timer, topic tags, difficulty badges, and direct LeetCode solve links.
-  - Live Department Solver Roster showing real-time student completions and completion percentages.
-  - Coordinator tools to set or customize department daily challenges and provide faculty intuition hints.
+## Project structure
+```
+CSBS_Leetcode_Tracker/
+├── api/             # Auxiliary API functions
+├── data/            # Local SQLite database storage
+├── public/          # Static assets
+├── server/          # Backend Express logic (db, leetcode api, analytics, reports)
+├── src/             # Frontend React source code
+│   ├── components/  # Reusable UI components
+│   ├── pages/       # Page views (Dashboard, Leaderboard, etc.)
+│   └── services/    # Frontend API client
+├── server.ts        # Main application entry point
+├── package.json     # Project metadata and scripts
+└── vite.config.ts   # Vite configuration
+```
 
-- **📚 Curated Problem Tracks (Blind 75, Top 150, CSBS Core)**:
-  - Structured algorithmic topic roadmaps (Arrays, Two Pointers, Sliding Window, Trees, Graphs, DP).
-  - Department and student-level completion statistics and practice links.
+## API overview
+The backend exposes RESTful endpoints under `/api`:
+- **Auth**: Token-based authentication.
+- **Dashboard**: `/api/dashboard` (Aggregated KPIs and stats).
+- **Students**: `/api/students` (CRUD operations, import/export).
+- **Sync**: `/api/fetch/student/:id`, `/api/fetch/all` (LeetCode API integration).
+- **Analytics**: `/api/leaderboard`, `/api/sections`, `/api/intervention`.
+- **Content**: `/api/potd`, `/api/tracks`.
+- **System**: `/api/settings`, `/api/scheduler/status`.
 
-- **⏰ Automated Scheduled Background Profile Synchronization**:
-  - Background cron-like scheduler (Every 6h, 12h, 24h, or off) with built-in rate-limiting and delay buffer.
-  - Live telemetry, last-run records, and next-run countdown timers in Settings.
+## Database / data management
+Data is stored locally in `data/csbs_tracker.db` using SQLite. The schema includes:
+- `students`: Core student profiles and credentials.
+- `snapshots`: Historical records of student LeetCode metrics, allowing for progress tracking over time.
+- `submissions`: Recent LeetCode submissions for feed rendering.
+- `settings`: Department configuration (thresholds, weights, scheduler config).
 
-- **🏆 Dynamic Leaderboards & Benchmarks**:
-  - Configurable ranking by Engagement Score, Total Solved, Medium/Hard problems, Contest Rating, or Monthly Improvement.
-  - Performance Tier Classification: *Beginner*, *Developing*, *Proficient*, and *Advanced*.
-
-- **⚠️ Inactive Student & Risk Intervention Queue**:
-  - Automated detection of students inactive for more than a configurable threshold (e.g. 14 days).
-  - Risk categorization (*Low*, *Moderate*, *High*) to assist faculty mentors in timely academic interventions.
-
-- **📑 Multi-Sheet Department Reports**:
-  - One-click export of comprehensive **9-Sheet Excel Reports** (Summary KPIs, Current Performance, Student Details, Historical Snapshots, Leaderboards, Section Comparisons, Intervention Lists, Growth, and Audit Logs).
-  - Quick CSV export for student lists.
-
----
-
-## 🛠️ Technology Stack
-
-- **Frontend**: [React 19](https://react.dev/), [TypeScript](https://www.typescriptlang.org/), [TailwindCSS v4](https://tailwindcss.com/), [Recharts](https://recharts.org/), [Lucide Icons](https://lucide.dev/), [Motion](https://motion.dev/)
-- **Backend**: [Node.js](https://nodejs.org/), [Express](https://expressjs.com/), [TypeScript](https://www.typescriptlang.org/), [tsx](https://github.com/privatenumber/tsx)
-- **Database**: [SQLite](https://www.sqlite.org/) via [`better-sqlite3`](https://github.com/WiseLibs/better-sqlite3)
-- **Spreadsheet Processing**: [`xlsx` (SheetJS)](https://sheetjs.com/)
-- **Build Tool**: [Vite](https://vitejs.dev/), [esbuild](https://esbuild.github.io/)
-
----
-
-## 📋 Excel Roster Import Format
-
-To import students in bulk, prepare an Excel (`.xlsx`) or CSV file with the following column headers:
-
-| Column Header | Mandatory | Example | Description |
-| :--- | :---: | :--- | :--- |
-| **`Register Number`** | **Yes** | `711724UCB126` | Unique student roll / registration number |
-| **`Student Name`** | **Yes** | `Maria Blessy` | Student's full name |
-| **`LeetCode Username`** | **Yes** | `Maria_Blessy` | Public LeetCode profile handle |
-| **`Section`** | No | `A` | Class section (Default: `A`) |
-| **`Year`** | No | `III` | Year of study (`I`, `II`, `III`, `IV`) |
-| **`Batch`** | No | `2024-2028` | Admission batch |
-| **`Email`** | No | `24ucb126mariab@kgkite.ac.in` | College / personal email |
-| **`Mentor`** | No | `Dr. S. Ramesh` | Assigned faculty mentor name |
-
-*(You can download the sample template directly from the **Students** tab inside the web portal).*
-
----
-
-## 🚀 Getting Started
-
+## Installation and setup
 ### Prerequisites
-- [Node.js](https://nodejs.org/) (version 18 or higher recommended)
-- `npm` or `bun`
+- Node.js (version 18 or higher recommended)
+- `npm`
 
-### 1. Clone the Repository
-```bash
-git clone https://github.com/Blessy27-CSBS/CSBS_Leetcode_Tracker.git
-cd CSBS_Leetcode_Tracker
+### Steps
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/Blessy27-CSBS/CSBS_Leetcode_Tracker.git
+   cd CSBS_Leetcode_Tracker
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Run the development server:
+   ```bash
+   npm run dev
+   ```
+4. Access the portal at `http://localhost:3000`.
+
+## Available scripts
+- `npm run dev`: Starts the application in development mode using `tsx`.
+- `npm run build`: Bundles the React frontend with Vite and the Express backend with esbuild.
+- `npm run start`: Runs the production bundle from `dist/server.js`.
+- `npm run preview`: Previews the Vite production build.
+- `npm run clean`: Removes the `dist` directory and built artifacts.
+- `npm run lint`: Runs TypeScript type checking.
+
+## Environment variables, if applicable
+A `.env.example` file is provided. Create a `.env` file in the root directory for configuration:
+```env
+GEMINI_API_KEY="your_api_key_here"
+APP_URL="http://localhost:3000"
+PORT=3000
 ```
+*(Note: Ensure sensitive keys are kept secret and never committed to version control.)*
 
-### 2. Install Dependencies
-```bash
-npm install
-```
+## Build and production instructions
+To deploy the application:
+1. Generate the optimized build:
+   ```bash
+   npm run build
+   ```
+2. Start the production server:
+   ```bash
+   npm run start
+   ```
 
-### 3. Start Development Server
-```bash
-npm run dev
-```
+## Screenshots or assets section, if available
+*(Add screenshots of the Dashboard, Leaderboard, and Intervention Queue here.)*
 
-Open your browser and navigate to:
-👉 **[http://localhost:3000](http://localhost:3000)**
+## Future enhancements
+- Integration with Single Sign-On (SSO) systems.
+- Email or SMS notifications for at-risk students.
+- Support for other competitive programming platforms (e.g., HackerRank, Codeforces).
+- More granular permissions and roles (e.g., Read-only Faculty view).
 
----
-
-## 📦 Building for Production
-
-To create an optimized production build:
-```bash
-npm run build
-```
-
-To start the production server:
-```bash
-npm run start
-```
-
----
-
-## 📡 API Endpoints Overview
-
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/api/health` | Service health status check |
-| `GET` | `/api/dashboard` | Aggregated KPIs, difficulty splits, and timeline data |
-| `GET` | `/api/potd` | Today's Problem of the Day & verified student solvers |
-| `POST` | `/api/potd` | Set / override department Problem of the Day |
-| `GET` | `/api/tracks` | Curated tracks list with department completion rates |
-| `GET` | `/api/tracks/:id` | Specific track problem roadmap with solver metrics |
-| `GET` | `/api/scheduler/status` | Current background auto-sync state and next run time |
-| `POST` | `/api/scheduler/config` | Update background auto-sync schedule & enable toggle |
-| `GET` | `/api/students` | List filtered student records with latest statistics |
-| `POST` | `/api/students` | Add a single student |
-| `PUT` | `/api/students/:id` | Update student profile details |
-| `DELETE` | `/api/students/:id` | Remove a student and their snapshot history |
-| `POST` | `/api/students/import` | Bulk import students from JSON / parsed Excel rows |
-| `GET` | `/api/students/template` | Download sample Excel / CSV import template |
-| `POST` | `/api/fetch/student/:id` | Sync single student profile from LeetCode |
-| `POST` | `/api/fetch/all` | Asynchronous batch synchronization for all students |
-| `GET` | `/api/fetch/progress` | Live progress status of active batch fetch |
-| `GET` | `/api/leaderboard` | Ranked student standings |
-| `GET` | `/api/sections` | Section & batch comparative metrics |
-| `GET` | `/api/intervention` | List students exceeding inactivity threshold |
-| `GET` | `/api/reports/excel` | Download complete 9-Sheet Excel Department Report |
-| `GET` | `/api/reports/csv` | Download filtered student CSV dataset |
-| `GET` | `/api/settings` | Retrieve department thresholds & weight parameters |
-| `PUT` | `/api/settings` | Update scoring weights and inactivity thresholds |
-
----
-
-## 👥 Department & Project Information
-
-- **Institution**: KGiSL Institute of Technology (KGiSL Trust)
+## Contributors / project information
+- **Institution**: KGiSL Institute of Technology
 - **Department**: Computer Science and Business Systems (CSBS)
-- **Repository**: [https://github.com/Blessy27-CSBS/CSBS_Leetcode_Tracker](https://github.com/Blessy27-CSBS/CSBS_Leetcode_Tracker)
+- **Repository**: [Blessy27-CSBS/CSBS_Leetcode_Tracker](https://github.com/Blessy27-CSBS/CSBS_Leetcode_Tracker)
