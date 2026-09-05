@@ -1,26 +1,32 @@
 # CSBS LeetCode Tracker
 
-<p align="center">
-  <img src="public/codex-logo.png" alt="Codex Coding Club Logo" width="130" />
-</p>
+---
 
-<h2 align="center">Department of Computer Science & Business Systems (CSBS)</h2>
-<h3 align="center">Nexora Association</h3>
-<p align="center"><em>Presents</em></p>
-<h1 align="center"> Codex Coding Club</h1>
+<div align="center">
+  <img src="public/codex-logo.png" alt="Codex Coding Club Logo" width="200"/>
 
-<p align="center">
-  <strong>KGiSL Institute of Technology</strong><br />
-  <em>(Affiliated to Anna University | Approved by AICTE | Accredited by NAAC)</em>
-</p>
+  <h2>Department of Computer Science & Business Systems (CSBS)</h2>
 
-<p align="center">
-  <a href="#-key-features"><img src="https://img.shields.io/badge/Platform-LeetCode%20Tracker-orange?style=for-the-badge&logo=leetcode" alt="LeetCode Tracker" /></a>
-  <a href="#-technology-stack"><img src="https://img.shields.io/badge/React-19.0-blue?style=for-the-badge&logo=react" alt="React 19" /></a>
-  <a href="#-technology-stack"><img src="https://img.shields.io/badge/TypeScript-5.7-blue?style=for-the-badge&logo=typescript" alt="TypeScript" /></a>
-  <a href="#-technology-stack"><img src="https://img.shields.io/badge/TailwindCSS-v4.0-38bdf8?style=for-the-badge&logo=tailwindcss" alt="TailwindCSS" /></a>
-  <a href="#-technology-stack"><img src="https://img.shields.io/badge/SQLite-WAL%20Mode-003b57?style=for-the-badge&logo=sqlite" alt="SQLite" /></a>
-</p>
+  ---
+
+  <h3>Nexora Association</h3>
+  <p><i>Presents</i></p>
+
+  <h2>🏆 Codex Coding Club</h2>
+
+  <p>
+    KGiSL Institute of Technology<br>
+    <i>(Affiliated to Anna University | Approved by AICTE | Accredited by NAAC)</i>
+  </p>
+
+  <p>
+    <img src="https://img.shields.io/badge/PLATFORM-LEETCODE%20TRACKER-e87a2a?style=for-the-badge&logo=leetcode&logoColor=white" alt="Platform" />
+    <img src="https://img.shields.io/badge/REACT-19.0-0088cc?style=for-the-badge&logo=react&logoColor=white" alt="React" />
+    <img src="https://img.shields.io/badge/TYPESCRIPT-5.7-3178c6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+    <img src="https://img.shields.io/badge/TAILWINDCSS-V4.0-0ea5e9?style=for-the-badge&logo=tailwindcss&logoColor=white" alt="TailwindCSS" />
+    <img src="https://img.shields.io/badge/SQLITE-WAL%20MODE-0f3050?style=for-the-badge&logo=sqlite&logoColor=white" alt="SQLite" />
+  </p>
+</div>
 
 ---
 
@@ -30,15 +36,17 @@
 
 The application provides faculty coordinators and students with real-time profile analytics, automated ranking, daily coding challenge workflows, curated problem-solving tracks, speed contests, and comprehensive academic reporting.
 
----
+## Application workflow
+1. **Onboarding**: Staff import a roster of students using a CSV or Excel template.
+2. **Synchronization**: The backend scheduler periodically pulls the latest problem-solving metrics from LeetCode for all active students.
+3. **Student View**: Students log in using their email and register number to view their personal dashboard, standing, and daily tasks.
+4. **Staff View**: Faculty log in to access department-wide analytics, monitor batch progress, download reports, and identify students requiring intervention.
 
 ## Key Features
 
 ### Dual-Role Access Control
 - ** Student Portal**: Individual student dashboard featuring personal statistics, Problem of the Day challenges, curated topic roadmaps, contest schedules, submission timelines, section leaderboards, and profile security settings.
 - **Faculty Coordinator Portal**: Complete department control center equipped with batch profile synchronization, student roster administration, contest scheduling, daily problem curation, intervention queues, scoring weights setup, and multi-sheet report generation.
-
----
 
 ### Live LeetCode Profile Synchronization
 - Direct integration with **LeetCode's public GraphQL API**.
