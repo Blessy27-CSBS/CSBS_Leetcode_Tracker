@@ -1,4 +1,4 @@
-# 🚀 CSBS LeetCode Tracker
+# CSBS LeetCode Tracker
 
 <p align="center">
   <img src="public/codex-logo.png" alt="Codex Coding Club Logo" width="130" />
@@ -24,7 +24,7 @@
 
 ---
 
-## 📌 Overview
+## Overview
 
 **CSBS LeetCode Tracker** is a state-of-the-art competitive programming analytics and student progress tracking platform designed and presented by **Codex Coding Club** under the **Nexora Association**, **Department of Computer Science & Business Systems (CSBS)** at **KGiSL Institute of Technology**.
 
@@ -32,27 +32,27 @@ The application provides faculty coordinators and students with real-time profil
 
 ---
 
-## 🌟 Key Features
+## Key Features
 
-### 🔐 Dual-Role Access Control
-- **🎓 Student Portal**: Individual student dashboard featuring personal statistics, Problem of the Day challenges, curated topic roadmaps, contest schedules, submission timelines, section leaderboards, and profile security settings.
-- **👨‍🏫 Faculty Coordinator Portal**: Complete department control center equipped with batch profile synchronization, student roster administration, contest scheduling, daily problem curation, intervention queues, scoring weights setup, and multi-sheet report generation.
+### Dual-Role Access Control
+- ** Student Portal**: Individual student dashboard featuring personal statistics, Problem of the Day challenges, curated topic roadmaps, contest schedules, submission timelines, section leaderboards, and profile security settings.
+- **Faculty Coordinator Portal**: Complete department control center equipped with batch profile synchronization, student roster administration, contest scheduling, daily problem curation, intervention queues, scoring weights setup, and multi-sheet report generation.
 
 ---
 
-### 📊 Live LeetCode Profile Synchronization
+### Live LeetCode Profile Synchronization
 - Direct integration with **LeetCode's public GraphQL API**.
 - Real-time tracking of **Total Solved** (*Easy*, *Medium*, *Hard*), Contest Rating, Global Rank, Active Streaks, Submission Calendars, Earned Badges, and Acceptance Rates.
 
 ---
 
-### 🏆 Speed Contest Arena & Leaderboard Rankings
+### Speed Contest Arena & Leaderboard Rankings
 - **Contest Arena**: Schedule and participate in Weekly, Biweekly, and Department Speed Coding Contests.
 - **Dynamic Leaderboards**: Real-time department and section rank standings calculated using weighted engagement scoring algorithms.
 
 ---
 
-### 🔥 Problem of the Day (POTD) & Curated Tracks
+### Problem of the Day (POTD) & Curated Tracks
 - **Daily POTD Module**: Featured daily problem with difficulty badges, topic tags, direct LeetCode solve links, and faculty intuition hints.
 - **Curated Problem Tracks**: Algorithmic roadmaps including *Blind 75*, *LeetCode Top 150*, and *CSBS Core Placement Track*.
 
@@ -64,13 +64,13 @@ The application provides faculty coordinators and students with real-time profil
 
 ---
 
-### 📑 Multi-Sheet Department Reports & Excel Import
+### Multi-Sheet Department Reports & Excel Import
 - **One-Click Export**: Download comprehensive 9-Sheet Excel Department Reports (*KPI Summary*, *Current Performance*, *Student Details*, *Snapshots*, *Leaderboards*, *Intervention List*, *Audit Logs*).
 - **Roster Bulk Import**: Onboard students in bulk via Excel (`.xlsx`, `.xls`) or CSV with automatic duplicate checking.
 
 ---
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 | Category | Technologies |
 | :--- | :--- |
@@ -82,7 +82,7 @@ The application provides faculty coordinators and students with real-time profil
 
 ---
 
-## 📋 Excel Roster Import Format
+## Excel Roster Import Format
 
 To import student rosters in bulk, prepare `.xlsx` or `.csv` files structured with these column headers:
 
@@ -98,7 +98,7 @@ To import student rosters in bulk, prepare `.xlsx` or `.csv` files structured wi
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### 1. Prerequisites
 - [Node.js](https://nodejs.org/) (v18.0 or higher recommended)
@@ -120,11 +120,11 @@ npm run dev
 ```
 
 Open your browser and navigate to:  
-👉 **`http://localhost:3000`**
+ **`http://localhost:3000`**
 
 ---
 
-## 📦 Production Build
+## Production Build
 
 To build the application for production deployment:
 
@@ -138,7 +138,7 @@ npm run start
 
 ---
 
-## 📡 API Endpoints Reference
+## API Endpoints Reference
 
 | Method | Route | Description |
 | :--- | :--- | :--- |
@@ -160,7 +160,7 @@ npm run start
 
 ---
 
-## 👥 Organization & Credits
+## Organization & Credits
 
 - **Presented by**: **Codex Coding Club**
 - **Association**: **Nexora Association**
