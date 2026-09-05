@@ -13,7 +13,8 @@ import {
   SchedulerStatus,
   AuthUser,
   AuthSession,
-  StudentDashboardData
+  StudentDashboardData,
+  ContestItem
 } from '../types';
 
 const TOKEN_KEY = 'csbs_auth_token';
