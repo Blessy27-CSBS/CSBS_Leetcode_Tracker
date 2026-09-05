@@ -7,7 +7,7 @@
 <h2 align="center">Department of Computer Science & Business Systems (CSBS)</h2>
 <h3 align="center">Nexora Association</h3>
 <p align="center"><em>Presents</em></p>
-<h1 align="center">🏆 Codex Coding Club</h1>
+<h1 align="center"> Codex Coding Club</h1>
 
 <p align="center">
   <strong>KGiSL Institute of Technology</strong><br />
@@ -58,7 +58,7 @@ The application provides faculty coordinators and students with real-time profil
 
 ---
 
-### 💾 Dual-Store Database Architecture
+### Dual-Store Database Architecture
 - **Primary Engine**: SQLite powered by `better-sqlite3` with Write-Ahead Logging (WAL) for high-performance concurrent local operations.
 - **JSON Fallback Sync**: Synchronizes updates to `data/tracker_database.json` for cloud deployment compatibility and serverless persistence.
 
