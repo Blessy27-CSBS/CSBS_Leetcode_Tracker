@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { Sidebar, NavTab } from './components/Sidebar';
 import { DashboardView } from './pages/DashboardView';
+import { ContestsView } from './pages/ContestsView';
 import { TracksView } from './pages/TracksView';
 import { StudentsView } from './pages/StudentsView';
 import { LeaderboardView } from './pages/LeaderboardView';
@@ -195,6 +196,14 @@ export function App() {
           />
         );
 
+      case 'contests':
+        return (
+          <ContestsView
+            isFaculty={currentUser?.role === 'staff'}
+            students={students}
+          />
+        );
+
       case 'tracks':
         return (
           <TracksView
@@ -330,8 +339,8 @@ export function App() {
         onLogout={handleLogout}
       />
 
-      {/* Main Layout Area */}
-      <div className="flex-1 flex flex-col md:flex-row w-full mx-auto max-w-[1600px]">
+      {/* Main Layout Area: Full-width docking, sidebar perfectly flush to the corner */}
+      <div className="flex-1 flex flex-col md:flex-row w-full min-h-[calc(100vh-3.5rem)]">
         
         {/* Navigation Sidebar */}
         <Sidebar
@@ -342,8 +351,10 @@ export function App() {
         />
 
         {/* Dynamic View Content Area */}
-        <main className="flex-1 p-4 sm:p-5 lg:p-6 overflow-y-auto max-w-full">
-          {renderActiveView()}
+        <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 overflow-y-auto bg-[#f8fafc]">
+          <div className="max-w-7xl mx-auto w-full">
+            {renderActiveView()}
+          </div>
         </main>
       </div>
 

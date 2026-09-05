@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'motion/react';
 import { 
   TrendingUp, 
   Sparkles, 
@@ -161,7 +162,12 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
       </div>
 
       {/* Chart: Top Surge Comparison */}
-      <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-3">
+      <motion.div 
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.2 }}
+        className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-3 hover:shadow-md transition-shadow"
+      >
         <div>
           <h3 className="text-xs font-bold text-slate-800">Top Growth Velocity Comparison</h3>
           <p className="text-[11px] text-slate-500">Problems added during last 30 days vs weekly acceleration</p>
@@ -169,19 +175,29 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
         <div className="h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="name" stroke="#64748b" fontSize={11} />
-              <YAxis stroke="#64748b" fontSize={11} />
+              <defs>
+                <linearGradient id="progMonthGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#06b6d4" stopOpacity={1} />
+                  <stop offset="100%" stopColor="#0e7490" stopOpacity={0.85} />
+                </linearGradient>
+                <linearGradient id="progWeekGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#a855f7" stopOpacity={1} />
+                  <stop offset="100%" stopColor="#7e22ce" stopOpacity={0.85} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+              <XAxis dataKey="name" stroke="#64748b" fontSize={11} tickLine={false} />
+              <YAxis stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} />
               <Tooltip
-                contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '8px', fontSize: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}
+                contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', color: '#1e293b', borderRadius: '8px', fontSize: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
               />
-              <Legend wrapperStyle={{ fontSize: '11px' }} />
-              <Bar dataKey="addedMonth" name="Problems Added (30d)" fill="#10b981" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="addedWeek" name="Problems Added (7d)" fill="#2563eb" radius={[4, 4, 0, 0]} />
+              <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '6px' }} />
+              <Bar dataKey="addedMonth" name="Problems Added (30d)" fill="url(#progMonthGrad)" radius={[6, 6, 0, 0]} isAnimationActive={true} animationDuration={1500} animationEasing="ease-in-out" />
+              <Bar dataKey="addedWeek" name="Problems Added (7d)" fill="url(#progWeekGrad)" radius={[6, 6, 0, 0]} isAnimationActive={true} animationDuration={1500} animationEasing="ease-in-out" />
             </BarChart>
           </ResponsiveContainer>
         </div>
-      </div>
+      </motion.div>
 
       {/* Full Improvement Table */}
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs">

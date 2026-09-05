@@ -9,6 +9,7 @@ import {
   BatchFetchProgress,
   POTDItem,
   CuratedTrack,
+  CuratedProblem,
   SchedulerStatus,
   AuthUser,
   AuthSession,
@@ -293,12 +294,14 @@ export const api = {
   },
 
   // Problem of the Day (POTD)
-  async getPOTD(): Promise<{
-    potd: POTDItem;
+  async getPOTD(date?: string): Promise<{
+    potd: POTDItem | null;
+    potdList: POTDItem[];
     departmentTotalStudents: number;
     completionRate: number;
   }> {
-    const res = await fetch('/api/potd');
+    const url = date ? `/api/potd?date=${date}` : '/api/potd';
+    const res = await fetch(url);
     if (!res.ok) throw new Error('Failed to load Problem of the Day');
     return res.json();
   },
@@ -314,6 +317,70 @@ export const api = {
     return json;
   },
 
+  async updatePOTD(id: string, data: Partial<POTDItem>): Promise<{ success: boolean; potd: POTDItem }> {
+    const res = await fetch(`/api/potd/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to update POTD');
+    return json;
+  },
+
+  async deletePOTD(id: string): Promise<{ success: boolean; message: string }> {
+    const res = await fetch(`/api/potd/${id}`, {
+      method: 'DELETE',
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to delete POTD');
+    return json;
+  },
+
+  // LeetCode Contests Module
+  async getContests(): Promise<any[]> {
+    const res = await fetch('/api/contests');
+    if (!res.ok) throw new Error('Failed to load contests');
+    return res.json();
+  },
+
+  async getContest(id: string): Promise<any> {
+    const res = await fetch(`/api/contests/${id}`);
+    if (!res.ok) throw new Error('Failed to load contest details');
+    return res.json();
+  },
+
+  async createContest(data: any): Promise<{ success: boolean; contest: any }> {
+    const res = await fetch('/api/contests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to create contest');
+    return json;
+  },
+
+  async updateContest(id: string, data: any): Promise<{ success: boolean; contest: any }> {
+    const res = await fetch(`/api/contests/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to update contest');
+    return json;
+  },
+
+  async deleteContest(id: string): Promise<{ success: boolean; message: string }> {
+    const res = await fetch(`/api/contests/${id}`, {
+      method: 'DELETE',
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to delete contest');
+    return json;
+  },
+
   // Curated Problem Tracks
   async getTracks(): Promise<CuratedTrack[]> {
     const res = await fetch('/api/tracks');
@@ -325,6 +392,38 @@ export const api = {
     const url = studentId ? `/api/tracks/${trackId}?studentId=${studentId}` : `/api/tracks/${trackId}`;
     const res = await fetch(url);
     if (!res.ok) throw new Error('Failed to load track details');
+    return res.json();
+  },
+
+  async createTrack(data: Partial<CuratedTrack>): Promise<{ success: boolean; track: CuratedTrack }> {
+    const res = await fetch('/api/tracks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to create track');
+    return json;
+  },
+
+  async deleteTrack(id: string): Promise<{ success: boolean }> {
+    const res = await fetch(`/api/tracks/${id}`, { method: 'DELETE' });
+    return res.json();
+  },
+
+  async addProblemToTrack(trackId: string, data: Partial<CuratedProblem>): Promise<{ success: boolean; problem: CuratedProblem }> {
+    const res = await fetch(`/api/tracks/${trackId}/problems`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to add problem to track');
+    return json;
+  },
+
+  async deleteProblemFromTrack(problemId: string): Promise<{ success: boolean }> {
+    const res = await fetch(`/api/tracks/problems/${problemId}`, { method: 'DELETE' });
     return res.json();
   },
 
@@ -346,4 +445,5 @@ export const api = {
     return json;
   },
 };
+
 

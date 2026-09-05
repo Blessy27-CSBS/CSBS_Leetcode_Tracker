@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'motion/react';
 import { 
   Users, 
   UserCheck, 
@@ -49,10 +50,10 @@ interface DashboardViewProps {
 
 const COLORS = ['#10b981', '#f59e0b', '#f43f5e', '#818cf8', '#06b6d4', '#a855f7'];
 const TIER_COLORS: Record<string, string> = {
-  Beginner: '#94a3b8',
-  Developing: '#38bdf8',
-  Proficient: '#818cf8',
-  Advanced: '#10b981',
+  Beginner: '#6366f1',   // Electric Indigo Blue (High Contrast with Rose Surge)
+  Developing: '#06b6d4', // Bright Cyan / Sky Blue
+  Proficient: '#f59e0b', // Golden Amber
+  Advanced: '#10b981',   // Emerald Green
 };
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -118,35 +119,32 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   }));
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6 max-w-7xl mx-auto pb-10">
       
-      {/* Top Banner / Actions Bar */}
-      <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+      {/* Top Banner / Actions Bar with Glassmorphism */}
+      <div className="bg-white/80 backdrop-blur-md border border-slate-200/80 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
         <div>
           <div className="flex items-center space-x-2">
-            <span className="bg-blue-50 text-blue-700 border border-blue-200 text-[10px] uppercase font-bold px-2 py-0.5 rounded">
-              Academic Year 2024-25
-            </span>
-            <h2 className="text-sm font-bold text-slate-800">
-              Department of CSBS — Student LeetCode Activity & Practice Benchmarks
+            <h2 className="text-base font-black text-slate-900">
+              Department of CSBS — LeetCode Algorithmic Tracker
             </h2>
           </div>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Continuous algorithmic problem solving analytics, contest tracking, and intervention monitoring.
+          <p className="text-xs text-slate-500 font-medium mt-1">
+            Real-time problem metrics, contest tracking, student mastery progression, and intervention monitoring.
           </p>
         </div>
 
-        <div className="flex items-center space-x-2 shrink-0">
+        <div className="flex items-center space-x-2.5 shrink-0">
           <button
             onClick={onOpenAddStudent}
-            className="flex items-center space-x-1 px-3 py-1.5 text-xs font-semibold rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 cursor-pointer transition-colors"
+            className="flex items-center space-x-1.5 px-3.5 py-2 text-xs font-bold rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-2xs cursor-pointer transition-all"
           >
-            <Plus className="w-3.5 h-3.5" />
+            <Plus className="w-4 h-4 text-purple-600" />
             <span>Add Student</span>
           </button>
           <button
             onClick={onOpenBatchSync}
-            className="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold rounded-md bg-blue-600 hover:bg-blue-700 text-white cursor-pointer shadow-xs transition-colors"
+            className="flex items-center space-x-2 px-4 py-2 text-xs font-bold rounded-xl bg-purple-600 hover:bg-purple-700 text-white cursor-pointer shadow-md shadow-purple-600/20 transition-all"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             <span>Fetch All Data</span>
@@ -154,22 +152,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* 8 TOP KPI CARDS */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+      {/* 8 TOP KPI CARDS with Glassmorphism and Themed Icons */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 sm:gap-4">
         
         {/* KPI 1: Total Students */}
         <div 
           onClick={() => onNavigateTab('students')}
-          className="bg-white p-3.5 rounded-xl shadow-2xs border border-slate-200 hover:border-blue-400 transition-all cursor-pointer flex flex-col justify-between"
+          className="bg-white/80 backdrop-blur-md p-4 rounded-2xl shadow-xs border border-slate-200/80 hover:border-purple-300 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group"
         >
-          <div className="flex items-center justify-between text-slate-500">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Students</span>
-            <Users className="w-3.5 h-3.5 text-blue-600" />
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Students</span>
+            <div className="p-1.5 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 group-hover:scale-110 transition-transform">
+              <Users className="w-3.5 h-3.5" />
+            </div>
           </div>
-          <div className="text-2xl font-black text-slate-800 mt-1">
+          <div className="text-2xl font-black text-slate-900 mt-2">
             {summary.total_students}
           </div>
-          <div className="text-[10px] text-slate-400 font-medium mt-0.5">
+          <div className="text-[10px] text-slate-400 font-semibold mt-1">
             Enrolled CSBS
           </div>
         </div>
@@ -177,16 +177,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* KPI 2: Active Students */}
         <div 
           onClick={() => onNavigateTab('students')}
-          className="bg-white p-3.5 rounded-xl shadow-2xs border border-slate-200 hover:border-emerald-400 transition-all cursor-pointer flex flex-col justify-between"
+          className="bg-white/80 backdrop-blur-md p-4 rounded-2xl shadow-xs border border-slate-200/80 hover:border-emerald-300 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group"
         >
-          <div className="flex items-center justify-between text-slate-500">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Active (14d)</span>
-            <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Active (14d)</span>
+            <div className="p-1.5 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 group-hover:scale-110 transition-transform">
+              <UserCheck className="w-3.5 h-3.5" />
+            </div>
           </div>
-          <div className="text-2xl font-black text-slate-800 mt-1">
+          <div className="text-2xl font-black text-slate-900 mt-2">
             {summary.active_students}
           </div>
-          <div className="text-[10px] text-emerald-600 font-medium mt-0.5">
+          <div className="text-[10px] text-emerald-600 font-bold mt-1">
             {Math.round((summary.active_students / (summary.total_students || 1)) * 100)}% active rate
           </div>
         </div>
@@ -194,75 +196,85 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* KPI 3: Inactive Students */}
         <div 
           onClick={() => onNavigateTab('intervention')}
-          className="bg-white p-3.5 rounded-xl shadow-2xs border border-slate-200 hover:border-red-400 transition-all cursor-pointer flex flex-col justify-between"
+          className="bg-white/80 backdrop-blur-md p-4 rounded-2xl shadow-xs border border-slate-200/80 hover:border-rose-300 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group"
         >
-          <div className="flex items-center justify-between text-slate-500">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Inactive</span>
-            <UserX className="w-3.5 h-3.5 text-red-500" />
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Inactive</span>
+            <div className="p-1.5 rounded-xl bg-rose-50 text-rose-600 border border-rose-100 group-hover:scale-110 transition-transform">
+              <UserX className="w-3.5 h-3.5" />
+            </div>
           </div>
-          <div className="text-2xl font-black text-red-600 mt-1">
+          <div className="text-2xl font-black text-rose-600 mt-2">
             {summary.inactive_students}
           </div>
-          <div className="text-[10px] text-red-500/80 font-medium mt-0.5">
-            &gt;14d no practice
+          <div className="text-[10px] text-rose-500 font-semibold mt-1">
+            &gt;14d inactive
           </div>
         </div>
 
         {/* KPI 4: Total Solved */}
-        <div className="bg-white p-3.5 rounded-xl shadow-2xs border border-slate-200 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-500">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Total Solved</span>
-            <Code2 className="w-3.5 h-3.5 text-blue-600" />
+        <div className="bg-white/80 backdrop-blur-md p-4 rounded-2xl shadow-xs border border-slate-200/80 flex flex-col justify-between group">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Total Solved</span>
+            <div className="p-1.5 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 group-hover:scale-110 transition-transform">
+              <Code2 className="w-3.5 h-3.5" />
+            </div>
           </div>
-          <div className="text-2xl font-black text-slate-800 mt-1">
+          <div className="text-2xl font-black text-slate-900 mt-2">
             {summary.total_problems_solved.toLocaleString()}
           </div>
-          <div className="text-[10px] text-slate-400 font-medium mt-0.5">
-            Dept Solved
+          <div className="text-[10px] text-slate-400 font-semibold mt-1">
+            Class Total
           </div>
         </div>
 
         {/* KPI 5: Average Problems */}
-        <div className="bg-white p-3.5 rounded-xl shadow-2xs border border-slate-200 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-500">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Avg Solved</span>
-            <TrendingUp className="w-3.5 h-3.5 text-cyan-600" />
+        <div className="bg-white/80 backdrop-blur-md p-4 rounded-2xl shadow-xs border border-slate-200/80 flex flex-col justify-between group">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Avg Solved</span>
+            <div className="p-1.5 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 group-hover:scale-110 transition-transform">
+              <TrendingUp className="w-3.5 h-3.5" />
+            </div>
           </div>
-          <div className="text-2xl font-black text-slate-800 mt-1">
+          <div className="text-2xl font-black text-slate-900 mt-2">
             {summary.avg_problems_per_student}
           </div>
-          <div className="text-[10px] text-blue-600 font-medium mt-0.5">
-            Target: 150+
+          <div className="text-[10px] text-indigo-600 font-bold mt-1">
+            Per Student
           </div>
         </div>
 
         {/* KPI 6: Average Contest Rating */}
-        <div className="bg-white p-3.5 rounded-xl shadow-2xs border border-slate-200 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-500">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Avg Rating</span>
-            <Trophy className="w-3.5 h-3.5 text-amber-500" />
+        <div className="bg-white/80 backdrop-blur-md p-4 rounded-2xl shadow-xs border border-slate-200/80 flex flex-col justify-between group">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Avg Rating</span>
+            <div className="p-1.5 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 group-hover:scale-110 transition-transform">
+              <Trophy className="w-3.5 h-3.5" />
+            </div>
           </div>
-          <div className="text-2xl font-black text-slate-800 mt-1">
+          <div className="text-2xl font-black text-slate-900 mt-2">
             {summary.avg_contest_rating || '1350'}
           </div>
-          <div className="text-[10px] text-slate-400 font-medium mt-0.5">
-            Participants
+          <div className="text-[10px] text-slate-400 font-semibold mt-1">
+            Contestants
           </div>
         </div>
 
         {/* KPI 7: Most Improved */}
         <div 
           onClick={() => summary.most_improved_student && onSelectStudent(summary.most_improved_student.id)}
-          className="bg-white p-3.5 rounded-xl shadow-2xs border border-slate-200 hover:border-emerald-400 transition-all cursor-pointer flex flex-col justify-between"
+          className="bg-white/80 backdrop-blur-md p-4 rounded-2xl shadow-xs border border-slate-200/80 hover:border-emerald-300 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group"
         >
-          <div className="flex items-center justify-between text-slate-500">
-            <span className="text-[11px] font-bold uppercase tracking-wider truncate">Most Improved</span>
-            <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 truncate">Most Improved</span>
+            <div className="p-1.5 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 group-hover:scale-110 transition-transform">
+              <Flame className="w-3.5 h-3.5" />
+            </div>
           </div>
-          <div className="text-sm font-bold text-slate-800 mt-1 truncate">
+          <div className="text-sm font-black text-slate-900 mt-2 truncate">
             {summary.most_improved_student?.name.split(' ')[0] || 'Aarav'}
           </div>
-          <div className="text-[10px] text-emerald-600 font-semibold mt-0.5">
+          <div className="text-[10px] text-emerald-600 font-bold mt-1">
             +{summary.most_improved_student?.problems_added || 28} this mo
           </div>
         </div>
@@ -270,16 +282,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* KPI 8: Highest Solver */}
         <div 
           onClick={() => summary.highest_problem_solver && onSelectStudent(summary.highest_problem_solver.id)}
-          className="bg-white p-3.5 rounded-xl shadow-2xs border border-slate-200 hover:border-blue-400 transition-all cursor-pointer flex flex-col justify-between"
+          className="bg-white/80 backdrop-blur-md p-4 rounded-2xl shadow-xs border border-slate-200/80 hover:border-purple-300 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group"
         >
-          <div className="flex items-center justify-between text-slate-500">
-            <span className="text-[11px] font-bold uppercase tracking-wider truncate">Top Solver</span>
-            <Award className="w-3.5 h-3.5 text-blue-600" />
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 truncate">Top Solver</span>
+            <div className="p-1.5 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 group-hover:scale-110 transition-transform">
+              <Award className="w-3.5 h-3.5" />
+            </div>
           </div>
-          <div className="text-sm font-bold text-slate-800 mt-1 truncate">
+          <div className="text-sm font-black text-slate-900 mt-2 truncate">
             {summary.highest_problem_solver?.name.split(' ')[0] || 'Siddharth'}
           </div>
-          <div className="text-[10px] text-blue-600 font-semibold mt-0.5">
+          <div className="text-[10px] text-purple-600 font-bold mt-1">
             {summary.highest_problem_solver?.total_solved || 308} Solved
           </div>
         </div>
@@ -305,11 +319,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* 8 CHARTS GRID */}
+      {/* 8 CHARTS GRID WITH ANIMATIONS & ENHANCED VISUALS */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
         {/* Chart 1: Problems Solved by Student (Top Solvers) */}
-        <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-3">
+        <motion.div 
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-3 hover:shadow-md transition-shadow"
+        >
           <div className="flex items-center justify-between border-b border-slate-100 pb-2">
             <div>
               <h3 className="text-sm font-bold text-slate-800">Top Problem Solvers</h3>
@@ -326,6 +345,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="h-60 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={topSolversData}>
+                <defs>
+                  <linearGradient id="easyGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#10b981" stopOpacity={1} />
+                    <stop offset="100%" stopColor="#059669" stopOpacity={0.8} />
+                  </linearGradient>
+                  <linearGradient id="mediumGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#f59e0b" stopOpacity={1} />
+                    <stop offset="100%" stopColor="#d97706" stopOpacity={0.8} />
+                  </linearGradient>
+                  <linearGradient id="hardGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#ef4444" stopOpacity={1} />
+                    <stop offset="100%" stopColor="#dc2626" stopOpacity={0.8} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                 <XAxis dataKey="name" stroke="#64748b" fontSize={11} tickLine={false} />
                 <YAxis stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} />
@@ -333,16 +366,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', color: '#1e293b', borderRadius: '8px', fontSize: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                 />
                 <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '6px' }} />
-                <Bar dataKey="easy" name="Easy" stackId="a" fill="#10b981" />
-                <Bar dataKey="medium" name="Medium" stackId="a" fill="#f59e0b" />
-                <Bar dataKey="hard" name="Hard" stackId="a" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="easy" name="Easy" stackId="a" fill="url(#easyGrad)" isAnimationActive={true} animationDuration={1400} animationEasing="ease-in-out" />
+                <Bar dataKey="medium" name="Medium" stackId="a" fill="url(#mediumGrad)" isAnimationActive={true} animationDuration={1400} animationEasing="ease-in-out" />
+                <Bar dataKey="hard" name="Hard" stackId="a" fill="url(#hardGrad)" radius={[6, 6, 0, 0]} isAnimationActive={true} animationDuration={1400} animationEasing="ease-in-out" />
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </motion.div>
 
         {/* Chart 2: Easy / Medium / Hard Distribution */}
-        <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-3">
+        <motion.div 
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.08 }}
+          className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-3 hover:shadow-md transition-shadow"
+        >
           <div className="border-b border-slate-100 pb-2">
             <h3 className="text-sm font-bold text-slate-800">Difficulty Distribution</h3>
             <p className="text-[11px] text-slate-500">Total department questions solved by difficulty tier</p>
@@ -356,8 +394,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   cy="50%"
                   innerRadius={55}
                   outerRadius={85}
-                  paddingAngle={3}
+                  paddingAngle={4}
+                  cornerRadius={6}
                   dataKey="value"
+                  isAnimationActive={true}
+                  animationDuration={1500}
+                  animationEasing="ease-out"
                   label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                   labelLine={false}
                 >
@@ -372,10 +414,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </PieChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </motion.div>
 
         {/* Chart 3: Problems Solved Over Time */}
-        <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-3">
+        <motion.div 
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.16 }}
+          className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-3 hover:shadow-md transition-shadow"
+        >
           <div className="border-b border-slate-100 pb-2">
             <h3 className="text-sm font-bold text-slate-800">Historical Solved Progression</h3>
             <p className="text-[11px] text-slate-500">Cumulative department problem volume over snapshot capture dates</p>
@@ -384,9 +431,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={timeline}>
                 <defs>
-                  <linearGradient id="colorSolved" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#2563eb" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#2563eb" stopOpacity={0.0} />
+                  <linearGradient id="colorSolvedGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0.02} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
@@ -395,14 +442,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <Tooltip
                   contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', color: '#1e293b', borderRadius: '8px', fontSize: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                 />
-                <Area type="monotone" dataKey="total_problems" name="Total Solved" stroke="#2563eb" strokeWidth={2} fillOpacity={1} fill="url(#colorSolved)" />
+                <Area 
+                  type="monotone" 
+                  dataKey="total_problems" 
+                  name="Total Solved" 
+                  stroke="#2563eb" 
+                  strokeWidth={3} 
+                  fillOpacity={1} 
+                  fill="url(#colorSolvedGrad)" 
+                  isAnimationActive={true}
+                  animationDuration={1600}
+                  animationEasing="ease-in-out"
+                />
               </AreaChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </motion.div>
 
         {/* Chart 4: Contest Rating Progression Trend */}
-        <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-3">
+        <motion.div 
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.24 }}
+          className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-3 hover:shadow-md transition-shadow"
+        >
           <div className="border-b border-slate-100 pb-2">
             <h3 className="text-sm font-bold text-slate-800">Contest Rating Progression</h3>
             <p className="text-[11px] text-slate-500">Average department contest rating benchmark over time</p>
@@ -417,15 +480,40 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', color: '#1e293b', borderRadius: '8px', fontSize: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                 />
                 <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '6px' }} />
-                <Line type="monotone" dataKey="avg_rating" name="Avg Contest Rating" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3, fill: '#f59e0b' }} />
-                <Line type="monotone" dataKey="avg_problems" name="Avg Problems / Student" stroke="#0284c7" strokeWidth={2} strokeDasharray="3 3" />
+                <Line 
+                  type="monotone" 
+                  dataKey="avg_rating" 
+                  name="Avg Contest Rating" 
+                  stroke="#f59e0b" 
+                  strokeWidth={3} 
+                  dot={{ r: 4, fill: '#f59e0b', strokeWidth: 2, stroke: '#ffffff' }}
+                  activeDot={{ r: 6, stroke: '#f59e0b', strokeWidth: 2 }}
+                  isAnimationActive={true}
+                  animationDuration={1500}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="avg_problems" 
+                  name="Avg Problems / Student" 
+                  stroke="#0284c7" 
+                  strokeWidth={2} 
+                  strokeDasharray="4 4"
+                  dot={{ r: 3, fill: '#0284c7' }}
+                  isAnimationActive={true}
+                  animationDuration={1500}
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </motion.div>
 
         {/* Chart 5: Section Comparison */}
-        <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-3">
+        <motion.div 
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.32 }}
+          className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-3 hover:shadow-md transition-shadow"
+        >
           <div className="flex items-center justify-between border-b border-slate-100 pb-2">
             <div>
               <h3 className="text-sm font-bold text-slate-800">Section Comparison (A vs B vs C)</h3>
@@ -442,6 +530,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="h-60 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={sectionChartData}>
+                <defs>
+                  <linearGradient id="secProblemsGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={1} />
+                    <stop offset="100%" stopColor="#1d4ed8" stopOpacity={0.8} />
+                  </linearGradient>
+                  <linearGradient id="secEngageGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#10b981" stopOpacity={1} />
+                    <stop offset="100%" stopColor="#047857" stopOpacity={0.8} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                 <XAxis dataKey="section" stroke="#64748b" fontSize={11} tickLine={false} />
                 <YAxis stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} />
@@ -449,15 +547,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', color: '#1e293b', borderRadius: '8px', fontSize: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                 />
                 <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '6px' }} />
-                <Bar dataKey="avgProblems" name="Avg Problems / Student" fill="#2563eb" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="avgEngagement" name="Avg CSBS Engagement" fill="#10b981" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="avgProblems" name="Avg Problems / Student" fill="url(#secProblemsGrad)" radius={[6, 6, 0, 0]} isAnimationActive={true} animationDuration={1400} />
+                <Bar dataKey="avgEngagement" name="Avg CSBS Engagement" fill="url(#secEngageGrad)" radius={[6, 6, 0, 0]} isAnimationActive={true} animationDuration={1400} />
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </motion.div>
 
         {/* Chart 6: Weekly Activity Level */}
-        <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-3">
+        <motion.div 
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.4 }}
+          className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-3 hover:shadow-md transition-shadow"
+        >
           <div className="border-b border-slate-100 pb-2">
             <h3 className="text-sm font-bold text-slate-800">Student Activity Status</h3>
             <p className="text-[11px] text-slate-500">Distribution of active vs inactive students across sections</p>
@@ -465,6 +568,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="h-60 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={sectionStats}>
+                <defs>
+                  <linearGradient id="activeGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#22c55e" stopOpacity={1} />
+                    <stop offset="100%" stopColor="#15803d" stopOpacity={0.85} />
+                  </linearGradient>
+                  <linearGradient id="inactiveGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#f97316" stopOpacity={1} />
+                    <stop offset="100%" stopColor="#c2410c" stopOpacity={0.85} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                 <XAxis dataKey="section" stroke="#64748b" fontSize={11} tickLine={false} />
                 <YAxis stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} />
@@ -472,15 +585,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', color: '#1e293b', borderRadius: '8px', fontSize: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                 />
                 <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '6px' }} />
-                <Bar dataKey="active_students" name="Active (≤14d)" fill="#10b981" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="inactive_students" name="Inactive (>14d)" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="active_students" name="Active (≤14d)" fill="url(#activeGrad)" radius={[6, 6, 0, 0]} isAnimationActive={true} animationDuration={1400} />
+                <Bar dataKey="inactive_students" name="Inactive (>14d)" fill="url(#inactiveGrad)" radius={[6, 6, 0, 0]} isAnimationActive={true} animationDuration={1400} />
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </motion.div>
 
         {/* Chart 7: Monthly Improvement (+Problems) */}
-        <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-3">
+        <motion.div 
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.48 }}
+          className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-3 hover:shadow-md transition-shadow"
+        >
           <div className="flex items-center justify-between border-b border-slate-100 pb-2">
             <div>
               <h3 className="text-sm font-bold text-slate-800">Monthly Surge Leaders</h3>
@@ -497,42 +615,64 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="h-60 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={monthlyImpData}>
+                <defs>
+                  <linearGradient id="surgeFlameGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#f43f5e" stopOpacity={1} />
+                    <stop offset="100%" stopColor="#be123c" stopOpacity={0.85} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                 <XAxis dataKey="name" stroke="#64748b" fontSize={11} tickLine={false} />
                 <YAxis stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} />
                 <Tooltip
                   contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', color: '#1e293b', borderRadius: '8px', fontSize: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                 />
-                <Bar dataKey="added" name="Problems Added (Month)" fill="#10b981" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="added" name="Problems Added (Month)" fill="url(#surgeFlameGrad)" radius={[6, 6, 0, 0]} isAnimationActive={true} animationDuration={1500} />
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </motion.div>
 
         {/* Chart 8: Students Grouped by Performance Tier */}
-        <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-3">
+        <motion.div 
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.56 }}
+          className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-3 hover:shadow-md transition-shadow"
+        >
           <div className="border-b border-slate-100 pb-2">
             <h3 className="text-sm font-bold text-slate-800">Performance Tier Distribution</h3>
             <p className="text-[11px] text-slate-500">Beginner (0-49), Developing (50-99), Proficient (100-199), Advanced (200+)</p>
           </div>
-          <div className="h-60 w-full">
+          <div className="h-60 w-full flex items-center justify-center">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={tierData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="name" stroke="#64748b" fontSize={11} tickLine={false} />
-                <YAxis stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} />
+              <PieChart>
+                <Pie
+                  data={tierData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={55}
+                  outerRadius={85}
+                  paddingAngle={4}
+                  cornerRadius={6}
+                  dataKey="count"
+                  isAnimationActive={true}
+                  animationDuration={1500}
+                  animationEasing="ease-out"
+                >
+                  {tierData.map((entry, index) => (
+                    <Cell key={`cell-tier-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
                 <Tooltip
+                  formatter={(value: any, name: any) => [`${value} Students`, name]}
                   contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', color: '#1e293b', borderRadius: '8px', fontSize: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                 />
-                <Bar dataKey="count" name="Students in Tier" fill="#2563eb" radius={[4, 4, 0, 0]}>
-                  {tierData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Bar>
-              </BarChart>
+                <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '6px' }} />
+              </PieChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </motion.div>
 
       </div>
 

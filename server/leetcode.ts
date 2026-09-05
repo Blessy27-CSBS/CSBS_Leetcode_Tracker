@@ -33,6 +33,7 @@ export interface LeetCodeFetchResult {
       timestamp: string;
       statusDisplay?: string;
       lang?: string;
+      language?: string;
     }[];
   };
 }
@@ -99,7 +100,14 @@ query getUserProfile($username: String!) {
       name
     }
   }
-  recentAcSubmissionList(username: $username, limit: 15) {
+  recentSubmissionList(username: $username, limit: 20) {
+    title
+    titleSlug
+    timestamp
+    statusDisplay
+    lang
+  }
+  recentAcSubmissionList(username: $username, limit: 20) {
     id
     title
     titleSlug
@@ -278,13 +286,29 @@ export async function fetchLeetCodeProfile(
         icon: b.icon,
       }));
 
-      // Recent AC Submissions
-      const recentList = (json.data?.recentAcSubmissionList || []).map((s: any) => ({
-        title: s.title,
-        titleSlug: s.titleSlug,
-        timestamp: s.timestamp,
-        statusDisplay: 'Accepted',
-      }));
+      // Recent AC Submissions with Language & Timestamp
+      const rawSubmissions: any[] = json.data?.recentSubmissionList && json.data.recentSubmissionList.length > 0
+        ? json.data.recentSubmissionList
+        : (json.data?.recentAcSubmissionList || []);
+
+      const topLang = languages.length > 0 ? languages[0].languageName : 'Python3';
+
+      const recentList = rawSubmissions.map((s: any) => {
+        let tsStr = s.timestamp;
+        const tsNum = Number(s.timestamp);
+        if (!isNaN(tsNum) && tsNum > 0) {
+          tsStr = tsNum > 1e11 ? new Date(tsNum).toISOString() : new Date(tsNum * 1000).toISOString();
+        }
+
+        return {
+          title: s.title || 'Algorithmic Problem',
+          titleSlug: s.titleSlug || (s.title ? s.title.toLowerCase().replace(/[^a-z0-9]+/g, '-') : 'problem'),
+          timestamp: tsStr || (lastActive ? new Date(lastActive).toISOString() : new Date().toISOString()),
+          lang: s.lang || s.language || topLang,
+          language: s.lang || s.language || topLang,
+          statusDisplay: s.statusDisplay || 'Accepted',
+        };
+      });
 
       return {
         status: 'SUCCESS',

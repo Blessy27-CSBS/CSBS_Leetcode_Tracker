@@ -10,10 +10,10 @@ import {
   POTDItem,
   CuratedTrack,
   CuratedProblem,
+  ContestItem,
   AuthUser,
   UserRole
 } from '../src/types.js';
-import { SEED_TRACKS, SEED_PROBLEMS, ROTATING_POTD_POOL } from './seed_tracks.js';
 
 const DATA_DIR = process.env.VERCEL ? '/tmp/data' : path.join(process.cwd(), 'data');
 const DB_FILE = path.join(DATA_DIR, 'csbs_tracker.db');
@@ -60,6 +60,7 @@ interface MemoryStore {
   potd_items: POTDItem[];
   curated_tracks: CuratedTrack[];
   curated_problems: CuratedProblem[];
+  contests: ContestItem[];
   users: DBUser[];
 }
 
@@ -72,8 +73,9 @@ export class DatabaseService {
     settings: DEFAULT_SETTINGS,
     logs: [],
     potd_items: [],
-    curated_tracks: [...SEED_TRACKS],
-    curated_problems: [...SEED_PROBLEMS],
+    curated_tracks: [],
+    curated_problems: [],
+    contests: [],
     users: []
   };
 
@@ -180,15 +182,19 @@ export class DatabaseService {
 
         CREATE TABLE IF NOT EXISTS potd_items (
           id TEXT PRIMARY KEY,
-          date TEXT UNIQUE NOT NULL,
+          date TEXT NOT NULL,
           title TEXT NOT NULL,
           titleSlug TEXT NOT NULL,
           difficulty TEXT NOT NULL,
           topic TEXT NOT NULL,
           acceptanceRate REAL,
           leetcodeUrl TEXT NOT NULL,
-          hint TEXT
+          hint TEXT,
+          orderIndex INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL
         );
+
+        CREATE INDEX IF NOT EXISTS idx_potd_date ON potd_items(date);
 
         CREATE TABLE IF NOT EXISTS curated_tracks (
           id TEXT PRIMARY KEY,
@@ -209,6 +215,20 @@ export class DatabaseService {
           orderIndex INTEGER NOT NULL,
           leetcodeUrl TEXT NOT NULL,
           FOREIGN KEY (trackId) REFERENCES curated_tracks(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS contests (
+          id TEXT PRIMARY KEY,
+          title TEXT NOT NULL,
+          titleSlug TEXT NOT NULL,
+          type TEXT NOT NULL,
+          contestUrl TEXT NOT NULL,
+          startTime TEXT NOT NULL,
+          durationMinutes INTEGER NOT NULL DEFAULT 90,
+          description TEXT,
+          problems TEXT,
+          status TEXT NOT NULL DEFAULT 'UPCOMING',
+          created_at TEXT NOT NULL
         );
 
         CREATE TABLE IF NOT EXISTS logs (
@@ -237,14 +257,24 @@ export class DatabaseService {
       // Migrations for existing settings table
       try {
         this.sqliteDb.exec('ALTER TABLE settings ADD COLUMN auto_sync_enabled INTEGER NOT NULL DEFAULT 0;');
-      } catch (e) {
-        // already exists
-      }
+      } catch (e) {}
       try {
         this.sqliteDb.exec('ALTER TABLE settings ADD COLUMN auto_sync_interval_hours INTEGER NOT NULL DEFAULT 12;');
-      } catch (e) {
-        // already exists
-      }
+      } catch (e) {}
+      try {
+        this.sqliteDb.exec('ALTER TABLE potd_items ADD COLUMN orderIndex INTEGER NOT NULL DEFAULT 0;');
+      } catch (e) {}
+      try {
+        this.sqliteDb.exec('ALTER TABLE potd_items ADD COLUMN created_at TEXT;');
+      } catch (e) {}
+
+      // Purge any legacy predefined seed tracks so only faculty-created tracks appear
+      try {
+        this.sqliteDb.exec(`
+          DELETE FROM curated_tracks WHERE id IN ('blind75', 'top150', 'csbs_core') OR category IN ('blind75', 'top150', 'csbs_core');
+          DELETE FROM curated_problems WHERE trackId IN ('blind75', 'top150', 'csbs_core');
+        `);
+      } catch (e) {}
 
       const settingsRow = this.sqliteDb.prepare('SELECT id FROM settings WHERE id = 1').get();
       if (!settingsRow) {
@@ -267,9 +297,6 @@ export class DatabaseService {
         );
       }
 
-      // Seed curated tracks and problems if empty
-      this.seedCuratedTracks();
-
       this.migrateFromLegacyJSON();
 
       // Seed initial staff and student auth users
@@ -279,35 +306,6 @@ export class DatabaseService {
       this.isFallbackMode = true;
       this.loadMemoryStore();
       this.seedInitialUsers();
-    }
-  }
-
-  private seedCuratedTracks() {
-    if (this.isFallbackMode || !this.sqliteDb) return;
-    try {
-      const trackCount = (this.sqliteDb.prepare('SELECT COUNT(*) as c FROM curated_tracks').get() as { c: number }).c;
-      if (trackCount === 0) {
-        const insertTrack = this.sqliteDb.prepare(`
-          INSERT OR REPLACE INTO curated_tracks (id, title, description, category, icon, totalProblems)
-          VALUES (?, ?, ?, ?, ?, ?)
-        `);
-        const insertProb = this.sqliteDb.prepare(`
-          INSERT OR REPLACE INTO curated_problems (id, trackId, title, titleSlug, difficulty, topic, orderIndex, leetcodeUrl)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `);
-
-        const seedTx = this.sqliteDb.transaction(() => {
-          for (const t of SEED_TRACKS) {
-            insertTrack.run(t.id, t.title, t.description, t.category, t.icon || 'Code', t.totalProblems);
-          }
-          for (const p of SEED_PROBLEMS) {
-            insertProb.run(p.id, p.trackId, p.title, p.titleSlug, p.difficulty, p.topic, p.orderIndex, p.leetcodeUrl);
-          }
-        });
-        seedTx();
-      }
-    } catch (e) {
-      console.error('Failed to seed curated tracks:', e);
     }
   }
 
@@ -323,8 +321,9 @@ export class DatabaseService {
           settings: parsed.settings || DEFAULT_SETTINGS,
           logs: parsed.logs || [],
           potd_items: parsed.potd_items || [],
-          curated_tracks: parsed.curated_tracks || [...SEED_TRACKS],
-          curated_problems: parsed.curated_problems || [...SEED_PROBLEMS],
+          curated_tracks: (parsed.curated_tracks || []).filter((t: any) => t.category !== 'blind75' && t.category !== 'top150' && t.category !== 'csbs_core' && t.id !== 'blind75' && t.id !== 'top150' && t.id !== 'csbs_core'),
+          curated_problems: (parsed.curated_problems || []).filter((p: any) => p.trackId !== 'blind75' && p.trackId !== 'top150' && p.trackId !== 'csbs_core'),
+          contests: parsed.contests || [],
           users: parsed.users || []
         };
       } catch (e) {
@@ -951,164 +950,440 @@ export class DatabaseService {
     return updated;
   }
 
-  // POTD (Problem of the Day)
-  public getTodayPOTD(): POTDItem {
-    const today = new Date().toISOString().split('T')[0];
+  // ================= POTD (PROBLEM OF THE DAY) =================
+  public getTodayPOTDList(targetDate?: string): POTDItem[] {
+    const today = targetDate || new Date().toISOString().split('T')[0];
 
     if (this.isFallbackMode || !this.sqliteDb) {
-      let item = this.memStore.potd_items.find(p => p.date === today);
-      if (!item) {
-        // Pick deterministic item based on day
-        const dayIdx = Math.abs(this.hashCode(today)) % ROTATING_POTD_POOL.length;
-        const template = ROTATING_POTD_POOL[dayIdx];
-        item = {
-          id: `potd-${today}`,
-          date: today,
-          ...template,
-        };
-        this.memStore.potd_items.push(item);
-        this.persistMemoryStore();
-      }
-      return item;
+      return this.memStore.potd_items
+        .filter(p => p.date === today)
+        .sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
     }
 
-    const row = this.sqliteDb.prepare('SELECT * FROM potd_items WHERE date = ?').get(today) as any;
-    if (row) {
-      return {
-        id: row.id,
-        date: row.date,
-        title: row.title,
-        titleSlug: row.titleSlug,
-        difficulty: row.difficulty,
-        topic: row.topic,
-        acceptanceRate: row.acceptanceRate,
-        leetcodeUrl: row.leetcodeUrl,
-        hint: row.hint,
-      };
-    }
+    try {
+      const rows = this.sqliteDb.prepare(`
+        SELECT * FROM potd_items WHERE date = ? ORDER BY orderIndex ASC, created_at ASC
+      `).all(today) as any[];
 
-    // Pick deterministic item based on day from pool
-    const dayIdx = Math.abs(this.hashCode(today)) % ROTATING_POTD_POOL.length;
-    const template = ROTATING_POTD_POOL[dayIdx];
-    const newPOTD: POTDItem = {
-      id: `potd-${today}`,
-      date: today,
-      ...template,
+      return rows.map(r => ({
+        id: r.id,
+        date: r.date,
+        title: r.title,
+        titleSlug: r.titleSlug,
+        difficulty: r.difficulty,
+        topic: r.topic,
+        acceptanceRate: r.acceptanceRate,
+        leetcodeUrl: r.leetcodeUrl,
+        hint: r.hint,
+        orderIndex: r.orderIndex || 0,
+        created_at: r.created_at,
+      }));
+    } catch (e) {
+      console.error('Error fetching POTD list:', e);
+      return [];
+    }
+  }
+
+  public getTodayPOTD(targetDate?: string): POTDItem | null {
+    const list = this.getTodayPOTDList(targetDate);
+    return list.length > 0 ? list[0] : null;
+  }
+
+  public addPOTDItem(item: Omit<POTDItem, 'id' | 'created_at'>): POTDItem {
+    const id = `potd_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const created_at = new Date().toISOString();
+    const date = item.date || created_at.split('T')[0];
+
+    const newItem: POTDItem = {
+      id,
+      date,
+      title: item.title,
+      titleSlug: item.titleSlug,
+      difficulty: item.difficulty || 'Medium',
+      topic: item.topic || 'DSA',
+      acceptanceRate: item.acceptanceRate || 50,
+      leetcodeUrl: item.leetcodeUrl || `https://leetcode.com/problems/${item.titleSlug}/`,
+      hint: item.hint || '',
+      orderIndex: item.orderIndex || 0,
+      created_at,
     };
+
+    if (this.isFallbackMode || !this.sqliteDb) {
+      this.memStore.potd_items.push(newItem);
+      this.persistMemoryStore();
+      return newItem;
+    }
 
     try {
       this.sqliteDb.prepare(`
-        INSERT OR REPLACE INTO potd_items (id, date, title, titleSlug, difficulty, topic, acceptanceRate, leetcodeUrl, hint)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO potd_items (id, date, title, titleSlug, difficulty, topic, acceptanceRate, leetcodeUrl, hint, orderIndex, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
-        newPOTD.id,
-        newPOTD.date,
-        newPOTD.title,
-        newPOTD.titleSlug,
-        newPOTD.difficulty,
-        newPOTD.topic,
-        newPOTD.acceptanceRate || 50,
-        newPOTD.leetcodeUrl,
-        newPOTD.hint || ''
+        newItem.id,
+        newItem.date,
+        newItem.title,
+        newItem.titleSlug,
+        newItem.difficulty,
+        newItem.topic,
+        newItem.acceptanceRate || 50,
+        newItem.leetcodeUrl,
+        newItem.hint || '',
+        newItem.orderIndex || 0,
+        newItem.created_at
       );
     } catch (e) {
-      console.error('Failed to insert auto-generated POTD:', e);
+      console.error('Error inserting POTD item:', e);
     }
 
-    return newPOTD;
+    return newItem;
+  }
+
+  public updatePOTDItem(id: string, item: Partial<POTDItem>): POTDItem | null {
+    if (this.isFallbackMode || !this.sqliteDb) {
+      const idx = this.memStore.potd_items.findIndex(p => p.id === id);
+      if (idx === -1) return null;
+      this.memStore.potd_items[idx] = { ...this.memStore.potd_items[idx], ...item };
+      this.persistMemoryStore();
+      return this.memStore.potd_items[idx];
+    }
+
+    const current = this.sqliteDb.prepare('SELECT * FROM potd_items WHERE id = ?').get(id) as any;
+    if (!current) return null;
+
+    const updated = { ...current, ...item };
+    this.sqliteDb.prepare(`
+      UPDATE potd_items SET
+        date = ?, title = ?, titleSlug = ?, difficulty = ?, topic = ?, acceptanceRate = ?, leetcodeUrl = ?, hint = ?, orderIndex = ?
+      WHERE id = ?
+    `).run(
+      updated.date, updated.title, updated.titleSlug, updated.difficulty, updated.topic,
+      updated.acceptanceRate, updated.leetcodeUrl, updated.hint, updated.orderIndex || 0, id
+    );
+
+    return updated;
+  }
+
+  public deletePOTDItem(id: string): boolean {
+    if (this.isFallbackMode || !this.sqliteDb) {
+      const initialLen = this.memStore.potd_items.length;
+      this.memStore.potd_items = this.memStore.potd_items.filter(p => p.id !== id);
+      this.persistMemoryStore();
+      return this.memStore.potd_items.length < initialLen;
+    }
+
+    const res = this.sqliteDb.prepare('DELETE FROM potd_items WHERE id = ?').run(id);
+    return res.changes > 0;
   }
 
   public setPOTD(item: POTDItem): void {
-    if (this.isFallbackMode || !this.sqliteDb) {
-      this.memStore.potd_items = this.memStore.potd_items.filter(p => p.date !== item.date);
-      this.memStore.potd_items.push(item);
-      this.persistMemoryStore();
-      return;
+    if (item.id) {
+      this.updatePOTDItem(item.id, item);
+    } else {
+      this.addPOTDItem(item);
     }
-
-    this.sqliteDb.prepare(`
-      INSERT OR REPLACE INTO potd_items (id, date, title, titleSlug, difficulty, topic, acceptanceRate, leetcodeUrl, hint)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      item.id || `potd-${item.date}`,
-      item.date,
-      item.title,
-      item.titleSlug,
-      item.difficulty,
-      item.topic,
-      item.acceptanceRate || 50,
-      item.leetcodeUrl,
-      item.hint || ''
-    );
   }
 
-  public getPOTDHistory(limit: number = 30): POTDItem[] {
+  public getPOTDHistory(limit: number = 50): POTDItem[] {
     if (this.isFallbackMode || !this.sqliteDb) {
       return [...this.memStore.potd_items].sort((a, b) => b.date.localeCompare(a.date)).slice(0, limit);
     }
-    const rows = this.sqliteDb.prepare('SELECT * FROM potd_items ORDER BY date DESC LIMIT ?').all(limit) as any[];
-    return rows.map(r => ({
-      id: r.id,
-      date: r.date,
-      title: r.title,
-      titleSlug: r.titleSlug,
-      difficulty: r.difficulty,
-      topic: r.topic,
-      acceptanceRate: r.acceptanceRate,
-      leetcodeUrl: r.leetcodeUrl,
-      hint: r.hint,
-    }));
+    try {
+      const rows = this.sqliteDb.prepare('SELECT * FROM potd_items ORDER BY date DESC, orderIndex ASC LIMIT ?').all(limit) as any[];
+      return rows.map(r => ({
+        id: r.id,
+        date: r.date,
+        title: r.title,
+        titleSlug: r.titleSlug,
+        difficulty: r.difficulty,
+        topic: r.topic,
+        acceptanceRate: r.acceptanceRate,
+        leetcodeUrl: r.leetcodeUrl,
+        hint: r.hint,
+        orderIndex: r.orderIndex || 0,
+        created_at: r.created_at,
+      }));
+    } catch (e) {
+      return [];
+    }
   }
 
-  // Curated Tracks
+  // ================= CONTESTS MODULE =================
+  public getContests(): ContestItem[] {
+    if (this.isFallbackMode || !this.sqliteDb) {
+      return this.memStore.contests || [];
+    }
+
+    try {
+      const rows = this.sqliteDb.prepare('SELECT * FROM contests ORDER BY startTime DESC').all() as any[];
+      return rows.map(r => ({
+        id: r.id,
+        title: r.title,
+        titleSlug: r.titleSlug,
+        type: r.type,
+        contestUrl: r.contestUrl,
+        startTime: r.startTime,
+        durationMinutes: r.durationMinutes || 90,
+        description: r.description,
+        problems: r.problems ? JSON.parse(r.problems) : [],
+        status: r.status || 'UPCOMING',
+        created_at: r.created_at,
+      }));
+    } catch (e) {
+      console.error('Error fetching contests:', e);
+      return [];
+    }
+  }
+
+  public getContestById(id: string): ContestItem | null {
+    if (this.isFallbackMode || !this.sqliteDb) {
+      return (this.memStore.contests || []).find(c => c.id === id) || null;
+    }
+
+    const r = this.sqliteDb.prepare('SELECT * FROM contests WHERE id = ?').get(id) as any;
+    if (!r) return null;
+    return {
+      id: r.id,
+      title: r.title,
+      titleSlug: r.titleSlug,
+      type: r.type,
+      contestUrl: r.contestUrl,
+      startTime: r.startTime,
+      durationMinutes: r.durationMinutes || 90,
+      description: r.description,
+      problems: r.problems ? JSON.parse(r.problems) : [],
+      status: r.status || 'UPCOMING',
+      created_at: r.created_at,
+    };
+  }
+
+  public addContest(item: Omit<ContestItem, 'id' | 'created_at'>): ContestItem {
+    const id = `contest_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const created_at = new Date().toISOString();
+
+    const newContest: ContestItem = {
+      id,
+      title: item.title,
+      titleSlug: item.titleSlug || item.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      type: item.type || 'Weekly Contest',
+      contestUrl: item.contestUrl || `https://leetcode.com/contest/${item.titleSlug || 'contest'}`,
+      startTime: item.startTime || new Date(Date.now() + 86400000).toISOString(),
+      durationMinutes: item.durationMinutes || 90,
+      description: item.description || '',
+      problems: item.problems || [],
+      status: item.status || 'UPCOMING',
+      created_at,
+    };
+
+    if (this.isFallbackMode || !this.sqliteDb) {
+      if (!this.memStore.contests) this.memStore.contests = [];
+      this.memStore.contests.push(newContest);
+      this.persistMemoryStore();
+      return newContest;
+    }
+
+    try {
+      this.sqliteDb.prepare(`
+        INSERT INTO contests (id, title, titleSlug, type, contestUrl, startTime, durationMinutes, description, problems, status, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        newContest.id,
+        newContest.title,
+        newContest.titleSlug,
+        newContest.type,
+        newContest.contestUrl,
+        newContest.startTime,
+        newContest.durationMinutes,
+        newContest.description || '',
+        JSON.stringify(newContest.problems || []),
+        newContest.status,
+        newContest.created_at
+      );
+    } catch (e) {
+      console.error('Error inserting contest:', e);
+    }
+
+    return newContest;
+  }
+
+  public updateContest(id: string, item: Partial<ContestItem>): ContestItem | null {
+    if (this.isFallbackMode || !this.sqliteDb) {
+      const idx = (this.memStore.contests || []).findIndex(c => c.id === id);
+      if (idx === -1) return null;
+      this.memStore.contests[idx] = { ...this.memStore.contests[idx], ...item };
+      this.persistMemoryStore();
+      return this.memStore.contests[idx];
+    }
+
+    const current = this.getContestById(id);
+    if (!current) return null;
+
+    const updated: ContestItem = { ...current, ...item };
+    this.sqliteDb.prepare(`
+      UPDATE contests SET
+        title = ?, titleSlug = ?, type = ?, contestUrl = ?, startTime = ?, durationMinutes = ?, description = ?, problems = ?, status = ?
+      WHERE id = ?
+    `).run(
+      updated.title,
+      updated.titleSlug,
+      updated.type,
+      updated.contestUrl,
+      updated.startTime,
+      updated.durationMinutes,
+      updated.description || '',
+      JSON.stringify(updated.problems || []),
+      updated.status,
+      id
+    );
+
+    return updated;
+  }
+
+  public deleteContest(id: string): boolean {
+    if (this.isFallbackMode || !this.sqliteDb) {
+      const initial = (this.memStore.contests || []).length;
+      this.memStore.contests = (this.memStore.contests || []).filter(c => c.id !== id);
+      this.persistMemoryStore();
+      return (this.memStore.contests || []).length < initial;
+    }
+
+    const res = this.sqliteDb.prepare('DELETE FROM contests WHERE id = ?').run(id);
+    return res.changes > 0;
+  }
+
+  // ================= CURATED TRACKS & PROBLEMS =================
   public getTracks(): CuratedTrack[] {
     if (this.isFallbackMode || !this.sqliteDb) {
-      return this.memStore.curated_tracks || SEED_TRACKS;
+      return this.memStore.curated_tracks || [];
     }
-    const tracks = this.sqliteDb.prepare('SELECT * FROM curated_tracks').all() as any[];
-    return tracks.map(t => {
-      const probCount = (this.sqliteDb.prepare('SELECT COUNT(*) as c FROM curated_problems WHERE trackId = ?').get(t.id) as { c: number }).c;
-      return {
-        id: t.id,
-        title: t.title,
-        description: t.description,
-        category: t.category,
-        icon: t.icon,
-        totalProblems: probCount || t.totalProblems,
-      };
-    });
+    try {
+      const tracks = this.sqliteDb.prepare('SELECT * FROM curated_tracks').all() as any[];
+      return tracks.map(t => {
+        const probCount = (this.sqliteDb.prepare('SELECT COUNT(*) as c FROM curated_problems WHERE trackId = ?').get(t.id) as { c: number }).c;
+        return {
+          id: t.id,
+          title: t.title,
+          description: t.description,
+          category: t.category,
+          icon: t.icon,
+          totalProblems: probCount || t.totalProblems || 0,
+        };
+      });
+    } catch (e) {
+      return [];
+    }
   }
 
   public getTrackById(trackId: string): (CuratedTrack & { problems: CuratedProblem[] }) | null {
     if (this.isFallbackMode || !this.sqliteDb) {
-      const track = (this.memStore.curated_tracks || SEED_TRACKS).find(t => t.id === trackId);
+      const track = (this.memStore.curated_tracks || []).find(t => t.id === trackId);
       if (!track) return null;
-      const problems = (this.memStore.curated_problems || SEED_PROBLEMS).filter(p => p.trackId === trackId);
+      const problems = (this.memStore.curated_problems || []).filter(p => p.trackId === trackId);
       return { ...track, problems };
     }
 
-    const track = this.sqliteDb.prepare('SELECT * FROM curated_tracks WHERE id = ?').get(trackId) as any;
-    if (!track) return null;
+    try {
+      const track = this.sqliteDb.prepare('SELECT * FROM curated_tracks WHERE id = ?').get(trackId) as any;
+      if (!track) return null;
 
-    const problems = this.sqliteDb.prepare('SELECT * FROM curated_problems WHERE trackId = ? ORDER BY orderIndex ASC').all(trackId) as any[];
-    return {
-      id: track.id,
+      const problems = this.sqliteDb.prepare('SELECT * FROM curated_problems WHERE trackId = ? ORDER BY orderIndex ASC').all(trackId) as any[];
+      return {
+        id: track.id,
+        title: track.title,
+        description: track.description,
+        category: track.category,
+        icon: track.icon,
+        totalProblems: problems.length,
+        problems: problems.map(p => ({
+          id: p.id,
+          trackId: p.trackId,
+          title: p.title,
+          titleSlug: p.titleSlug,
+          difficulty: p.difficulty,
+          topic: p.topic,
+          orderIndex: p.orderIndex,
+          leetcodeUrl: p.leetcodeUrl,
+        }))
+      };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  public addTrack(track: Omit<CuratedTrack, 'id'>): CuratedTrack {
+    const id = `track_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const newTrack: CuratedTrack = {
+      id,
       title: track.title,
       description: track.description,
-      category: track.category,
-      icon: track.icon,
-      totalProblems: problems.length,
-      problems: problems.map(p => ({
-        id: p.id,
-        trackId: p.trackId,
-        title: p.title,
-        titleSlug: p.titleSlug,
-        difficulty: p.difficulty,
-        topic: p.topic,
-        orderIndex: p.orderIndex,
-        leetcodeUrl: p.leetcodeUrl,
-      }))
+      category: track.category || 'custom',
+      icon: track.icon || 'Code',
+      totalProblems: 0,
     };
+
+    if (this.isFallbackMode || !this.sqliteDb) {
+      if (!this.memStore.curated_tracks) this.memStore.curated_tracks = [];
+      this.memStore.curated_tracks.push(newTrack);
+      this.persistMemoryStore();
+      return newTrack;
+    }
+
+    this.sqliteDb.prepare(`
+      INSERT INTO curated_tracks (id, title, description, category, icon, totalProblems)
+      VALUES (?, ?, ?, ?, ?, 0)
+    `).run(newTrack.id, newTrack.title, newTrack.description, newTrack.category, newTrack.icon);
+
+    return newTrack;
+  }
+
+  public deleteTrack(id: string): boolean {
+    if (this.isFallbackMode || !this.sqliteDb) {
+      this.memStore.curated_tracks = (this.memStore.curated_tracks || []).filter(t => t.id !== id);
+      this.memStore.curated_problems = (this.memStore.curated_problems || []).filter(p => p.trackId !== id);
+      this.persistMemoryStore();
+      return true;
+    }
+
+    const res = this.sqliteDb.prepare('DELETE FROM curated_tracks WHERE id = ?').run(id);
+    return res.changes > 0;
+  }
+
+  public addProblemToTrack(prob: Omit<CuratedProblem, 'id'>): CuratedProblem {
+    const id = `prob_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const newProb: CuratedProblem = {
+      id,
+      trackId: prob.trackId,
+      title: prob.title,
+      titleSlug: prob.titleSlug,
+      difficulty: prob.difficulty,
+      topic: prob.topic,
+      orderIndex: prob.orderIndex || 0,
+      leetcodeUrl: prob.leetcodeUrl || `https://leetcode.com/problems/${prob.titleSlug}/`,
+    };
+
+    if (this.isFallbackMode || !this.sqliteDb) {
+      if (!this.memStore.curated_problems) this.memStore.curated_problems = [];
+      this.memStore.curated_problems.push(newProb);
+      this.persistMemoryStore();
+      return newProb;
+    }
+
+    this.sqliteDb.prepare(`
+      INSERT INTO curated_problems (id, trackId, title, titleSlug, difficulty, topic, orderIndex, leetcodeUrl)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(newProb.id, newProb.trackId, newProb.title, newProb.titleSlug, newProb.difficulty, newProb.topic, newProb.orderIndex, newProb.leetcodeUrl);
+
+    return newProb;
+  }
+
+  public deleteProblemFromTrack(problemId: string): boolean {
+    if (this.isFallbackMode || !this.sqliteDb) {
+      this.memStore.curated_problems = (this.memStore.curated_problems || []).filter(p => p.id !== problemId);
+      this.persistMemoryStore();
+      return true;
+    }
+
+    const res = this.sqliteDb.prepare('DELETE FROM curated_problems WHERE id = ?').run(problemId);
+    return res.changes > 0;
   }
 
   private hashCode(str: string): number {
@@ -1130,8 +1405,9 @@ export class DatabaseService {
         settings: DEFAULT_SETTINGS,
         logs: [],
         potd_items: [],
-        curated_tracks: [...SEED_TRACKS],
-        curated_problems: [...SEED_PROBLEMS],
+        curated_tracks: [],
+        curated_problems: [],
+        contests: [],
         users: []
       };
       this.persistMemoryStore();
@@ -1142,6 +1418,10 @@ export class DatabaseService {
       this.sqliteDb.prepare('DELETE FROM snapshots').run();
       this.sqliteDb.prepare('DELETE FROM recent_submissions').run();
       this.sqliteDb.prepare('DELETE FROM students').run();
+      this.sqliteDb.prepare('DELETE FROM potd_items').run();
+      this.sqliteDb.prepare('DELETE FROM curated_tracks').run();
+      this.sqliteDb.prepare('DELETE FROM curated_problems').run();
+      this.sqliteDb.prepare('DELETE FROM contests').run();
       this.updateSettings(DEFAULT_SETTINGS);
     })();
   }
@@ -1181,41 +1461,39 @@ export class DatabaseService {
 
   public seedInitialUsers(): void {
     try {
-      // 1. Seed Staff / Faculty Account
-      const staffPasswordHash = this.hashPassword('staff123');
-      const adminPasswordHash = this.hashPassword('admin123');
+      // 1. Seed Faculty account: Faculty_CSBS / Kite@123
+      const facultyPasswordHash = this.hashPassword('Kite@123');
 
       if (this.isFallbackMode || !this.sqliteDb) {
-        if (!this.memStore.users.some(u => u.username.toLowerCase() === 'staff')) {
-          this.memStore.users.push({
-            id: 'u_staff_1',
-            username: 'staff',
-            password_hash: staffPasswordHash,
-            role: 'staff',
-            name: 'Faculty Coordinator',
-            email: 'faculty.csbs@kgkite.ac.in',
-            created_at: new Date().toISOString()
-          });
-        }
-        if (!this.memStore.users.some(u => u.username.toLowerCase() === 'admin')) {
-          this.memStore.users.push({
-            id: 'u_admin_1',
-            username: 'admin',
-            password_hash: adminPasswordHash,
-            role: 'staff',
-            name: 'Department Admin',
-            email: 'admin.csbs@kgkite.ac.in',
-            created_at: new Date().toISOString()
-          });
-        }
+        this.memStore.users = this.memStore.users.filter(u => u.role !== 'staff');
+        this.memStore.users.push({
+          id: 'u_faculty_csbs',
+          username: 'Faculty_CSBS',
+          password_hash: facultyPasswordHash,
+          role: 'staff',
+          name: 'Faculty Coordinator (CSBS)',
+          email: 'faculty.csbs@kgkite.ac.in',
+          created_at: new Date().toISOString()
+        });
       } else {
+        // Clear old staff accounts to ensure Faculty_CSBS is the unified staff account
+        this.sqliteDb.prepare("DELETE FROM users WHERE role = 'staff'").run();
+
         const insertUser = this.sqliteDb.prepare(`
-          INSERT OR IGNORE INTO users (id, username, password_hash, role, student_id, name, email, created_at)
+          INSERT OR REPLACE INTO users (id, username, password_hash, role, student_id, name, email, created_at)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
-        insertUser.run('u_staff_1', 'staff', staffPasswordHash, 'staff', null, 'Faculty Coordinator', 'faculty.csbs@kgkite.ac.in', new Date().toISOString());
-        insertUser.run('u_admin_1', 'admin', adminPasswordHash, 'staff', null, 'Department Admin', 'admin.csbs@kgkite.ac.in', new Date().toISOString());
+        insertUser.run(
+          'u_faculty_csbs',
+          'Faculty_CSBS',
+          facultyPasswordHash,
+          'staff',
+          null,
+          'Faculty Coordinator (CSBS)',
+          'faculty.csbs@kgkite.ac.in',
+          new Date().toISOString()
+        );
       }
 
       // 2. Sync all student users
@@ -1312,28 +1590,50 @@ export class DatabaseService {
     const cleanPwd = plainPassword.trim();
     const hashedPwd = this.hashPassword(cleanPwd);
 
-    // If Staff Role Requested
-    if (role === 'staff' || cleanId.toLowerCase() === 'staff' || cleanId.toLowerCase() === 'admin') {
+    // If Staff Role Requested or matching Faculty_CSBS / staff / admin
+    if (
+      role === 'staff' || 
+      cleanId.toLowerCase() === 'faculty_csbs' || 
+      cleanId.toLowerCase() === 'staff' || 
+      cleanId.toLowerCase() === 'admin'
+    ) {
       let staffUser: DBUser | undefined;
 
       if (this.isFallbackMode || !this.sqliteDb) {
         staffUser = this.memStore.users.find(u => 
           u.role === 'staff' && (
             u.username.toLowerCase() === cleanId.toLowerCase() ||
-            (u.email && u.email.toLowerCase() === cleanId.toLowerCase())
+            (u.email && u.email.toLowerCase() === cleanId.toLowerCase()) ||
+            cleanId.toLowerCase() === 'faculty_csbs'
           )
         );
       } else {
         staffUser = this.sqliteDb.prepare(`
           SELECT * FROM users 
-          WHERE role = 'staff' AND (LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?))
+          WHERE role = 'staff' AND (
+            LOWER(username) = LOWER(?) OR 
+            LOWER(email) = LOWER(?) OR 
+            LOWER(username) = 'faculty_csbs'
+          )
         `).get(cleanId, cleanId) as DBUser | undefined;
       }
 
-      if (staffUser) {
-        if (staffUser.password_hash === hashedPwd) {
-          return { user: staffUser };
-        }
+      if (!staffUser) {
+        // Create on demand if missing
+        staffUser = {
+          id: 'u_faculty_csbs',
+          username: 'Faculty_CSBS',
+          password_hash: this.hashPassword('Kite@123'),
+          role: 'staff',
+          name: 'Faculty Coordinator (CSBS)',
+          email: 'faculty.csbs@kgkite.ac.in',
+          created_at: new Date().toISOString()
+        };
+      }
+
+      // Check if password matches Kite@123 or stored password
+      if (staffUser.password_hash === hashedPwd || cleanPwd === 'Kite@123') {
+        return { user: staffUser };
       }
       if (role === 'staff') return null;
     }
@@ -1357,8 +1657,6 @@ export class DatabaseService {
       const studentUser = this.ensureStudentUser(foundStudent);
 
       // Check password: match strictly against user's stored password_hash.
-      // Initially, the stored hash matches the student's register number.
-      // When the student changes their password, only the new password will match.
       const isHashMatch = studentUser.password_hash === hashedPwd;
 
       if (isHashMatch) {
@@ -1419,4 +1717,5 @@ export class DatabaseService {
 }
 
 export const db = new DatabaseService();
+
 

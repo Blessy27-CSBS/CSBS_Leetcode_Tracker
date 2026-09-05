@@ -13,7 +13,8 @@ import {
   TrendingUp,
   User,
   Shield,
-  Clock
+  Clock,
+  BookOpen
 } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
 import { api } from '../services/api';
@@ -399,6 +400,77 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                   )}
                 </div>
 
+              </div>
+
+              {/* Recent Solved Problems Table */}
+              <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 space-y-3">
+                <div className="flex items-center justify-between text-xs font-semibold text-slate-800">
+                  <div className="flex items-center space-x-2">
+                    <BookOpen className="w-4 h-4 text-purple-600" />
+                    <span>Recent Solved Problems ({submissions.length})</span>
+                  </div>
+                </div>
+
+                {submissions.length === 0 ? (
+                  <div className="text-slate-400 text-xs italic py-2">
+                    No recent problem submissions recorded yet. Click "Sync Live" to retrieve fresh activity.
+                  </div>
+                ) : (
+                  <div className="border border-slate-200 rounded-lg overflow-hidden max-h-48 overflow-y-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-white text-slate-500 font-bold border-b border-slate-200 sticky top-0">
+                        <tr>
+                          <th className="p-2.5">Problem Title</th>
+                          <th className="p-2.5">Status</th>
+                          <th className="p-2.5">Language</th>
+                          <th className="p-2.5 text-right">Solved Date</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 bg-white">
+                        {submissions.map((sub, sIdx) => {
+                          const l = (sub.language || 'Python3').toLowerCase();
+                          const langColor = l.includes('python') ? 'bg-blue-50 text-blue-700 border-blue-200'
+                            : l.includes('cpp') || l === 'c++' ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                            : l.includes('java') ? 'bg-amber-50 text-amber-800 border-amber-200'
+                            : 'bg-purple-50 text-purple-700 border-purple-200';
+
+                          const tsNum = Number(sub.timestamp);
+                          const d = !isNaN(tsNum) && tsNum > 0
+                            ? (tsNum > 1e11 ? new Date(tsNum) : new Date(tsNum * 1000))
+                            : new Date(sub.timestamp);
+                          const dateStr = isNaN(d.getTime()) ? String(sub.timestamp || 'Recent') : d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                          return (
+                            <tr key={sub.id || sIdx} className="hover:bg-slate-50">
+                              <td className="p-2.5 font-semibold text-slate-900">
+                                <a
+                                  href={`https://leetcode.com/problems/${sub.titleSlug}/`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="hover:text-purple-600 inline-flex items-center gap-1"
+                                >
+                                  <span>{sub.title}</span>
+                                  <ExternalLink className="w-3 h-3 text-slate-400" />
+                                </a>
+                              </td>
+                              <td className="p-2.5">
+                                <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-bold text-[10px]">
+                                  {sub.statusDisplay || 'Accepted'}
+                                </span>
+                              </td>
+                              <td className="p-2.5">
+                                <span className={`px-2 py-0.5 rounded text-[11px] font-bold border ${langColor}`}>
+                                  {sub.language || 'Python3'}
+                                </span>
+                              </td>
+                              <td className="p-2.5 text-right text-slate-500 font-medium">{dateStr}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
 
               {/* Faculty Notes & Action */}

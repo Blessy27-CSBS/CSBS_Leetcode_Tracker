@@ -1,19 +1,20 @@
 import React from 'react';
-import { 
-  LayoutDashboard, 
-  Users, 
-  Trophy, 
-  TrendingUp, 
-  Grid, 
-  AlertCircle, 
-  FileSpreadsheet, 
+import {
+  LayoutDashboard,
+  Users,
+  Trophy,
+  TrendingUp,
+  Grid,
+  AlertCircle,
+  FileSpreadsheet,
   Sliders,
   Sparkles,
   Flame
 } from 'lucide-react';
 
-export type NavTab = 
+export type NavTab =
   | 'dashboard'
+  | 'contests'
   | 'tracks'
   | 'students'
   | 'leaderboard'
@@ -38,7 +39,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const analyticsItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, badge: null },
-    { id: 'tracks', label: 'Daily POTD & Tracks', icon: Flame, badge: '🔥', badgeColor: 'bg-orange-500/20 text-orange-400' },
+    { id: 'contests', label: 'LeetCode Contests', icon: Trophy, badge: null, badgeColor: 'bg-purple-500/20 text-purple-300' },
+    { id: 'tracks', label: 'Daily POTD & Tracks', icon: Flame, badge: null, badgeColor: 'bg-orange-500/20 text-orange-400' },
     { id: 'leaderboard', label: 'Leaderboard', icon: Trophy, badge: null },
     { id: 'progress', label: 'Most Improved', icon: TrendingUp, badge: null },
     { id: 'sections', label: 'Sections', icon: Grid, badge: null },
@@ -46,10 +48,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const managementItems = [
     { id: 'students', label: 'Students', icon: Users, badge: totalStudents ? `${totalStudents}` : null, badgeColor: 'bg-slate-800 text-slate-300' },
-    { 
-      id: 'intervention', 
-      label: 'Intervention', 
-      icon: AlertCircle, 
+    {
+      id: 'intervention',
+      label: 'Intervention',
+      icon: AlertCircle,
       badge: interventionCount > 0 ? `${interventionCount}` : null,
       badgeColor: 'bg-red-500 text-white'
     },
@@ -58,29 +60,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   return (
-    <aside className="w-full md:w-56 bg-[#0f172a] text-white flex flex-col shrink-0 border-r border-slate-800 select-none">
-      {/* Brand Header */}
-      <div className="p-4 border-b border-slate-800 hidden md:block">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white text-base shadow-xs">
-            L
-          </div>
-          <div className="leading-tight">
-            <div className="font-bold text-sm tracking-tight text-white">CSBS Tracker</div>
-            <div className="text-[10px] text-slate-400 font-medium">KGiSL Institute of Tech</div>
-          </div>
+    <aside className="w-full md:w-64 bg-white text-slate-800 flex flex-col shrink-0 border-b md:border-b-0 md:border-r border-slate-200/90 select-none shadow-2xs z-20 md:sticky md:top-14 md:h-[calc(100vh-3.5rem)]">
+      {/* Sidebar Header Badge (Desktop) */}
+      <div className="px-4 py-3.5 border-b border-slate-100 hidden md:flex items-center justify-between bg-slate-50/50">
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="text-[11px] font-black uppercase tracking-wider text-slate-700">
+            CSBS Navigation
+          </span>
         </div>
+        <span className="text-[10px] font-mono font-bold text-slate-500 bg-white border border-slate-200/80 px-1.5 py-0.5 rounded-md shadow-2xs">
+          v2.1
+        </span>
       </div>
 
-      {/* Navigation Groups */}
-      <nav className="flex-1 p-3 space-y-4 overflow-y-auto">
-        
+      {/* Navigation Groups - Vertical on Desktop, Horizontal Scroll on Mobile */}
+      <nav className="flex-1 p-3 overflow-x-auto md:overflow-y-auto flex md:flex-col gap-3 md:gap-5 scrollbar-thin">
+
         {/* Analytics Group */}
-        <div>
-          <div className="text-[10px] uppercase text-slate-500 font-bold px-2 py-1">
+        <div className="flex md:flex-col items-center md:items-stretch gap-1 shrink-0">
+          <div className="text-[10px] uppercase text-slate-400 font-bold px-2 py-1 tracking-wider hidden md:block">
             Analytics
           </div>
-          <div className="space-y-0.5 mt-1">
+          <div className="flex md:flex-col gap-1">
             {analyticsItems.map(item => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -88,28 +90,40 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id as NavTab)}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 group ${
                     isActive
-                      ? 'bg-blue-600/20 text-blue-400 font-semibold'
-                      : 'text-slate-400 hover:bg-slate-800/80 hover:text-slate-200'
+                      ? 'bg-purple-600 text-white shadow-sm shadow-purple-600/25'
+                      : 'text-slate-600 hover:bg-slate-100/70 hover:text-slate-900'
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
-                    <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-blue-400' : 'text-slate-400'}`} />
+                    <Icon className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-110 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-purple-600'}`} />
                     <span>{item.label}</span>
                   </div>
+                  {item.badge && (
+                    <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                      isActive 
+                        ? 'bg-white/20 text-white' 
+                        : (item.badgeColor || 'bg-slate-100 text-slate-600')
+                    }`}>
+                      {item.badge}
+                    </span>
+                  )}
                 </button>
               );
             })}
           </div>
         </div>
 
+        {/* Divider for Mobile */}
+        <div className="h-6 w-px bg-slate-200 self-center md:hidden shrink-0" />
+
         {/* Management Group */}
-        <div>
-          <div className="text-[10px] uppercase text-slate-500 font-bold px-2 py-1">
+        <div className="flex md:flex-col items-center md:items-stretch gap-1 shrink-0">
+          <div className="text-[10px] uppercase text-slate-400 font-bold px-2 py-1 tracking-wider hidden md:block">
             Management
           </div>
-          <div className="space-y-0.5 mt-1">
+          <div className="flex md:flex-col gap-1">
             {managementItems.map(item => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -117,18 +131,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id as NavTab)}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 group ${
                     isActive
-                      ? 'bg-blue-600/20 text-blue-400 font-semibold'
-                      : 'text-slate-400 hover:bg-slate-800/80 hover:text-slate-200'
+                      ? 'bg-purple-600 text-white shadow-sm shadow-purple-600/25'
+                      : 'text-slate-600 hover:bg-slate-100/70 hover:text-slate-900'
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
-                    <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-blue-400' : 'text-slate-400'}`} />
+                    <Icon className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-110 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-purple-600'}`} />
                     <span>{item.label}</span>
                   </div>
                   {item.badge && (
-                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${item.badgeColor || 'bg-slate-800 text-slate-300'}`}>
+                    <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                      isActive 
+                        ? 'bg-white/20 text-white' 
+                        : (item.badgeColor || 'bg-slate-100 text-slate-600')
+                    }`}>
                       {item.badge}
                     </span>
                   )}
@@ -140,13 +158,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       </nav>
 
-      {/* Connection / Status Footer */}
-      <div className="p-3 border-t border-slate-800 text-xs text-slate-400 flex items-center justify-between">
+      {/* Connection / Status Footer (Desktop only) */}
+      <div className="p-3.5 border-t border-slate-100 bg-slate-50/60 text-xs text-slate-500 hidden md:flex items-center justify-between mt-auto">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-          <span className="text-[11px] font-medium">API: Connected</span>
+          <span className="text-[11px] font-bold text-slate-600">System Online</span>
         </div>
-        <span className="text-[10px] text-slate-500 font-mono">v2.1</span>
+        <span className="text-[10px] text-slate-400 font-mono font-bold">API Connected</span>
       </div>
     </aside>
   );

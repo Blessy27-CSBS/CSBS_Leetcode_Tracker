@@ -123,7 +123,10 @@ export interface POTDItem {
   acceptanceRate?: number;
   leetcodeUrl: string;
   hint?: string;
+  orderIndex?: number;
+  created_at?: string;
   solvedCount?: number;
+  isSolvedByMe?: boolean;
   solvedStudents?: {
     studentId: string;
     studentName: string;
@@ -132,6 +135,27 @@ export interface POTDItem {
     username: string;
     solvedAt?: string;
   }[];
+}
+
+export interface ContestProblemLink {
+  title: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  leetcodeUrl: string;
+}
+
+export interface ContestItem {
+  id: string;
+  title: string;
+  titleSlug: string;
+  type: 'Weekly Contest' | 'Biweekly Contest' | 'Department Contest' | 'Virtual Contest';
+  contestUrl: string;
+  startTime: string;
+  durationMinutes: number;
+  description?: string;
+  problems?: ContestProblemLink[];
+  status: 'UPCOMING' | 'ACTIVE' | 'FINISHED';
+  registeredCount?: number;
+  created_at?: string;
 }
 
 export interface CuratedProblem {
@@ -264,7 +288,9 @@ export interface AuthSession {
 
 export interface StudentDashboardData {
   student: StudentWithLatest;
-  potd: POTDItem & { isSolvedByMe: boolean };
+  potd?: (POTDItem & { isSolvedByMe: boolean }) | null;
+  potdList: (POTDItem & { isSolvedByMe: boolean })[];
+  contests: ContestItem[];
   tracks: (CuratedTrack & {
     userSolvedCount: number;
     userCompletionRate: number;
@@ -275,5 +301,6 @@ export interface StudentDashboardData {
   totalStudentsDepartment: number;
   totalStudentsSection: number;
 }
+
 
 

@@ -173,7 +173,7 @@ async function runBatchFetchWorker(studentsToFetch: Student[], reason: string = 
             title: s.title,
             titleSlug: s.titleSlug,
             timestamp: s.timestamp,
-            language: s.lang || 'Unknown',
+            language: s.language || s.lang || (data.languages && data.languages.length > 0 ? data.languages[0].languageName : 'Python3'),
             statusDisplay: s.statusDisplay || 'Accepted',
           })));
         }
@@ -397,12 +397,21 @@ app.get('/api/student/dashboard', (req, res) => {
     const enrichedStudent = enrichStudentWithSnapshots(student, snapshots, settings);
     const recentSubmissions = db.getSubmissions(student.id);
 
-    // Problem of the Day
-    const potd = db.getTodayPOTD();
-    const isPOTDSolved = recentSubmissions.some(s => 
-      (s.titleSlug && s.titleSlug.toLowerCase() === potd.titleSlug.toLowerCase()) ||
-      (s.title && s.title.toLowerCase().trim() === potd.title.toLowerCase().trim())
-    );
+    // Problem of the Day (Multiple links / challenges)
+    const rawPotdList = db.getTodayPOTDList();
+    const potdListWithSolved = rawPotdList.map(p => {
+      const isSolved = recentSubmissions.some(s => 
+        (s.titleSlug && s.titleSlug.toLowerCase() === p.titleSlug.toLowerCase()) ||
+        (s.title && s.title.toLowerCase().trim() === p.title.toLowerCase().trim())
+      );
+      return {
+        ...p,
+        isSolvedByMe: isSolved
+      };
+    });
+
+    // Contests
+    const contests = db.getContests();
 
     // Curated Tracks with personalized progress
     const tracks = db.getTracks();
@@ -449,10 +458,9 @@ app.get('/api/student/dashboard', (req, res) => {
 
     res.json({
       student: enrichedStudent,
-      potd: {
-        ...potd,
-        isSolvedByMe: isPOTDSolved
-      },
+      potd: potdListWithSolved[0] || null,
+      potdList: potdListWithSolved,
+      contests,
       tracks: studentTracks,
       recentSubmissions,
       rankInSection: rankInSec,
@@ -541,7 +549,7 @@ app.post('/api/student/sync', async (req, res) => {
           title: s.title,
           titleSlug: s.titleSlug,
           timestamp: s.timestamp,
-          language: s.lang || 'Unknown',
+          language: s.language || s.lang || (data.languages && data.languages.length > 0 ? data.languages[0].languageName : 'Python3'),
           statusDisplay: s.statusDisplay || 'Accepted',
         })));
       }
@@ -934,7 +942,7 @@ app.post('/api/fetch/student/:id', async (req, res) => {
           title: s.title,
           titleSlug: s.titleSlug,
           timestamp: s.timestamp,
-          language: s.lang || 'Unknown',
+          language: s.language || s.lang || (data.languages && data.languages.length > 0 ? data.languages[0].languageName : 'Python3'),
           statusDisplay: s.statusDisplay || 'Accepted',
         })));
       }
@@ -1045,75 +1053,200 @@ app.post('/api/fetch/cancel', (req, res) => {
   res.json({ message: 'No active batch synchronization.' });
 });
 
-// ================= POTD & CURATED TRACKS ENDPOINTS =================
+// ================= POTD & CURATED TRACKS & CONTESTS ENDPOINTS =================
 
-// 14. POTD - Get Today's Challenge + Student Completion
+// 14. POTD - Get Today's Challenges + Student Completion (Multiple problems supported)
 app.get('/api/potd', (req, res) => {
   try {
-    const potd = db.getTodayPOTD();
+    const targetDate = (req.query.date as string) || new Date().toISOString().split('T')[0];
+    const potdList = db.getTodayPOTDList(targetDate);
     const students = getAllEnrichedStudents();
     
-    // Check which students have solved this problem
-    const solvedStudents: any[] = [];
-    
-    for (const student of students) {
-      const subs = db.getSubmissions(student.id);
-      const found = subs.find(s => 
-        (s.titleSlug && s.titleSlug.toLowerCase() === potd.titleSlug.toLowerCase()) ||
-        (s.title && s.title.toLowerCase().trim() === potd.title.toLowerCase().trim())
-      );
-      if (found) {
-        solvedStudents.push({
-          studentId: student.id,
-          studentName: student.student_name,
-          registerNo: student.register_no,
-          section: student.section,
-          username: student.username,
-          solvedAt: found.timestamp,
-        });
+    // For each problem in POTD, calculate which students solved it
+    const enrichedList = potdList.map(item => {
+      const solvedStudents: any[] = [];
+      for (const student of students) {
+        const subs = db.getSubmissions(student.id);
+        const found = subs.find(s => 
+          (s.titleSlug && s.titleSlug.toLowerCase() === item.titleSlug.toLowerCase()) ||
+          (s.title && s.title.toLowerCase().trim() === item.title.toLowerCase().trim())
+        );
+        if (found) {
+          solvedStudents.push({
+            studentId: student.id,
+            studentName: student.student_name,
+            registerNo: student.register_no,
+            section: student.section,
+            username: student.username,
+            solvedAt: found.timestamp,
+          });
+        }
       }
-    }
 
-    res.json({
-      potd: {
-        ...potd,
+      return {
+        ...item,
         solvedCount: solvedStudents.length,
         solvedStudents,
-      },
-      departmentTotalStudents: students.length,
-      completionRate: students.length > 0 ? Math.round((solvedStudents.length / students.length) * 100) : 0,
+      };
+    });
+
+    const totalStudents = students.length;
+    const avgSolvedCount = enrichedList.length > 0 
+      ? enrichedList.reduce((acc, curr) => acc + curr.solvedCount, 0) / enrichedList.length 
+      : 0;
+    const completionRate = totalStudents > 0 ? Math.round((avgSolvedCount / totalStudents) * 100) : 0;
+
+    res.json({
+      potd: enrichedList[0] || null,
+      potdList: enrichedList,
+      departmentTotalStudents: totalStudents,
+      completionRate,
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Failed to fetch Problem of the Day.' });
   }
 });
 
-// 15. POTD - Set / Override Problem of the Day
+// 15. POTD - Add a new Problem of the Day link/challenge
 app.post('/api/potd', (req, res) => {
   try {
-    const { date, title, titleSlug, difficulty, topic, acceptanceRate, leetcodeUrl, hint } = req.body;
-    if (!title || !titleSlug) {
-      return res.status(400).json({ error: 'Title and titleSlug are required.' });
+    const { date, title, titleSlug, difficulty, topic, acceptanceRate, leetcodeUrl, hint, orderIndex } = req.body;
+    if (!title && !leetcodeUrl) {
+      return res.status(400).json({ error: 'Problem title or LeetCode URL is required.' });
     }
+
+    // Auto extract slug and title from LeetCode URL if given
+    let derivedSlug = titleSlug || '';
+    let derivedTitle = title || '';
+
+    if (leetcodeUrl && !derivedSlug) {
+      const match = leetcodeUrl.match(/leetcode\.com\/problems\/([^/]+)/);
+      if (match && match[1]) {
+        derivedSlug = match[1];
+        if (!derivedTitle) {
+          derivedTitle = derivedSlug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        }
+      }
+    }
+
+    if (!derivedTitle) derivedTitle = derivedSlug || 'New POTD Problem';
+    if (!derivedSlug) derivedSlug = derivedTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+
     const d = date || new Date().toISOString().split('T')[0];
-    const potd: POTDItem = {
-      id: `potd-${d}`,
+    const createdItem = db.addPOTDItem({
       date: d,
-      title: title.trim(),
-      titleSlug: titleSlug.trim(),
+      title: derivedTitle.trim(),
+      titleSlug: derivedSlug.trim(),
       difficulty: difficulty || 'Medium',
       topic: topic || 'DSA',
       acceptanceRate: Number(acceptanceRate) || 50,
-      leetcodeUrl: leetcodeUrl || `https://leetcode.com/problems/${titleSlug}/`,
+      leetcodeUrl: leetcodeUrl || `https://leetcode.com/problems/${derivedSlug}/`,
       hint: hint || '',
-    };
-    db.setPOTD(potd);
-    db.addLog('INFO', `Custom Department POTD set for ${d}: ${title}`);
-    res.json({ success: true, potd });
+      orderIndex: Number(orderIndex) || 0,
+    });
+
+    db.addLog('INFO', `POTD problem added for ${d}: ${derivedTitle}`);
+    res.json({ success: true, potd: createdItem });
   } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Failed to update Problem of the Day.' });
+    res.status(500).json({ error: err.message || 'Failed to add Problem of the Day.' });
   }
 });
+
+// 15.1 POTD - Update a Problem of the Day
+app.put('/api/potd/:id', (req, res) => {
+  try {
+    const updated = db.updatePOTDItem(req.params.id, req.body);
+    if (!updated) return res.status(404).json({ error: 'POTD item not found.' });
+    res.json({ success: true, potd: updated });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to update POTD item.' });
+  }
+});
+
+// 15.2 POTD - Delete a Problem of the Day
+app.delete('/api/potd/:id', (req, res) => {
+  try {
+    const ok = db.deletePOTDItem(req.params.id);
+    if (!ok) return res.status(404).json({ error: 'POTD item not found.' });
+    res.json({ success: true, message: 'POTD problem removed.' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to delete POTD item.' });
+  }
+});
+
+// ================= LEETCODE CONTESTS ENDPOINTS =================
+
+// 15.3 Get Contests
+app.get('/api/contests', (req, res) => {
+  try {
+    const contests = db.getContests();
+    res.json(contests);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to fetch contests.' });
+  }
+});
+
+// 15.4 Get Contest By ID
+app.get('/api/contests/:id', (req, res) => {
+  try {
+    const contest = db.getContestById(req.params.id);
+    if (!contest) return res.status(404).json({ error: 'Contest not found.' });
+    res.json(contest);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to fetch contest.' });
+  }
+});
+
+// 15.5 Create Contest
+app.post('/api/contests', (req, res) => {
+  try {
+    const { title, titleSlug, type, contestUrl, startTime, durationMinutes, description, problems, status } = req.body;
+    if (!title) {
+      return res.status(400).json({ error: 'Contest title is required.' });
+    }
+
+    const newContest = db.addContest({
+      title: title.trim(),
+      titleSlug: titleSlug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      type: type || 'Weekly Contest',
+      contestUrl: contestUrl || `https://leetcode.com/contest/${titleSlug || 'weekly-contest'}`,
+      startTime: startTime || new Date(Date.now() + 86400000).toISOString(),
+      durationMinutes: Number(durationMinutes) || 90,
+      description: description || '',
+      problems: Array.isArray(problems) ? problems : [],
+      status: status || 'UPCOMING',
+    });
+
+    db.addLog('INFO', `New contest scheduled: ${title} (${type})`);
+    res.json({ success: true, contest: newContest });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to create contest.' });
+  }
+});
+
+// 15.6 Update Contest
+app.put('/api/contests/:id', (req, res) => {
+  try {
+    const updated = db.updateContest(req.params.id, req.body);
+    if (!updated) return res.status(404).json({ error: 'Contest not found.' });
+    res.json({ success: true, contest: updated });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to update contest.' });
+  }
+});
+
+// 15.7 Delete Contest
+app.delete('/api/contests/:id', (req, res) => {
+  try {
+    const ok = db.deleteContest(req.params.id);
+    if (!ok) return res.status(404).json({ error: 'Contest not found.' });
+    res.json({ success: true, message: 'Contest deleted successfully.' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to delete contest.' });
+  }
+});
+
+// ================= CURATED TRACKS ENDPOINTS =================
 
 // 16. Curated Tracks - Get All Tracks with Department Stats
 app.get('/api/tracks', (req, res) => {
@@ -1129,7 +1262,6 @@ app.get('/api/tracks', (req, res) => {
       
       let totalSolvedCount = 0;
       problems.forEach(p => {
-        // Count how many students solved this problem
         let solvedThisProblem = 0;
         for (const s of students) {
           const subs = db.getSubmissions(s.id);
@@ -1172,7 +1304,6 @@ app.get('/api/tracks/:id', (req, res) => {
     const selectedStudentSubs = studentId ? db.getSubmissions(String(studentId)) : [];
 
     const enrichedProblems = track.problems.map(p => {
-      // Calculate how many department students solved this problem
       let solvedCount = 0;
       for (const s of students) {
         const subs = db.getSubmissions(s.id);
@@ -1202,6 +1333,59 @@ app.get('/api/tracks/:id', (req, res) => {
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Failed to fetch track details.' });
+  }
+});
+
+// 17.1 Create Track
+app.post('/api/tracks', (req, res) => {
+  try {
+    const { title, description, category, icon } = req.body;
+    if (!title) return res.status(400).json({ error: 'Track title is required.' });
+    const newTrack = db.addTrack({ title, description: description || '', category: category || 'custom', icon: icon || 'Code', totalProblems: 0 });
+    res.json({ success: true, track: newTrack });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to create track.' });
+  }
+});
+
+// 17.2 Delete Track
+app.delete('/api/tracks/:id', (req, res) => {
+  try {
+    const ok = db.deleteTrack(req.params.id);
+    res.json({ success: ok });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to delete track.' });
+  }
+});
+
+// 17.3 Add Problem to Track
+app.post('/api/tracks/:id/problems', (req, res) => {
+  try {
+    const { title, titleSlug, difficulty, topic, leetcodeUrl, orderIndex } = req.body;
+    if (!title) return res.status(400).json({ error: 'Problem title is required.' });
+    const slug = titleSlug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const prob = db.addProblemToTrack({
+      trackId: req.params.id,
+      title: title.trim(),
+      titleSlug: slug,
+      difficulty: difficulty || 'Medium',
+      topic: topic || 'General',
+      orderIndex: Number(orderIndex) || 0,
+      leetcodeUrl: leetcodeUrl || `https://leetcode.com/problems/${slug}/`,
+    });
+    res.json({ success: true, problem: prob });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to add problem to track.' });
+  }
+});
+
+// 17.4 Delete Problem from Track
+app.delete('/api/tracks/problems/:problemId', (req, res) => {
+  try {
+    const ok = db.deleteProblemFromTrack(req.params.problemId);
+    res.json({ success: ok });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to delete problem.' });
   }
 });
 
