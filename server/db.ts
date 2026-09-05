@@ -1008,8 +1008,15 @@ export class DatabaseService {
       created_at,
     };
 
-    if (this.isFallbackMode || !this.sqliteDb) {
+    // Sync with memory store & JSON backup
+    const memIdx = this.memStore.potd_items.findIndex(p => p.id === newItem.id);
+    if (memIdx >= 0) {
+      this.memStore.potd_items[memIdx] = newItem;
+    } else {
       this.memStore.potd_items.push(newItem);
+    }
+
+    if (this.isFallbackMode || !this.sqliteDb) {
       this.persistMemoryStore();
       return newItem;
     }
@@ -1035,16 +1042,20 @@ export class DatabaseService {
       console.error('Error inserting POTD item:', e);
     }
 
+    this.persistMemoryStore();
     return newItem;
   }
 
   public updatePOTDItem(id: string, item: Partial<POTDItem>): POTDItem | null {
+    const memIdx = this.memStore.potd_items.findIndex(p => p.id === id);
+    if (memIdx >= 0) {
+      this.memStore.potd_items[memIdx] = { ...this.memStore.potd_items[memIdx], ...item };
+    }
+
     if (this.isFallbackMode || !this.sqliteDb) {
-      const idx = this.memStore.potd_items.findIndex(p => p.id === id);
-      if (idx === -1) return null;
-      this.memStore.potd_items[idx] = { ...this.memStore.potd_items[idx], ...item };
+      if (memIdx === -1) return null;
       this.persistMemoryStore();
-      return this.memStore.potd_items[idx];
+      return this.memStore.potd_items[memIdx];
     }
 
     const current = this.sqliteDb.prepare('SELECT * FROM potd_items WHERE id = ?').get(id) as any;
@@ -1060,14 +1071,16 @@ export class DatabaseService {
       updated.acceptanceRate, updated.leetcodeUrl, updated.hint, updated.orderIndex || 0, id
     );
 
+    this.persistMemoryStore();
     return updated;
   }
 
   public deletePOTDItem(id: string): boolean {
+    const initialLen = this.memStore.potd_items.length;
+    this.memStore.potd_items = this.memStore.potd_items.filter(p => p.id !== id);
+    this.persistMemoryStore();
+
     if (this.isFallbackMode || !this.sqliteDb) {
-      const initialLen = this.memStore.potd_items.length;
-      this.memStore.potd_items = this.memStore.potd_items.filter(p => p.id !== id);
-      this.persistMemoryStore();
       return this.memStore.potd_items.length < initialLen;
     }
 
@@ -1174,9 +1187,15 @@ export class DatabaseService {
       created_at,
     };
 
-    if (this.isFallbackMode || !this.sqliteDb) {
-      if (!this.memStore.contests) this.memStore.contests = [];
+    if (!this.memStore.contests) this.memStore.contests = [];
+    const memIdx = this.memStore.contests.findIndex(c => c.id === newContest.id);
+    if (memIdx >= 0) {
+      this.memStore.contests[memIdx] = newContest;
+    } else {
       this.memStore.contests.push(newContest);
+    }
+
+    if (this.isFallbackMode || !this.sqliteDb) {
       this.persistMemoryStore();
       return newContest;
     }
@@ -1202,16 +1221,21 @@ export class DatabaseService {
       console.error('Error inserting contest:', e);
     }
 
+    this.persistMemoryStore();
     return newContest;
   }
 
   public updateContest(id: string, item: Partial<ContestItem>): ContestItem | null {
+    if (!this.memStore.contests) this.memStore.contests = [];
+    const memIdx = this.memStore.contests.findIndex(c => c.id === id);
+    if (memIdx >= 0) {
+      this.memStore.contests[memIdx] = { ...this.memStore.contests[memIdx], ...item };
+    }
+
     if (this.isFallbackMode || !this.sqliteDb) {
-      const idx = (this.memStore.contests || []).findIndex(c => c.id === id);
-      if (idx === -1) return null;
-      this.memStore.contests[idx] = { ...this.memStore.contests[idx], ...item };
+      if (memIdx === -1) return null;
       this.persistMemoryStore();
-      return this.memStore.contests[idx];
+      return this.memStore.contests[memIdx];
     }
 
     const current = this.getContestById(id);
@@ -1235,15 +1259,18 @@ export class DatabaseService {
       id
     );
 
+    this.persistMemoryStore();
     return updated;
   }
 
   public deleteContest(id: string): boolean {
+    if (!this.memStore.contests) this.memStore.contests = [];
+    const initial = this.memStore.contests.length;
+    this.memStore.contests = this.memStore.contests.filter(c => c.id !== id);
+    this.persistMemoryStore();
+
     if (this.isFallbackMode || !this.sqliteDb) {
-      const initial = (this.memStore.contests || []).length;
-      this.memStore.contests = (this.memStore.contests || []).filter(c => c.id !== id);
-      this.persistMemoryStore();
-      return (this.memStore.contests || []).length < initial;
+      return this.memStore.contests.length < initial;
     }
 
     const res = this.sqliteDb.prepare('DELETE FROM contests WHERE id = ?').run(id);
@@ -1704,13 +1731,18 @@ export class DatabaseService {
 
   public changeUserPassword(userId: string, newPlainPassword: string): boolean {
     const hash = this.hashPassword(newPlainPassword);
-    if (this.isFallbackMode || !this.sqliteDb) {
-      const u = this.memStore.users.find(x => x.id === userId);
-      if (!u) return false;
+    
+    // Always sync with memStore
+    const u = this.memStore.users.find(x => x.id === userId);
+    if (u) {
       u.password_hash = hash;
-      this.persistMemoryStore();
-      return true;
     }
+    this.persistMemoryStore();
+
+    if (this.isFallbackMode || !this.sqliteDb) {
+      return !!u;
+    }
+
     const res = this.sqliteDb.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, userId);
     return res.changes > 0;
   }

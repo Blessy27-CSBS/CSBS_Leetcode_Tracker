@@ -337,50 +337,6 @@ export const api = {
     return json;
   },
 
-  // LeetCode Contests Module
-  async getContests(): Promise<any[]> {
-    const res = await fetch('/api/contests');
-    if (!res.ok) throw new Error('Failed to load contests');
-    return res.json();
-  },
-
-  async getContest(id: string): Promise<any> {
-    const res = await fetch(`/api/contests/${id}`);
-    if (!res.ok) throw new Error('Failed to load contest details');
-    return res.json();
-  },
-
-  async createContest(data: any): Promise<{ success: boolean; contest: any }> {
-    const res = await fetch('/api/contests', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || 'Failed to create contest');
-    return json;
-  },
-
-  async updateContest(id: string, data: any): Promise<{ success: boolean; contest: any }> {
-    const res = await fetch(`/api/contests/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || 'Failed to update contest');
-    return json;
-  },
-
-  async deleteContest(id: string): Promise<{ success: boolean; message: string }> {
-    const res = await fetch(`/api/contests/${id}`, {
-      method: 'DELETE',
-    });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || 'Failed to delete contest');
-    return json;
-  },
-
   // Curated Problem Tracks
   async getTracks(): Promise<CuratedTrack[]> {
     const res = await fetch('/api/tracks');
@@ -442,6 +398,63 @@ export const api = {
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || 'Failed to update scheduler configuration');
+    return json;
+  },
+
+  // Contest Management Endpoints
+  async getContests(): Promise<ContestItem[]> {
+    const res = await fetch('/api/contests', {
+      headers: { ...getAuthHeaders() },
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to fetch contests');
+    return json;
+  },
+
+  async getContestById(id: string): Promise<ContestItem> {
+    const res = await fetch(`/api/contests/${id}`, {
+      headers: { ...getAuthHeaders() },
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to fetch contest');
+    return json;
+  },
+
+  async createContest(data: Partial<ContestItem>): Promise<{ success: boolean; contest: ContestItem }> {
+    const res = await fetch('/api/contests', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify(data),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to create contest');
+    return json;
+  },
+
+  async updateContest(id: string, data: Partial<ContestItem>): Promise<{ success: boolean; contest: ContestItem }> {
+    const res = await fetch(`/api/contests/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify(data),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to update contest');
+    return json;
+  },
+
+  async deleteContest(id: string): Promise<{ success: boolean; message: string }> {
+    const res = await fetch(`/api/contests/${id}`, {
+      method: 'DELETE',
+      headers: { ...getAuthHeaders() },
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to delete contest');
     return json;
   },
 };

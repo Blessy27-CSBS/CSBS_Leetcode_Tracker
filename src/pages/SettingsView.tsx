@@ -73,6 +73,39 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [testContestsAttended, setTestContestsAttended] = useState(6);
   const [testImprovementRate, setTestImprovementRate] = useState(8);
 
+  // Faculty Password State
+  const [facultyOldPassword, setFacultyOldPassword] = useState('');
+  const [facultyNewPassword, setFacultyNewPassword] = useState('');
+  const [facultyConfirmPassword, setFacultyConfirmPassword] = useState('');
+  const [facultyPwdLoading, setFacultyPwdLoading] = useState(false);
+  const [facultyPwdMsg, setFacultyPwdMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  const handleFacultyPasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (facultyNewPassword !== facultyConfirmPassword) {
+      setFacultyPwdMsg({ text: 'New passwords do not match.', type: 'error' });
+      return;
+    }
+    if (facultyNewPassword.length < 4) {
+      setFacultyPwdMsg({ text: 'Password must be at least 4 characters long.', type: 'error' });
+      return;
+    }
+
+    try {
+      setFacultyPwdLoading(true);
+      setFacultyPwdMsg(null);
+      await api.changePassword(facultyNewPassword, facultyOldPassword);
+      setFacultyPwdMsg({ text: 'Faculty password updated successfully!', type: 'success' });
+      setFacultyOldPassword('');
+      setFacultyNewPassword('');
+      setFacultyConfirmPassword('');
+    } catch (err: any) {
+      setFacultyPwdMsg({ text: err.message || 'Failed to update faculty password.', type: 'error' });
+    } finally {
+      setFacultyPwdLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (settings) {
       setFormData({
@@ -665,6 +698,72 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
         </div>
 
+        {/* SECTION 4: FACULTY ACCOUNT SECURITY & PASSWORD UPDATE */}
+        <div className="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-4">
+          <div className="flex items-center space-x-2.5 text-sm font-bold text-slate-900 border-b border-slate-100 pb-3">
+            <Shield className="w-4 h-4 text-indigo-600" />
+            <span>Faculty Account Security & Password</span>
+          </div>
+
+          {facultyPwdMsg && (
+            <div className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 ${
+              facultyPwdMsg.type === 'success' 
+                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' 
+                : 'bg-rose-50 text-rose-800 border border-rose-200'
+            }`}>
+              {facultyPwdMsg.type === 'success' ? <Check className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+              <span>{facultyPwdMsg.text}</span>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+            <div>
+              <label className="block font-bold text-slate-700 mb-1 text-[11px]">Current Password</label>
+              <input
+                type="password"
+                placeholder="Enter current password"
+                value={facultyOldPassword}
+                onChange={e => setFacultyOldPassword(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-slate-800 focus:outline-hidden focus:border-indigo-500 font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 mb-1 text-[11px]">New Password</label>
+              <input
+                type="password"
+                placeholder="Minimum 4 characters"
+                value={facultyNewPassword}
+                onChange={e => setFacultyNewPassword(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-slate-800 focus:outline-hidden focus:border-indigo-500 font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 mb-1 text-[11px]">Confirm New Password</label>
+              <input
+                type="password"
+                placeholder="Repeat new password"
+                value={facultyConfirmPassword}
+                onChange={e => setFacultyConfirmPassword(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-slate-800 focus:outline-hidden focus:border-indigo-500 font-mono"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <button
+              type="button"
+              onClick={handleFacultyPasswordChange}
+              disabled={facultyPwdLoading}
+              className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+            >
+              <Shield className="w-3.5 h-3.5" />
+              <span>{facultyPwdLoading ? 'Updating Password...' : 'Update Faculty Password'}</span>
+            </button>
+          </div>
+        </div>
+
         {/* Save Bar */}
         <div className="flex items-center justify-end pt-2">
           <button
@@ -679,7 +778,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       </form>
 
-      {/* SECTION 4: DANGER ZONE & DATA ADMINISTRATION */}
+      {/* SECTION 5: DANGER ZONE & DATA ADMINISTRATION */}
       <div className="p-5 sm:p-6 rounded-2xl bg-white border border-rose-200 shadow-sm space-y-4">
         <div className="flex items-center space-x-2.5 text-xs font-bold text-rose-700 border-b border-rose-100 pb-3">
           <Shield className="w-4 h-4" />
