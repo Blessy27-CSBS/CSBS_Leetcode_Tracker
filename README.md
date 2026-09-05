@@ -1,5 +1,33 @@
 # 🚀 CSBS LeetCode Tracker
 
+---
+
+<div align="center">
+  <img src="public/codex-logo.png" alt="Codex Coding Club Logo" width="200"/>
+
+  <h2>Department of Computer Science & Business Systems (CSBS)</h2>
+
+  ---
+
+  <h3>Nexora Association</h3>
+  <p><i>Presents</i></p>
+
+  <h2>🏆 Codex Coding Club</h2>
+
+  <p>
+    KGiSL Institute of Technology<br>
+    <i>(Affiliated to Anna University | Approved by AICTE | Accredited by NAAC)</i>
+  </p>
+
+  <p>
+    <img src="https://img.shields.io/badge/PLATFORM-LEETCODE%20TRACKER-e87a2a?style=for-the-badge&logo=leetcode&logoColor=white" alt="Platform" />
+    <img src="https://img.shields.io/badge/REACT-19.0-0088cc?style=for-the-badge&logo=react&logoColor=white" alt="React" />
+    <img src="https://img.shields.io/badge/TYPESCRIPT-5.7-3178c6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+    <img src="https://img.shields.io/badge/TAILWINDCSS-V4.0-0ea5e9?style=for-the-badge&logo=tailwindcss&logoColor=white" alt="TailwindCSS" />
+    <img src="https://img.shields.io/badge/SQLITE-WAL%20MODE-0f3050?style=for-the-badge&logo=sqlite&logoColor=white" alt="SQLite" />
+  </p>
+</div>
+
 ## Project title and overview
 **CSBS LeetCode Tracker** is a comprehensive, real-time student progress tracking and analytics portal. It is designed for faculty and department coordinators to monitor, analyze, and boost competitive programming engagement on LeetCode among students.
 
