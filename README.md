@@ -12,7 +12,7 @@
   <h3>Nexora Association</h3>
   <p><i>Presents</i></p>
 
-  <h2>🏆 Codex Coding Club</h2>
+  <h2>Codex Coding Club</h2>
 
   <p>
     KGiSL Institute of Technology<br>
@@ -45,7 +45,7 @@ The application provides faculty coordinators and students with real-time profil
 ## Key Features
 
 ### Dual-Role Access Control
-- ** Student Portal**: Individual student dashboard featuring personal statistics, Problem of the Day challenges, curated topic roadmaps, contest schedules, submission timelines, section leaderboards, and profile security settings.
+- **Student Portal**: Individual student dashboard featuring personal statistics, Problem of the Day challenges, curated topic roadmaps, contest schedules, submission timelines, section leaderboards, and profile security settings.
 - **Faculty Coordinator Portal**: Complete department control center equipped with batch profile synchronization, student roster administration, contest scheduling, daily problem curation, intervention queues, scoring weights setup, and multi-sheet report generation.
 
 ### Live LeetCode Profile Synchronization
