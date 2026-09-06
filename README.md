@@ -37,10 +37,7 @@
 The application provides faculty coordinators and students with real-time profile analytics, automated ranking, daily coding challenge workflows, curated problem-solving tracks, speed contests, and comprehensive academic reporting.
 
 ## Application workflow
-1. **Onboarding**: Staff import a roster of students using a CSV or Excel template.
-2. **Synchronization**: The backend scheduler periodically pulls the latest problem-solving metrics from LeetCode for all active students.
-3. **Student View**: Students log in using their email and register number to view their personal dashboard, standing, and daily tasks.
-4. **Staff View**: Faculty log in to access department-wide analytics, monitor batch progress, download reports, and identify students requiring intervention.
+![Uploading 1. 🏗️ High-Level System Architecture Flow - visual selection.png…]()
 
 ## Key Features
 
