@@ -37,7 +37,8 @@
 The application provides faculty coordinators and students with real-time profile analytics, automated ranking, daily coding challenge workflows, curated problem-solving tracks, speed contests, and comprehensive academic reporting.
 
 ## Application workflow
-![Uploading 1. 🏗️ High-Level System Architecture Flow - visual selection.png…]()
+<img width="1537" height="896" alt="1  🏗️ High-Level System Architecture Flow - visual selection" src="https://github.com/user-attachments/assets/baeda881-17a4-4f58-8bc7-6f1798d19352" />
+
 
 ## Key Features
 
