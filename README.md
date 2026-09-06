@@ -92,15 +92,15 @@ The application provides faculty coordinators and students with real-time profil
 
 To import student rosters in bulk, prepare `.xlsx` or `.csv` files structured with these column headers:
 
-| Column Header | Required | Example Value | Description |
+| Column Header | Required | Description |
 | :--- | :---: | :--- | :--- |
-| **`Register Number`** | **Yes** | `711724UCB126` | Unique student registration / roll number |
-| **`Student Name`** | **Yes** | `Maria Blessy` | Full student name |
-| **`LeetCode Username`** | **Yes** | `Maria_Blessy` | Public LeetCode profile handle |
-| **`Section`** | No | `A` | Class section (`A` or `B`) |
-| **`Year`** | No | `III` | Academic year (`I`, `II`, `III`, `IV`) |
-| **`Batch`** | No | `2024-2028` | Batch tenure |
-| **`Email`** | No | `24ucb126mariab@kgkite.ac.in` | College email address |
+| **`Register Number`** | **Yes** | Unique student registration / roll number |
+| **`Student Name`** | **Yes** | Full student name |
+| **`LeetCode Username`** | **Yes** | Public LeetCode profile handle |
+| **`Section`** | No | Class section (`A` or `B`) |
+| **`Year`** | No | Academic year (`I`, `II`, `III`, `IV`) |
+| **`Batch`** | No | Batch tenure |
+| **`Email`** | No | College email address |
 
 ---
 
