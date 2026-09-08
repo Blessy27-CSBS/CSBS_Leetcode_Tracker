@@ -198,9 +198,70 @@ export const api = {
     snapshots: Snapshot[];
     recent_submissions: any[];
   }> {
-    const res = await fetch(`/api/students/${id}`);
-    if (!res.ok) throw new Error('Failed to load student details');
-    return res.json();
+    let studentData: any = null;
+    try {
+      const res = await fetch(`/api/students/${id}`);
+      if (res.ok) {
+        studentData = await res.json();
+      }
+    } catch (e) {
+      console.warn('API getStudent failed, trying local cache', e);
+    }
+
+    if (!studentData || !studentData.student) {
+      const cachedStr = localStorage.getItem('csbs_students_cache');
+      if (cachedStr) {
+        try {
+          const list: StudentWithLatest[] = JSON.parse(cachedStr);
+          const found = list.find(s => s.id === id || s.register_no === id);
+          if (found) {
+            studentData = {
+              student: found,
+              snapshots: found.latest_snapshot ? [found.latest_snapshot] : [],
+              recent_submissions: []
+            };
+          }
+        } catch (err) {}
+      }
+    }
+
+    if (!studentData || !studentData.student) {
+      throw new Error('Student not found');
+    }
+
+    const s = studentData.student;
+    let snap = s.latest_snapshot || (studentData.snapshots && studentData.snapshots[studentData.snapshots.length - 1]);
+
+    if (!snap) {
+      snap = {
+        id: 'snap-' + (s.id || 'default'),
+        student_id: s.id || id,
+        captured_at: new Date().toISOString(),
+        total_solved: s.total_solved || 0,
+        easy: s.easy || 0,
+        medium: s.medium || 0,
+        hard: s.hard || 0,
+        acceptance_rate: s.acceptance_rate || 0,
+        ranking: s.ranking || 0,
+        reputation: s.reputation || 0,
+        contest_rating: s.contest_rating || 0,
+        contest_rank: s.contest_rank || 0,
+        contests_attended: s.contests_attended || 0,
+        top_percentage: s.top_percentage || 0,
+        streak: s.streak || 0,
+        active_days: s.active_days || 0,
+        engagement_score: s.engagement_score || 0,
+        performance_tier: s.performance_tier || (s.total_solved >= 200 ? 'Advanced' : s.total_solved >= 100 ? 'Proficient' : s.total_solved >= 50 ? 'Developing' : 'Beginner'),
+        activity_status: s.activity_status || 'Active',
+        status: 'success'
+      };
+      studentData.student.latest_snapshot = snap;
+      if (!studentData.snapshots || studentData.snapshots.length === 0) {
+        studentData.snapshots = [snap];
+      }
+    }
+
+    return studentData;
   },
 
   async createStudent(data: Partial<Student>): Promise<Student> {

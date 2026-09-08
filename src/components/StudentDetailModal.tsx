@@ -58,8 +58,14 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
       const res = await api.getStudent(studentId);
       setData(res);
       setNotes(res.student.notes || '');
+
+      // If snapshots or live metrics are missing/empty, trigger live fetch automatically
+      const currentSnap = res.student?.latest_snapshot || res.snapshots?.[0];
+      if (!currentSnap || currentSnap.total_solved === 0) {
+        handleRefresh();
+      }
     } catch (err) {
-      console.error(err);
+      console.error('Failed to load student details:', err);
     } finally {
       setLoading(false);
     }
@@ -70,7 +76,9 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
     try {
       setRefreshing(true);
       await api.fetchStudentData(studentId);
-      await loadStudent();
+      // Re-fetch updated details
+      const updated = await api.getStudent(studentId);
+      setData(updated);
       if (onDataUpdated) onDataUpdated();
     } catch (err) {
       console.error(err);
@@ -97,13 +105,13 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   if (!isOpen || !studentId) return null;
 
   const student = data?.student;
-  const snap = student?.latest_snapshot;
-  const snapshots = data?.snapshots || [];
+  const snap = student?.latest_snapshot || data?.snapshots?.[data?.snapshots?.length - 1];
+  const snapshots = data?.snapshots || (snap ? [snap] : []);
   const submissions = data?.recent_submissions || [];
 
   // Chart data for historical growth
   const chartData = snapshots.map(s => ({
-    date: s.captured_at.split('T')[0],
+    date: s.captured_at ? s.captured_at.split('T')[0] : 'Today',
     total: s.total_solved,
     easy: s.easy,
     medium: s.medium,
@@ -112,10 +120,19 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
     engagement: s.engagement_score,
   }));
 
-  const total = snap?.total_solved || 0;
-  const easy = snap?.easy || 0;
-  const medium = snap?.medium || 0;
-  const hard = snap?.hard || 0;
+  const total = snap?.total_solved ?? (student as any)?.total_solved ?? 0;
+  const easy = snap?.easy ?? (student as any)?.easy ?? 0;
+  const medium = snap?.medium ?? (student as any)?.medium ?? 0;
+  const hard = snap?.hard ?? (student as any)?.hard ?? 0;
+
+  const engagementScore = snap?.engagement_score ?? (student as any)?.engagement_score ?? 0;
+  const performanceTier = snap?.performance_tier || (student as any)?.performance_tier || 'Beginner';
+  const contestRating = snap?.contest_rating || (student as any)?.contest_rating || 0;
+  const contestsAttended = snap?.contests_attended ?? (student as any)?.contests_attended ?? 0;
+  const streakDays = snap?.streak ?? (student as any)?.streak ?? 0;
+  const activeDays = snap?.active_days ?? (student as any)?.active_days ?? 0;
+  const acceptanceRate = snap?.acceptance_rate ?? (student as any)?.acceptance_rate ?? 0;
+  const ranking = snap?.ranking ?? (student as any)?.ranking ?? 0;
 
   const easyPct = total > 0 ? Math.round((easy / total) * 100) : 0;
   const medPct = total > 0 ? Math.round((medium / total) * 100) : 0;
@@ -129,34 +146,40 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
         <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-full bg-blue-100 border border-blue-200 flex items-center justify-center text-blue-700 font-bold text-base">
-              {student?.student_name.charAt(0) || 'S'}
+              {student?.student_name?.charAt(0) || 'S'}
             </div>
             <div>
               <div className="flex items-center space-x-2">
                 <h2 className="text-base font-bold text-slate-800">
-                  {student?.student_name}
+                  {student?.student_name || 'Student Detail'}
                 </h2>
-                <span className="bg-slate-100 text-slate-700 text-xs px-2 py-0.5 rounded font-mono border border-slate-200">
-                  {student?.register_no}
-                </span>
-                <span className="bg-purple-50 text-purple-700 border border-purple-200 text-xs px-2 py-0.5 rounded font-medium">
-                  {formatSectionName(student?.section)} • {student?.year} Year
-                </span>
+                {student?.register_no && (
+                  <span className="bg-slate-100 text-slate-700 text-xs px-2 py-0.5 rounded font-mono border border-slate-200">
+                    {student.register_no}
+                  </span>
+                )}
+                {student && (
+                  <span className="bg-purple-50 text-purple-700 border border-purple-200 text-xs px-2 py-0.5 rounded font-medium">
+                    {formatSectionName(student.section)} • {student.year} Year
+                  </span>
+                )}
               </div>
               <div className="flex items-center space-x-3 text-xs text-slate-500 mt-0.5">
-                <a
-                  href={`https://leetcode.com/${student?.username}/`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-amber-600 hover:text-amber-700 flex items-center space-x-1 underline decoration-amber-300 font-medium"
-                >
-                  <span>@{student?.username}</span>
-                  <ExternalLink className="w-3 h-3" />
-                </a>
+                {student?.username && (
+                  <a
+                    href={`https://leetcode.com/${student.username}/`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-amber-600 hover:text-amber-700 flex items-center space-x-1 underline decoration-amber-300 font-medium"
+                  >
+                    <span>@{student.username}</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                )}
                 <span>•</span>
                 <span>Mentor: {student?.mentor || 'Unassigned'}</span>
                 <span>•</span>
-                <span>Batch: {student?.batch}</span>
+                <span>Batch: {student?.batch || '2023-2027'}</span>
               </div>
             </div>
           </div>
@@ -203,21 +226,21 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                 <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
                   <div className="text-[11px] text-slate-500 font-medium">CSBS Engagement</div>
                   <div className="text-2xl font-bold font-mono text-emerald-700 mt-1">
-                    {snap?.engagement_score ?? 0}
+                    {engagementScore}
                     <span className="text-xs text-slate-400 font-normal">/100</span>
                   </div>
                   <div className="text-[10px] text-emerald-700 mt-0.5 font-medium">
-                    Tier: {snap?.performance_tier || 'Beginner'}
+                    Tier: {performanceTier}
                   </div>
                 </div>
 
                 <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
                   <div className="text-[11px] text-slate-500 font-medium">Contest Rating</div>
                   <div className="text-2xl font-bold font-mono text-amber-700 mt-1">
-                    {snap?.contest_rating || 'N/A'}
+                    {contestRating > 0 ? contestRating : 'N/A'}
                   </div>
                   <div className="text-[10px] text-slate-400 mt-0.5">
-                    {snap?.contests_attended ? `${snap.contests_attended} contests` : 'No contests'}
+                    {contestsAttended > 0 ? `${contestsAttended} contests` : 'No contests'}
                   </div>
                 </div>
 
@@ -225,20 +248,20 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                   <div className="text-[11px] text-slate-500 font-medium">Active Streak</div>
                   <div className="text-2xl font-bold font-mono text-orange-600 mt-1 flex items-center space-x-1">
                     <Flame className="w-5 h-5 fill-orange-500 text-orange-500" />
-                    <span>{snap?.streak ?? 0}d</span>
+                    <span>{streakDays}d</span>
                   </div>
                   <div className="text-[10px] text-slate-400 mt-0.5">
-                    Total: {snap?.active_days ?? 0} active days
+                    Total: {activeDays} active days
                   </div>
                 </div>
 
                 <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
                   <div className="text-[11px] text-slate-500 font-medium">Acceptance Rate</div>
                   <div className="text-2xl font-bold font-mono text-sky-700 mt-1">
-                    {snap?.acceptance_rate ? `${snap.acceptance_rate}%` : 'N/A'}
+                    {acceptanceRate > 0 ? `${acceptanceRate}%` : 'N/A'}
                   </div>
                   <div className="text-[10px] text-slate-400 mt-0.5">
-                    Global Rank: #{snap?.ranking?.toLocaleString() || 'N/A'}
+                    Global Rank: #{ranking > 0 ? ranking.toLocaleString() : 'N/A'}
                   </div>
                 </div>
 

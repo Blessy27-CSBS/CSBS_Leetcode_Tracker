@@ -151,17 +151,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       if (solvedB !== solvedA) return solvedB - solvedA;
       return (b.latest_snapshot?.engagement_score || 0) - (a.latest_snapshot?.engagement_score || 0);
     })
-    .slice(0, 7)
-    .map(s => ({
-      name: formatName(s.student_name.split(' ')[0]),
-      fullName: formatName(s.student_name),
-      id: s.id,
-      solved: s.latest_snapshot?.total_solved || 0,
-      easy: s.latest_snapshot?.easy || 0,
-      medium: s.latest_snapshot?.medium || 0,
-      hard: s.latest_snapshot?.hard || 0,
-      section: formatSectionName(s.section),
-    }));
+    .slice(0, 5)
+    .map(s => {
+      let displayName = formatName(s.student_name.split(' ')[0]);
+      if (displayName.length > 9) {
+        displayName = displayName.substring(0, 8) + '…';
+      }
+      return {
+        name: displayName,
+        fullName: formatName(s.student_name),
+        id: s.id,
+        solved: s.latest_snapshot?.total_solved || 0,
+        easy: s.latest_snapshot?.easy || 0,
+        medium: s.latest_snapshot?.medium || 0,
+        hard: s.latest_snapshot?.hard || 0,
+        section: formatSectionName(s.section),
+      };
+    });
 
   // Top overall student leader
   const topStudentLeader = [...students].sort((a, b) => (b.latest_snapshot?.total_solved || 0) - (a.latest_snapshot?.total_solved || 0))[0];
