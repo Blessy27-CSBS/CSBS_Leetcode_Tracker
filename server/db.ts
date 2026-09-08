@@ -308,6 +308,10 @@ export class DatabaseService {
       this.loadMemoryStore();
       this.seedInitialUsers();
     }
+
+    if (isSupabaseConfigured) {
+      this.loadFromSupabase().catch(e => console.error('[Supabase] Initial load error:', e));
+    }
   }
 
   private loadMemoryStore() {
@@ -330,6 +334,66 @@ export class DatabaseService {
       } catch (e) {
         console.error('Failed to load JSON backup file:', e);
       }
+    }
+  }
+
+  public async loadFromSupabase() {
+    if (!isSupabaseConfigured || !supabase) return;
+    try {
+      const { data: studentsData } = await supabase.from('students').select('*').order('student_name', { ascending: true });
+      if (studentsData && studentsData.length > 0) {
+        this.memStore.students = studentsData.map((s: any) => ({
+          id: s.id,
+          register_no: s.register_no,
+          student_name: s.student_name,
+          section: s.section,
+          year: s.year,
+          batch: s.batch,
+          username: s.username,
+          email: s.email || undefined,
+          mentor: s.mentor || undefined,
+          academic_year: s.academic_year,
+          active: Boolean(s.active),
+          created_at: s.created_at,
+          notes: s.notes || undefined,
+        }));
+        console.log(`[Supabase] Loaded ${studentsData.length} students from cloud database.`);
+      }
+
+      const { data: snapData } = await supabase.from('snapshots').select('*').order('captured_at', { ascending: true });
+      if (snapData && snapData.length > 0) {
+        this.memStore.snapshots = snapData.map((r: any) => ({
+          id: r.id,
+          student_id: r.student_id,
+          captured_at: r.captured_at,
+          total_solved: r.total_solved || 0,
+          easy: r.easy || 0,
+          medium: r.medium || 0,
+          hard: r.hard || 0,
+          acceptance_rate: Number(r.acceptance_rate) || 0,
+          ranking: r.ranking || 0,
+          reputation: r.reputation || 0,
+          contest_rating: r.contest_rating || 0,
+          contest_rank: r.contest_rank || 0,
+          contests_attended: r.contests_attended || 0,
+          top_percentage: Number(r.top_percentage) || 0,
+          streak: r.streak || 0,
+          active_days: r.active_days || 0,
+          last_active: r.last_active || undefined,
+          languages: typeof r.languages === 'string' ? JSON.parse(r.languages) : (r.languages || []),
+          skills: typeof r.skills === 'string' ? JSON.parse(r.skills) : (r.skills || []),
+          badges: typeof r.badges === 'string' ? JSON.parse(r.badges) : (r.badges || []),
+          submission_calendar: typeof r.submission_calendar === 'string' ? JSON.parse(r.submission_calendar) : (r.submission_calendar || {}),
+          engagement_score: r.engagement_score || 0,
+          performance_tier: r.performance_tier || 'Beginner',
+          activity_status: r.activity_status || 'No Data',
+          status: r.status || 'SUCCESS',
+          error: r.error || undefined,
+        }));
+        console.log(`[Supabase] Loaded ${snapData.length} snapshots from cloud database.`);
+      }
+    } catch (err) {
+      console.error('[Supabase] Initial load error:', err);
     }
   }
 
