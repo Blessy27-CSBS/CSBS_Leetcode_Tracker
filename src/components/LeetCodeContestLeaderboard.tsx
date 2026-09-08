@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { StudentWithLatest, ContestItem } from '../types';
 import { api } from '../services/api';
+import { formatSectionName } from '../utils/formatters';
 
 interface LeetCodeContestLeaderboardProps {
   students: StudentWithLatest[];
@@ -938,7 +939,7 @@ export const LeetCodeContestLeaderboard: React.FC<LeetCodeContestLeaderboardProp
                         )}
                       </div>
                       <div className="text-[10px] text-slate-500 font-mono truncate">
-                        @{s.username} • Sec {s.section}
+                        @{s.username} • {formatSectionName(s.section)}
                       </div>
                     </div>
                   </div>

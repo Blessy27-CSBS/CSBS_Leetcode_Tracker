@@ -18,7 +18,6 @@ import { StudentDetailModal } from './components/StudentDetailModal';
 import { StudentFormModal } from './components/StudentFormModal';
 import { ImportStudentsModal } from './components/ImportStudentsModal';
 import { BatchFetchModal } from './components/BatchFetchModal';
-import { PrivacyNoticeModal } from './components/PrivacyNoticeModal';
 
 import { api } from './services/api';
 import { 
@@ -37,6 +36,7 @@ export function App() {
   const [authChecking, setAuthChecking] = useState(true);
 
   const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -58,7 +58,6 @@ export function App() {
 
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
-  const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
 
   // Check auth session on startup
   useEffect(() => {
@@ -303,22 +302,17 @@ export function App() {
       <div className="min-h-screen bg-[#f8fafc] text-[#1e293b] flex flex-col font-sans antialiased selection:bg-blue-500 selection:text-white">
         <Header
           onOpenBatchSync={() => {}}
-          onOpenPrivacy={() => setIsPrivacyOpen(true)}
           currentUser={currentUser}
           onLogout={handleLogout}
+          onToggleSidebar={() => setSidebarOpen(prev => !prev)}
         />
         
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
-          <StudentPortalView
-            currentUser={currentUser}
-            allStudents={students}
-            onStudentUpdated={loadAllData}
-          />
-        </main>
-
-        <PrivacyNoticeModal
-          isOpen={isPrivacyOpen}
-          onClose={() => setIsPrivacyOpen(false)}
+        <StudentPortalView
+          currentUser={currentUser}
+          allStudents={students}
+          onStudentUpdated={loadAllData}
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
         />
       </div>
     );
@@ -331,12 +325,12 @@ export function App() {
       {/* Top Header */}
       <Header
         onOpenBatchSync={() => setIsBatchModalOpen(true)}
-        onOpenPrivacy={() => setIsPrivacyOpen(true)}
         batchProgress={batchProgress}
         onRefreshCurrentView={loadAllData}
         isRefreshing={loading}
         currentUser={currentUser}
         onLogout={handleLogout}
+        onToggleSidebar={() => setSidebarOpen(prev => !prev)}
       />
 
       {/* Main Layout Area: Full-width docking, sidebar perfectly flush to the corner */}
@@ -348,6 +342,8 @@ export function App() {
           setActiveTab={setActiveTab}
           interventionCount={summary?.inactive_students || 0}
           totalStudents={summary?.total_students || students.length}
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
         />
 
         {/* Dynamic View Content Area */}
@@ -390,12 +386,6 @@ export function App() {
         onClose={() => setIsBatchModalOpen(false)}
         onCompleted={loadAllData}
       />
-
-      <PrivacyNoticeModal
-        isOpen={isPrivacyOpen}
-        onClose={() => setIsPrivacyOpen(false)}
-      />
-
     </div>
   );
 }

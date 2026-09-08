@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+@layer base {
+  html, body, button, input, select, textarea, div, span, h1, h2, h3, h4, h5, h6, p, a, table, th, td, label {
+    font-family: 'Merriweather', Georgia, Cambria, 'Times New Roman', Times, serif !important;
+  }
+}
+
+* {
+  font-family: 'Merriweather', Georgia, Cambria, 'Times New Roman', Times, serif !important;
+}
+
 @keyframes float-slow {
   0%, 100% {
     transform: translateY(0px) scale(1);

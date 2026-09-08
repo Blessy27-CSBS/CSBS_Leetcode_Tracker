@@ -64,11 +64,11 @@ export const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({
         if (f.name.endsWith('.csv')) {
           const wb = XLSX.read(data, { type: 'binary' });
           const firstSheet = wb.SheetNames[0];
-          rows = XLSX.utils.sheet_to_json(wb.Sheets[firstSheet]);
+          rows = XLSX.utils.sheet_to_json(wb.Sheets[firstSheet], { raw: false, defval: '' });
         } else {
           const wb = XLSX.read(data, { type: 'array' });
           const firstSheet = wb.SheetNames[0];
-          rows = XLSX.utils.sheet_to_json(wb.Sheets[firstSheet]);
+          rows = XLSX.utils.sheet_to_json(wb.Sheets[firstSheet], { raw: false, defval: '' });
         }
 
         if (rows.length === 0) {
@@ -242,16 +242,39 @@ export const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 bg-white">
-                    {previewRows.slice(0, 8).map((r, i) => (
-                      <tr key={i} className="hover:bg-slate-50">
-                        <td className="py-1.5 px-3 text-slate-800 font-bold">{r.register_no || r['Register Number'] || r['Register No'] || '—'}</td>
-                        <td className="py-1.5 px-3 text-slate-800 font-sans">{r.student_name || r['Student Name'] || r.name || '—'}</td>
-                        <td className="py-1.5 px-3">{r.section || r['Section'] || 'A'}</td>
-                        <td className="py-1.5 px-3">{r.year || r['Year'] || 'II'}</td>
-                        <td className="py-1.5 px-3 text-blue-600">@{r.username || r['LeetCode Username'] || r['Username'] || '—'}</td>
-                        <td className="py-1.5 px-3 text-slate-500 font-sans">{r.mentor || r['Mentor'] || '—'}</td>
-                      </tr>
-                    ))}
+                    {previewRows.slice(0, 8).map((r, i) => {
+                      const getVal = (keys: string[]) => {
+                        for (const k of keys) {
+                          if (r[k] !== undefined && r[k] !== null && r[k] !== '') return r[k].toString().trim();
+                        }
+                        for (const actualKey of Object.keys(r)) {
+                          const clean = actualKey.toLowerCase().replace(/[^a-z0-9]/g, '');
+                          for (const target of keys) {
+                            const cleanTarget = target.toLowerCase().replace(/[^a-z0-9]/g, '');
+                            if (clean.includes(cleanTarget) && r[actualKey]) return r[actualKey].toString().trim();
+                          }
+                        }
+                        return '';
+                      };
+
+                      const regNo = getVal(['register_no', 'register number', 'regno', 'reg']);
+                      const name = getVal(['student_name', 'student name', 'name', 'student']);
+                      const sec = getVal(['section', 'class', 'sec']) || 'Section A';
+                      const yr = getVal(['year', 'yr']) || 'II Year';
+                      const uname = getVal(['username', 'leetcode', 'user']);
+                      const mentor = getVal(['mentor']);
+
+                      return (
+                        <tr key={i} className="hover:bg-slate-50">
+                          <td className="py-1.5 px-3 text-slate-800 font-bold">{regNo || '—'}</td>
+                          <td className="py-1.5 px-3 text-slate-800 font-sans">{name || '—'}</td>
+                          <td className="py-1.5 px-3">{sec}</td>
+                          <td className="py-1.5 px-3">{yr}</td>
+                          <td className="py-1.5 px-3 text-blue-600">{uname && !uname.startsWith('pending_') ? `@${uname}` : '—'}</td>
+                          <td className="py-1.5 px-3 text-slate-500 font-sans">{mentor || '—'}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

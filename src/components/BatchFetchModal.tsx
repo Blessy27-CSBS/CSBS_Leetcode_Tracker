@@ -130,7 +130,7 @@ export const BatchFetchModal: React.FC<BatchFetchModalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-lg bg-slate-50 border border-slate-200">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  Target Section
+                  Section
                 </label>
                 <select
                   value={selectedSection}

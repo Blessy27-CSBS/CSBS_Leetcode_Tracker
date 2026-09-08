@@ -1,15 +1,7 @@
 import React from 'react';
 import {
-  LayoutDashboard,
-  Users,
-  Trophy,
-  TrendingUp,
-  Grid,
-  AlertCircle,
-  FileSpreadsheet,
-  Sliders,
-  Sparkles,
-  Flame
+  Circle,
+  Disc
 } from 'lucide-react';
 
 export type NavTab =
@@ -29,6 +21,8 @@ interface SidebarProps {
   setActiveTab: (tab: NavTab) => void;
   interventionCount?: number;
   totalStudents?: number;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -36,136 +30,153 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setActiveTab,
   interventionCount = 0,
   totalStudents = 0,
+  isOpen = true,
+  onClose,
 }) => {
-  const analyticsItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, badge: null },
-    { id: 'contests', label: 'LeetCode Contests', icon: Trophy, badge: null, badgeColor: 'bg-purple-500/20 text-purple-300' },
-    { id: 'tracks', label: 'Daily POTD & Tracks', icon: Flame, badge: null, badgeColor: 'bg-orange-500/20 text-orange-400' },
-    { id: 'leaderboard', label: 'Leaderboard', icon: Trophy, badge: null },
-    { id: 'progress', label: 'Most Improved', icon: TrendingUp, badge: null },
-    { id: 'sections', label: 'Sections', icon: Grid, badge: null },
+  const analyticsItems: { id: NavTab; label: string; badge: string | null; badgeColor?: string }[] = [
+    { id: 'dashboard', label: 'Dashboard', badge: null },
+    { id: 'contests', label: 'LeetCode Contests', badge: null },
+    { id: 'tracks', label: 'Daily POTD & Tracks', badge: null },
+    { id: 'leaderboard', label: 'Leaderboard', badge: null },
+    { id: 'progress', label: 'Most Improved', badge: null },
+    { id: 'sections', label: 'Academic Years', badge: null },
   ];
 
-  const managementItems = [
-    { id: 'students', label: 'Students', icon: Users, badge: totalStudents ? `${totalStudents}` : null, badgeColor: 'bg-slate-800 text-slate-300' },
+  const managementItems: { id: NavTab; label: string; badge: string | null; badgeColor?: string }[] = [
+    { id: 'students', label: 'Students', badge: totalStudents ? `${totalStudents}` : null, badgeColor: 'bg-slate-700 text-slate-200' },
     {
       id: 'intervention',
       label: 'Intervention',
-      icon: AlertCircle,
       badge: interventionCount > 0 ? `${interventionCount}` : null,
-      badgeColor: 'bg-red-500 text-white'
+      badgeColor: 'bg-rose-600 text-white'
     },
-    { id: 'reports', label: 'Reports', icon: FileSpreadsheet, badge: null },
-    { id: 'settings', label: 'Settings', icon: Sliders, badge: null },
+    { id: 'reports', label: 'Reports', badge: null },
+    { id: 'settings', label: 'Settings', badge: null },
   ];
 
+  const handleSelectTab = (tab: NavTab) => {
+    setActiveTab(tab);
+  };
+
   return (
-    <aside className="w-full md:w-64 bg-white text-slate-800 flex flex-col shrink-0 border-b md:border-b-0 md:border-r border-slate-200/90 select-none shadow-2xs z-20 md:sticky md:top-14 md:h-[calc(100vh-3.5rem)]">
-      {/* Sidebar Header Badge (Desktop) */}
-      <div className="px-4 py-3.5 border-b border-slate-100 hidden md:flex items-center justify-between bg-slate-50/50">
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-[11px] font-black uppercase tracking-wider text-slate-700">
-            CSBS Navigation
-          </span>
-        </div>
-        <span className="text-[10px] font-mono font-bold text-slate-500 bg-white border border-slate-200/80 px-1.5 py-0.5 rounded-md shadow-2xs">
-          v2.1
-        </span>
-      </div>
+    <>
+      {/* Mobile Backdrop Overlay */}
+      <div 
+        onClick={onClose}
+        className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-40 md:hidden animate-fade-in"
+      />
 
-      {/* Navigation Groups - Vertical on Desktop, Horizontal Scroll on Mobile */}
-      <nav className="flex-1 p-3 overflow-x-auto md:overflow-y-auto flex md:flex-col gap-3 md:gap-5 scrollbar-thin">
-
-        {/* Analytics Group */}
-        <div className="flex md:flex-col items-center md:items-stretch gap-1 shrink-0">
-          <div className="text-[10px] uppercase text-slate-400 font-bold px-2 py-1 tracking-wider hidden md:block">
-            Analytics
-          </div>
-          <div className="flex md:flex-col gap-1">
-            {analyticsItems.map(item => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setActiveTab(item.id as NavTab)}
-                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 group ${
-                    isActive
-                      ? 'bg-purple-600 text-white shadow-sm shadow-purple-600/25'
-                      : 'text-slate-600 hover:bg-slate-100/70 hover:text-slate-900'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Icon className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-110 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-purple-600'}`} />
-                    <span>{item.label}</span>
-                  </div>
-                  {item.badge && (
-                    <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
-                      isActive 
-                        ? 'bg-white/20 text-white' 
-                        : (item.badgeColor || 'bg-slate-100 text-slate-600')
-                    }`}>
-                      {item.badge}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+      {/* Main Sidebar Container */}
+      <aside className="w-64 bg-[#1e293b] text-slate-200 flex flex-col shrink-0 border-r border-slate-800 select-none z-20 sticky top-14 h-[calc(100vh-3.5rem)] transition-all duration-200">
+        
+        {/* Sidebar Header */}
+        <div className="px-4 py-3.5 border-b border-slate-800 flex items-center justify-between bg-[#0f172a]">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[11px] font-black uppercase tracking-wider text-slate-200">
+              CSBS Navigation
+            </span>
           </div>
         </div>
 
-        {/* Divider for Mobile */}
-        <div className="h-6 w-px bg-slate-200 self-center md:hidden shrink-0" />
+        {/* Navigation Links with Radio Bullet Style */}
+        <nav className="flex-1 p-3 overflow-y-auto flex flex-col gap-4 scrollbar-thin">
 
-        {/* Management Group */}
-        <div className="flex md:flex-col items-center md:items-stretch gap-1 shrink-0">
-          <div className="text-[10px] uppercase text-slate-400 font-bold px-2 py-1 tracking-wider hidden md:block">
-            Management
+          {/* Analytics Group */}
+          <div className="flex flex-col items-stretch gap-1">
+            <div className="text-[10px] uppercase text-slate-400 font-bold px-2 py-1 tracking-wider">
+              Main Modules
+            </div>
+            <div className="flex flex-col gap-1">
+              {analyticsItems.map(item => {
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleSelectTab(item.id as NavTab)}
+                    className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap group ${
+                      isActive
+                        ? 'bg-purple-600 text-white shadow-sm font-bold'
+                        : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      {/* Radio Circle Bullet */}
+                      {isActive ? (
+                        <Disc className="w-3.5 h-3.5 text-white shrink-0" />
+                      ) : (
+                        <Circle className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-200 shrink-0" />
+                      )}
+                      <span>{item.label}</span>
+                    </div>
+                    {item.badge && (
+                      <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                        isActive 
+                          ? 'bg-white/20 text-white' 
+                          : (item.badgeColor || 'bg-slate-800 text-slate-300')
+                      }`}>
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          <div className="flex md:flex-col gap-1">
-            {managementItems.map(item => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setActiveTab(item.id as NavTab)}
-                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 group ${
-                    isActive
-                      ? 'bg-purple-600 text-white shadow-sm shadow-purple-600/25'
-                      : 'text-slate-600 hover:bg-slate-100/70 hover:text-slate-900'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Icon className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-110 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-purple-600'}`} />
-                    <span>{item.label}</span>
-                  </div>
-                  {item.badge && (
-                    <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
-                      isActive 
-                        ? 'bg-white/20 text-white' 
-                        : (item.badgeColor || 'bg-slate-100 text-slate-600')
-                    }`}>
-                      {item.badge}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+
+          {/* Management Group */}
+          <div className="flex flex-col items-stretch gap-1">
+            <div className="text-[10px] uppercase text-slate-400 font-bold px-2 py-1 tracking-wider">
+              Administration
+            </div>
+            <div className="flex flex-col gap-1">
+              {managementItems.map(item => {
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleSelectTab(item.id as NavTab)}
+                    className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap group ${
+                      isActive
+                        ? 'bg-purple-600 text-white shadow-sm font-bold'
+                        : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      {/* Radio Circle Bullet */}
+                      {isActive ? (
+                        <Disc className="w-3.5 h-3.5 text-white shrink-0" />
+                      ) : (
+                        <Circle className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-200 shrink-0" />
+                      )}
+                      <span>{item.label}</span>
+                    </div>
+                    {item.badge && (
+                      <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                        isActive 
+                          ? 'bg-white/20 text-white' 
+                          : (item.badgeColor || 'bg-slate-800 text-slate-300')
+                      }`}>
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
 
-      </nav>
+        </nav>
 
-      {/* Connection / Status Footer (Desktop only) */}
-      <div className="p-3.5 border-t border-slate-100 bg-slate-50/60 text-xs text-slate-500 hidden md:flex items-center justify-between mt-auto">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-          <span className="text-[11px] font-bold text-slate-600">System Online</span>
+        {/* Connection / Status Footer */}
+        <div className="p-3.5 border-t border-slate-800 bg-[#0f172a] text-xs text-slate-400 flex items-center justify-between mt-auto">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[11px] font-bold text-slate-300">System Connected</span>
+          </div>
+          <span className="text-[10px] text-slate-400 font-mono font-bold">CSBS Tracker</span>
         </div>
-        <span className="text-[10px] text-slate-400 font-mono font-bold">API Connected</span>
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 };

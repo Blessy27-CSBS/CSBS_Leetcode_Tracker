@@ -13,6 +13,7 @@ import {
   LayoutGrid,
   Table as TableIcon
 } from 'lucide-react';
+import { formatSectionName } from '../utils/formatters';
 import { StudentWithLatest } from '../types';
 import { LeetCodeContestLeaderboard } from '../components/LeetCodeContestLeaderboard';
 
@@ -257,7 +258,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
 
                         <td className="py-3 px-3 whitespace-nowrap">
                           <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-lg text-[11px] font-bold border border-slate-200">
-                            Sec {s.section} • {s.year} Yr
+                            Sec {s.section} • {s.year} Year
                           </span>
                         </td>
 

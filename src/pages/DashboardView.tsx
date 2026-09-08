@@ -2,39 +2,36 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { 
   Users, 
-  UserCheck, 
-  UserX, 
-  Code2, 
-  Trophy, 
-  TrendingUp, 
-  Award, 
   Flame, 
-  RefreshCw, 
-  Download, 
-  Plus, 
-  Sparkles,
-  ArrowUpRight,
-  ShieldAlert,
-  ChevronRight
+  Compass, 
+  Zap, 
+  ArrowUpRight, 
+  BarChart2,
+  ChevronRight,
+  Award,
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
-  BarChart, 
-  Bar, 
+  BarChart,
+  Bar,
   PieChart, 
   Pie, 
   Cell, 
-  LineChart, 
-  Line, 
   AreaChart, 
   Area, 
   XAxis, 
   YAxis, 
   Tooltip, 
   CartesianGrid, 
-  Legend 
+  Legend,
+  RadarChart,
+  Radar,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis
 } from 'recharts';
 import { DashboardSummary, SectionStat, BatchStat, StudentWithLatest } from '../types';
+import { formatSectionName } from '../utils/formatters';
 
 interface DashboardViewProps {
   summary: DashboardSummary;
@@ -48,12 +45,13 @@ interface DashboardViewProps {
   onNavigateTab: (tab: any) => void;
 }
 
-const COLORS = ['#10b981', '#f59e0b', '#f43f5e', '#818cf8', '#06b6d4', '#a855f7'];
-const TIER_COLORS: Record<string, string> = {
-  Beginner: '#6366f1',   // Electric Indigo Blue (High Contrast with Rose Surge)
-  Developing: '#06b6d4', // Bright Cyan / Sky Blue
-  Proficient: '#f59e0b', // Golden Amber
-  Advanced: '#10b981',   // Emerald Green
+const formatName = (str?: string): string => {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .split(' ')
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
 };
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -67,614 +65,521 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onSelectStudent,
   onNavigateTab,
 }) => {
-  // Chart 1: Top 7 Problems Solved
+  const totalStudents = summary.total_students || 0;
+  
+  // Real Dynamic Metrics strictly computed from uploaded student dataset (0 hardcoded defaults)
+  const activeRate = totalStudents > 0 ? Math.round((summary.active_students / totalStudents) * 100) : 0;
+  const targetCompletion = totalStudents > 0 ? Math.min(100, Math.round((summary.total_problems_solved / (totalStudents * 50)) * 100)) : 0;
+  const improvedStudentsCount = students.filter(s => (s.problems_added_month || 0) > 0).length;
+  const growthRate = totalStudents > 0 ? Math.round((improvedStudentsCount / totalStudents) * 100) : 0;
+
+  const totalEngagementScoreSum = students.reduce((acc, s) => acc + (s.latest_snapshot?.engagement_score || 0), 0);
+  const avgEngagementScore = students.length > 0 ? Math.min(100, Math.round(totalEngagementScoreSum / students.length)) : 0;
+
+  // Year Group Stats (A: II Year, B: III Year, C: IV Year)
+  const secA = sectionStats.find(s => s.section === 'A');
+  const secB = sectionStats.find(s => s.section === 'B');
+  const secC = sectionStats.find(s => s.section === 'C');
+
+  const maxAvgProblems = Math.max(1, ...sectionStats.map(s => s.avg_problems || 0));
+
+  const getActivePct = (s?: SectionStat) => s && s.total_students > 0 ? Math.round((s.active_students / s.total_students) * 100) : 0;
+  const getRatingPct = (s?: SectionStat) => s && s.total_students > 0 ? Math.min(100, Math.round(((s.avg_rating || 0) / 2000) * 100)) : 0;
+  const getEngageScore = (s?: SectionStat) => s && s.total_students > 0 ? Math.min(100, Math.round(s.avg_engagement || 0)) : 0;
+  const getAvgProblemsPct = (s?: SectionStat) => s && s.total_students > 0 ? Math.min(100, Math.round((s.avg_problems / maxAvgProblems) * 100)) : 0;
+
+  const radarData = [
+    { metric: 'Avg Problems', 'II Year': getAvgProblemsPct(secA), 'III Year': getAvgProblemsPct(secB), 'IV Year': getAvgProblemsPct(secC) },
+    { metric: 'Active Rate', 'II Year': getActivePct(secA), 'III Year': getActivePct(secB), 'IV Year': getActivePct(secC) },
+    { metric: 'Contest Rating', 'II Year': getRatingPct(secA), 'III Year': getRatingPct(secB), 'IV Year': getRatingPct(secC) },
+    { metric: 'Engagement', 'II Year': getEngageScore(secA), 'III Year': getEngageScore(secB), 'IV Year': getEngageScore(secC) },
+  ];
+
+  // Tier distribution strictly from uploaded dataset
+  const denom = totalStudents || 1;
+  const pyramidData = [
+    { name: 'Advanced (200+)', pct: Math.round(((summary.tier_distribution.Advanced || 0) / denom) * 100), count: summary.tier_distribution.Advanced || 0, color: '#7c3aed' },
+    { name: 'Proficient (100-199)', pct: Math.round(((summary.tier_distribution.Proficient || 0) / denom) * 100), count: summary.tier_distribution.Proficient || 0, color: '#8b5cf6' },
+    { name: 'Developing (50-99)', pct: Math.round(((summary.tier_distribution.Developing || 0) / denom) * 100), count: summary.tier_distribution.Developing || 0, color: '#ec4899' },
+    { name: 'Beginner (0-49)', pct: Math.round(((summary.tier_distribution.Beginner || 0) / denom) * 100), count: summary.tier_distribution.Beginner || 0, color: '#f43f5e' },
+  ];
+
+  // Top Solvers Data dynamically from students array
   const topSolversData = [...students]
     .sort((a, b) => (b.latest_snapshot?.total_solved || 0) - (a.latest_snapshot?.total_solved || 0))
     .slice(0, 7)
     .map(s => ({
-      name: s.student_name.split(' ')[0],
-      fullName: s.student_name,
+      name: formatName(s.student_name.split(' ')[0]),
+      fullName: formatName(s.student_name),
       id: s.id,
       solved: s.latest_snapshot?.total_solved || 0,
       easy: s.latest_snapshot?.easy || 0,
       medium: s.latest_snapshot?.medium || 0,
       hard: s.latest_snapshot?.hard || 0,
-      section: s.section,
+      section: formatSectionName(s.section),
     }));
 
-  // Chart 2: Difficulty distribution
-  const difficultyData = [
-    { name: 'Easy', value: summary.difficulty_distribution.easy, color: '#10b981' },
-    { name: 'Medium', value: summary.difficulty_distribution.medium, color: '#f59e0b' },
-    { name: 'Hard', value: summary.difficulty_distribution.hard, color: '#ef4444' },
+  // Difficulty distribution donut data
+  const difficultyPieData = [
+    { name: 'Easy', value: summary.difficulty_distribution.easy || 0, color: '#7c3aed' },
+    { name: 'Medium', value: summary.difficulty_distribution.medium || 0, color: '#ec4899' },
+    { name: 'Hard', value: summary.difficulty_distribution.hard || 0, color: '#f43f5e' },
   ];
 
-  // Chart 5: Section comparison
-  const sectionChartData = sectionStats.map(s => ({
-    section: `Sec ${s.section}`,
-    avgProblems: s.avg_problems,
-    totalProblems: s.total_problems,
-    avgRating: s.avg_rating,
-    avgEngagement: s.avg_engagement,
-    students: s.total_students,
-  }));
-
-  // Chart 7: Monthly improvement top students
-  const monthlyImpData = [...students]
-    .filter(s => (s.problems_added_month || 0) > 0)
-    .sort((a, b) => (b.problems_added_month || 0) - (a.problems_added_month || 0))
-    .slice(0, 6)
-    .map(s => ({
-      name: s.student_name.split(' ')[0],
-      added: s.problems_added_month || 0,
-      pct: s.improvement_pct_month || 0,
-      section: s.section,
-    }));
-
-  // Chart 8: Performance Tier Distribution
-  const tierData = Object.entries(summary.tier_distribution).map(([tier, count]) => ({
-    name: tier,
-    count,
-    color: TIER_COLORS[tier] || '#3b82f6',
-  }));
-
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-10">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12 font-sans text-slate-800">
       
-      {/* Top Banner / Actions Bar with Glassmorphism */}
-      <div className="bg-white/80 backdrop-blur-md border border-slate-200/80 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+      {/* Top Page Header (Clean, unboxed & natural layout) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1 border-b border-slate-200/60">
         <div>
           <div className="flex items-center space-x-2">
-            <h2 className="text-base font-black text-slate-900">
-              Department of CSBS — LeetCode Algorithmic Tracker
-            </h2>
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+              Faculty Dashboard
+            </h1>
           </div>
           <p className="text-xs text-slate-500 font-medium mt-1">
-            Real-time problem metrics, contest tracking, student mastery progression, and intervention monitoring.
+            Overview of student practice activity across II Year, III Year, and IV Year cohorts.
           </p>
         </div>
-
-        <div className="flex items-center space-x-2.5 shrink-0">
-          <button
-            onClick={onOpenAddStudent}
-            className="flex items-center space-x-1.5 px-3.5 py-2 text-xs font-bold rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-2xs cursor-pointer transition-all"
-          >
-            <Plus className="w-4 h-4 text-purple-600" />
-            <span>Add Student</span>
-          </button>
-          <button
-            onClick={onOpenBatchSync}
-            className="flex items-center space-x-2 px-4 py-2 text-xs font-bold rounded-xl bg-purple-600 hover:bg-purple-700 text-white cursor-pointer shadow-md shadow-purple-600/20 transition-all"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            <span>Fetch All Data</span>
-          </button>
+        <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 bg-slate-100/80 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>{totalStudents} Enrolled Students</span>
+          </div>
         </div>
       </div>
 
-      {/* 8 TOP KPI CARDS with Glassmorphism and Themed Icons */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 sm:gap-4">
-        
-        {/* KPI 1: Total Students */}
-        <div 
-          onClick={() => onNavigateTab('students')}
-          className="bg-white/80 backdrop-blur-md p-4 rounded-2xl shadow-xs border border-slate-200/80 hover:border-purple-300 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Students</span>
-            <div className="p-1.5 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 group-hover:scale-110 transition-transform">
-              <Users className="w-3.5 h-3.5" />
-            </div>
-          </div>
-          <div className="text-2xl font-black text-slate-900 mt-2">
-            {summary.total_students}
-          </div>
-          <div className="text-[10px] text-slate-400 font-semibold mt-1">
-            Enrolled CSBS
-          </div>
+      {/* Empty State warning if no students uploaded */}
+      {totalStudents === 0 ? (
+        <div className="p-12 bg-white border border-slate-200 rounded-2xl text-center space-y-3 shadow-2xs">
+          <Users className="w-12 h-12 text-slate-300 mx-auto" />
+          <h3 className="text-base font-bold text-slate-800">No Student Data Uploaded Yet</h3>
+          <p className="text-xs text-slate-500 max-w-md mx-auto">
+            Upload student roster details via Excel sheet in the Students section to view live analytics.
+          </p>
         </div>
-
-        {/* KPI 2: Active Students */}
-        <div 
-          onClick={() => onNavigateTab('students')}
-          className="bg-white/80 backdrop-blur-md p-4 rounded-2xl shadow-xs border border-slate-200/80 hover:border-emerald-300 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Active (14d)</span>
-            <div className="p-1.5 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 group-hover:scale-110 transition-transform">
-              <UserCheck className="w-3.5 h-3.5" />
-            </div>
-          </div>
-          <div className="text-2xl font-black text-slate-900 mt-2">
-            {summary.active_students}
-          </div>
-          <div className="text-[10px] text-emerald-600 font-bold mt-1">
-            {Math.round((summary.active_students / (summary.total_students || 1)) * 100)}% active rate
-          </div>
-        </div>
-
-        {/* KPI 3: Inactive Students */}
-        <div 
-          onClick={() => onNavigateTab('intervention')}
-          className="bg-white/80 backdrop-blur-md p-4 rounded-2xl shadow-xs border border-slate-200/80 hover:border-rose-300 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Inactive</span>
-            <div className="p-1.5 rounded-xl bg-rose-50 text-rose-600 border border-rose-100 group-hover:scale-110 transition-transform">
-              <UserX className="w-3.5 h-3.5" />
-            </div>
-          </div>
-          <div className="text-2xl font-black text-rose-600 mt-2">
-            {summary.inactive_students}
-          </div>
-          <div className="text-[10px] text-rose-500 font-semibold mt-1">
-            &gt;14d inactive
-          </div>
-        </div>
-
-        {/* KPI 4: Total Solved */}
-        <div className="bg-white/80 backdrop-blur-md p-4 rounded-2xl shadow-xs border border-slate-200/80 flex flex-col justify-between group">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Total Solved</span>
-            <div className="p-1.5 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 group-hover:scale-110 transition-transform">
-              <Code2 className="w-3.5 h-3.5" />
-            </div>
-          </div>
-          <div className="text-2xl font-black text-slate-900 mt-2">
-            {summary.total_problems_solved.toLocaleString()}
-          </div>
-          <div className="text-[10px] text-slate-400 font-semibold mt-1">
-            Class Total
-          </div>
-        </div>
-
-        {/* KPI 5: Average Problems */}
-        <div className="bg-white/80 backdrop-blur-md p-4 rounded-2xl shadow-xs border border-slate-200/80 flex flex-col justify-between group">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Avg Solved</span>
-            <div className="p-1.5 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 group-hover:scale-110 transition-transform">
-              <TrendingUp className="w-3.5 h-3.5" />
-            </div>
-          </div>
-          <div className="text-2xl font-black text-slate-900 mt-2">
-            {summary.avg_problems_per_student}
-          </div>
-          <div className="text-[10px] text-indigo-600 font-bold mt-1">
-            Per Student
-          </div>
-        </div>
-
-        {/* KPI 6: Average Contest Rating */}
-        <div className="bg-white/80 backdrop-blur-md p-4 rounded-2xl shadow-xs border border-slate-200/80 flex flex-col justify-between group">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Avg Rating</span>
-            <div className="p-1.5 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 group-hover:scale-110 transition-transform">
-              <Trophy className="w-3.5 h-3.5" />
-            </div>
-          </div>
-          <div className="text-2xl font-black text-slate-900 mt-2">
-            {summary.avg_contest_rating || '1350'}
-          </div>
-          <div className="text-[10px] text-slate-400 font-semibold mt-1">
-            Contestants
-          </div>
-        </div>
-
-        {/* KPI 7: Most Improved */}
-        <div 
-          onClick={() => summary.most_improved_student && onSelectStudent(summary.most_improved_student.id)}
-          className="bg-white/80 backdrop-blur-md p-4 rounded-2xl shadow-xs border border-slate-200/80 hover:border-emerald-300 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 truncate">Most Improved</span>
-            <div className="p-1.5 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 group-hover:scale-110 transition-transform">
-              <Flame className="w-3.5 h-3.5" />
-            </div>
-          </div>
-          <div className="text-sm font-black text-slate-900 mt-2 truncate">
-            {summary.most_improved_student?.name.split(' ')[0] || 'Aarav'}
-          </div>
-          <div className="text-[10px] text-emerald-600 font-bold mt-1">
-            +{summary.most_improved_student?.problems_added || 28} this mo
-          </div>
-        </div>
-
-        {/* KPI 8: Highest Solver */}
-        <div 
-          onClick={() => summary.highest_problem_solver && onSelectStudent(summary.highest_problem_solver.id)}
-          className="bg-white/80 backdrop-blur-md p-4 rounded-2xl shadow-xs border border-slate-200/80 hover:border-purple-300 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 truncate">Top Solver</span>
-            <div className="p-1.5 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 group-hover:scale-110 transition-transform">
-              <Award className="w-3.5 h-3.5" />
-            </div>
-          </div>
-          <div className="text-sm font-black text-slate-900 mt-2 truncate">
-            {summary.highest_problem_solver?.name.split(' ')[0] || 'Siddharth'}
-          </div>
-          <div className="text-[10px] text-purple-600 font-bold mt-1">
-            {summary.highest_problem_solver?.total_solved || 308} Solved
-          </div>
-        </div>
-
-      </div>
-
-      {/* FACULTY INSIGHTS CARD */}
-      <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-2">
-        <div className="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-blue-700">
-          <Sparkles className="w-4 h-4 text-blue-600" />
-          <span>Faculty Automated Analytics & Insights</span>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
-          {summary.insights.map((insight, idx) => (
-            <div
-              key={idx}
-              className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-700 flex items-start space-x-2 leading-relaxed font-medium"
+      ) : (
+        <>
+          {/* ========================================================= */}
+          {/* SECTION 1: TOP 4 STAT SUMMARY GAUGES (100% Dynamic)       */}
+          {/* ========================================================= */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            
+            {/* Ring 1: Active Rate */}
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white p-4.5 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center justify-between hover:shadow-md transition-shadow"
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-600 mt-1.5 shrink-0" />
-              <span>{insight}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+              <div>
+                <div className="text-2xl font-black text-slate-900 tracking-tight">{activeRate}%</div>
+                <div className="text-xs font-bold text-slate-600 mt-0.5">Active Cohort Rate</div>
+                <div className="text-[10px] text-emerald-600 font-bold flex items-center gap-1 mt-1">
+                  <ArrowUpRight className="w-3 h-3" />
+                  <span>{summary.active_students} Active Solvers</span>
+                </div>
+              </div>
+              <div className="w-14 h-14 relative flex items-center justify-center">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={[{ value: activeRate, fill: '#7c3aed' }, { value: 100 - activeRate, fill: '#f1f5f9' }]} cx="50%" cy="50%" innerRadius={18} outerRadius={26} startAngle={90} endAngle={-270} dataKey="value" stroke="none">
+                      <Cell fill="#7c3aed" />
+                      <Cell fill="#f1f5f9" />
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+                <span className="absolute text-[10px] font-black text-purple-700">{activeRate}%</span>
+              </div>
+            </motion.div>
 
-      {/* 8 CHARTS GRID WITH ANIMATIONS & ENHANCED VISUALS */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-
-        {/* Chart 1: Problems Solved by Student (Top Solvers) */}
-        <motion.div 
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-3 hover:shadow-md transition-shadow"
-        >
-          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-            <div>
-              <h3 className="text-sm font-bold text-slate-800">Top Problem Solvers</h3>
-              <p className="text-[11px] text-slate-500">Department leaders by verified total solved</p>
-            </div>
-            <button
-              onClick={() => onNavigateTab('leaderboard')}
-              className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center space-x-1 cursor-pointer"
+            {/* Ring 2: Target Completion Rate */}
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 }}
+              className="bg-white p-4.5 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center justify-between hover:shadow-md transition-shadow"
             >
-              <span>Full Board</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-          <div className="h-60 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={topSolversData}>
-                <defs>
-                  <linearGradient id="easyGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#10b981" stopOpacity={1} />
-                    <stop offset="100%" stopColor="#059669" stopOpacity={0.8} />
-                  </linearGradient>
-                  <linearGradient id="mediumGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#f59e0b" stopOpacity={1} />
-                    <stop offset="100%" stopColor="#d97706" stopOpacity={0.8} />
-                  </linearGradient>
-                  <linearGradient id="hardGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#ef4444" stopOpacity={1} />
-                    <stop offset="100%" stopColor="#dc2626" stopOpacity={0.8} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="name" stroke="#64748b" fontSize={11} tickLine={false} />
-                <YAxis stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', color: '#1e293b', borderRadius: '8px', fontSize: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                />
-                <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '6px' }} />
-                <Bar dataKey="easy" name="Easy" stackId="a" fill="url(#easyGrad)" isAnimationActive={true} animationDuration={1400} animationEasing="ease-in-out" />
-                <Bar dataKey="medium" name="Medium" stackId="a" fill="url(#mediumGrad)" isAnimationActive={true} animationDuration={1400} animationEasing="ease-in-out" />
-                <Bar dataKey="hard" name="Hard" stackId="a" fill="url(#hardGrad)" radius={[6, 6, 0, 0]} isAnimationActive={true} animationDuration={1400} animationEasing="ease-in-out" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </motion.div>
+              <div>
+                <div className="text-2xl font-black text-slate-900 tracking-tight">{targetCompletion}%</div>
+                <div className="text-xs font-bold text-slate-600 mt-0.5">Target Progress</div>
+                <div className="text-[10px] text-purple-600 font-bold flex items-center gap-1 mt-1">
+                  <ArrowUpRight className="w-3 h-3" />
+                  <span>{summary.total_problems_solved} Total Solved</span>
+                </div>
+              </div>
+              <div className="w-14 h-14 relative flex items-center justify-center">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={[{ value: targetCompletion, fill: '#8b5cf6' }, { value: 100 - targetCompletion, fill: '#f1f5f9' }]} cx="50%" cy="50%" innerRadius={18} outerRadius={26} startAngle={90} endAngle={-270} dataKey="value" stroke="none">
+                      <Cell fill="#8b5cf6" />
+                      <Cell fill="#f1f5f9" />
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+                <span className="absolute text-[10px] font-black text-purple-700">{targetCompletion}%</span>
+              </div>
+            </motion.div>
 
-        {/* Chart 2: Easy / Medium / Hard Distribution */}
-        <motion.div 
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.08 }}
-          className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-3 hover:shadow-md transition-shadow"
-        >
-          <div className="border-b border-slate-100 pb-2">
-            <h3 className="text-sm font-bold text-slate-800">Difficulty Distribution</h3>
-            <p className="text-[11px] text-slate-500">Total department questions solved by difficulty tier</p>
+            {/* Ring 3: Growth Surge Rate */}
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="bg-white p-4.5 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center justify-between hover:shadow-md transition-shadow"
+            >
+              <div>
+                <div className="text-2xl font-black text-slate-900 tracking-tight">{growthRate}%</div>
+                <div className="text-xs font-bold text-slate-600 mt-0.5">Monthly Growth</div>
+                <div className="text-[10px] text-pink-600 font-bold flex items-center gap-1 mt-1">
+                  <Flame className="w-3 h-3" />
+                  <span>{improvedStudentsCount} Growing Solvers</span>
+                </div>
+              </div>
+              <div className="w-14 h-14 relative flex items-center justify-center">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={[{ value: growthRate, fill: '#ec4899' }, { value: 100 - growthRate, fill: '#f1f5f9' }]} cx="50%" cy="50%" innerRadius={18} outerRadius={26} startAngle={90} endAngle={-270} dataKey="value" stroke="none">
+                      <Cell fill="#ec4899" />
+                      <Cell fill="#f1f5f9" />
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+                <span className="absolute text-[10px] font-black text-pink-700">{growthRate}%</span>
+              </div>
+            </motion.div>
+
+            {/* Ring 4: Engagement Index */}
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              className="bg-white p-4.5 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center justify-between hover:shadow-md transition-shadow"
+            >
+              <div>
+                <div className="text-2xl font-black text-slate-900 tracking-tight">{avgEngagementScore}%</div>
+                <div className="text-xs font-bold text-slate-600 mt-0.5">CSBS Engagement</div>
+                <div className="text-[10px] text-cyan-600 font-bold flex items-center gap-1 mt-1">
+                  <Zap className="w-3 h-3" />
+                  <span>Live Score Index</span>
+                </div>
+              </div>
+              <div className="w-14 h-14 relative flex items-center justify-center">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={[{ value: avgEngagementScore, fill: '#06b6d4' }, { value: Math.max(0, 100 - avgEngagementScore), fill: '#f1f5f9' }]} cx="50%" cy="50%" innerRadius={18} outerRadius={26} startAngle={90} endAngle={-270} dataKey="value" stroke="none">
+                      <Cell fill="#06b6d4" />
+                      <Cell fill="#f1f5f9" />
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+                <span className="absolute text-[10px] font-black text-cyan-700">{avgEngagementScore}%</span>
+              </div>
+            </motion.div>
+
           </div>
-          <div className="h-60 w-full flex items-center justify-center">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={difficultyData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={55}
-                  outerRadius={85}
-                  paddingAngle={4}
-                  cornerRadius={6}
-                  dataKey="value"
-                  isAnimationActive={true}
-                  animationDuration={1500}
-                  animationEasing="ease-out"
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  labelLine={false}
+
+          {/* ========================================================= */}
+          {/* SECTION 2: HERO CHARTS (PROGRESSION WAVE & TOP SOLVERS BAR) */}
+          {/* ========================================================= */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+            
+            {/* HERO CHART 1: Cumulative Solved Progression Area Wave (Cols 7) */}
+            <motion.div 
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="lg:col-span-7 p-5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-4 hover:shadow-md transition-all flex flex-col justify-between"
+            >
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-purple-600"></span>
+                    <h3 className="text-sm font-extrabold text-slate-900">Cumulative Solved Progression & Benchmark Wave</h3>
+                  </div>
+                  <p className="text-[11px] text-slate-500 font-medium mt-0.5">Dual-tone wave chart tracking student solved volume vs benchmark curve</p>
+                </div>
+                <span className="text-[11px] font-black text-purple-700 bg-purple-50 border border-purple-100 px-3 py-1 rounded-full">
+                  {summary.total_problems_solved} Total Solved
+                </span>
+              </div>
+              
+              <div className="h-72 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={timeline}>
+                    <defs>
+                      <linearGradient id="wavePurpleGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#7c3aed" stopOpacity={0.6} />
+                        <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.05} />
+                      </linearGradient>
+                      <linearGradient id="wavePinkGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#ec4899" stopOpacity={0.45} />
+                        <stop offset="100%" stopColor="#f43f5e" stopOpacity={0.02} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                    <XAxis dataKey="date" stroke="#64748b" fontSize={11} tickLine={false} />
+                    <YAxis stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', color: '#1e293b', borderRadius: '12px', fontSize: '12px', boxShadow: '0 10px 25px -5px rgba(124, 58, 237, 0.15)' }}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="total_problems" 
+                      name="Total Solved Wave" 
+                      stroke="#7c3aed" 
+                      strokeWidth={3.5} 
+                      fillOpacity={1} 
+                      fill="url(#wavePurpleGrad)" 
+                      isAnimationActive={true}
+                      animationDuration={1800}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="avg_rating" 
+                      name="Class Target Wave" 
+                      stroke="#ec4899" 
+                      strokeWidth={2.5} 
+                      fillOpacity={1} 
+                      fill="url(#wavePinkGrad)" 
+                      isAnimationActive={true}
+                      animationDuration={1800}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </motion.div>
+
+            {/* HERO CHART 2: Top Problem Solvers Stacked Bar Graph (Cols 5) */}
+            <motion.div 
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.1 }}
+              className="lg:col-span-5 p-5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-4 hover:shadow-md transition-all flex flex-col justify-between"
+            >
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-pink-500"></span>
+                    <h3 className="text-sm font-extrabold text-slate-900">Top Problem Solvers Breakdown</h3>
+                  </div>
+                  <p className="text-[11px] text-slate-500 font-medium mt-0.5">Verified easy, medium & hard problem counts</p>
+                </div>
+                <button
+                  onClick={() => onNavigateTab('leaderboard')}
+                  className="text-xs text-purple-600 hover:text-purple-700 font-bold flex items-center space-x-1 cursor-pointer bg-purple-50 hover:bg-purple-100 px-2.5 py-1 rounded-lg transition-colors"
                 >
-                  {difficultyData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', color: '#1e293b', borderRadius: '8px', fontSize: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                />
-                <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '6px' }} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </motion.div>
+                  <span>Full Board</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
 
-        {/* Chart 3: Problems Solved Over Time */}
-        <motion.div 
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.16 }}
-          className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-3 hover:shadow-md transition-shadow"
-        >
-          <div className="border-b border-slate-100 pb-2">
-            <h3 className="text-sm font-bold text-slate-800">Historical Solved Progression</h3>
-            <p className="text-[11px] text-slate-500">Cumulative department problem volume over snapshot capture dates</p>
-          </div>
-          <div className="h-60 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={timeline}>
-                <defs>
-                  <linearGradient id="colorSolvedGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="date" stroke="#64748b" fontSize={11} tickLine={false} />
-                <YAxis stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', color: '#1e293b', borderRadius: '8px', fontSize: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="total_problems" 
-                  name="Total Solved" 
-                  stroke="#2563eb" 
-                  strokeWidth={3} 
-                  fillOpacity={1} 
-                  fill="url(#colorSolvedGrad)" 
-                  isAnimationActive={true}
-                  animationDuration={1600}
-                  animationEasing="ease-in-out"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </motion.div>
+              <div className="h-72 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={topSolversData}>
+                    <defs>
+                      <linearGradient id="easyGradBar" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#7c3aed" stopOpacity={1} />
+                        <stop offset="100%" stopColor="#5b21b6" stopOpacity={0.8} />
+                      </linearGradient>
+                      <linearGradient id="medGradBar" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#ec4899" stopOpacity={1} />
+                        <stop offset="100%" stopColor="#be185d" stopOpacity={0.8} />
+                      </linearGradient>
+                      <linearGradient id="hardGradBar" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#f43f5e" stopOpacity={1} />
+                        <stop offset="100%" stopColor="#9f1239" stopOpacity={0.8} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                    <XAxis dataKey="name" stroke="#64748b" fontSize={11} tickLine={false} />
+                    <YAxis stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', color: '#1e293b', borderRadius: '12px', fontSize: '12px', boxShadow: '0 10px 25px -5px rgba(236, 72, 153, 0.15)' }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
+                    <Bar dataKey="easy" name="Easy" stackId="a" fill="url(#easyGradBar)" isAnimationActive={true} animationDuration={1600} />
+                    <Bar dataKey="medium" name="Medium" stackId="a" fill="url(#medGradBar)" isAnimationActive={true} animationDuration={1600} />
+                    <Bar dataKey="hard" name="Hard" stackId="a" fill="url(#hardGradBar)" radius={[8, 8, 0, 0]} isAnimationActive={true} animationDuration={1600} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </motion.div>
 
-        {/* Chart 4: Contest Rating Progression Trend */}
-        <motion.div 
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.24 }}
-          className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-3 hover:shadow-md transition-shadow"
-        >
-          <div className="border-b border-slate-100 pb-2">
-            <h3 className="text-sm font-bold text-slate-800">Contest Rating Progression</h3>
-            <p className="text-[11px] text-slate-500">Average department contest rating benchmark over time</p>
           </div>
-          <div className="h-60 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={timeline}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="date" stroke="#64748b" fontSize={11} tickLine={false} />
-                <YAxis domain={['auto', 'auto']} stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', color: '#1e293b', borderRadius: '8px', fontSize: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                />
-                <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '6px' }} />
-                <Line 
-                  type="monotone" 
-                  dataKey="avg_rating" 
-                  name="Avg Contest Rating" 
-                  stroke="#f59e0b" 
-                  strokeWidth={3} 
-                  dot={{ r: 4, fill: '#f59e0b', strokeWidth: 2, stroke: '#ffffff' }}
-                  activeDot={{ r: 6, stroke: '#f59e0b', strokeWidth: 2 }}
-                  isAnimationActive={true}
-                  animationDuration={1500}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="avg_problems" 
-                  name="Avg Problems / Student" 
-                  stroke="#0284c7" 
-                  strokeWidth={2} 
-                  strokeDasharray="4 4"
-                  dot={{ r: 3, fill: '#0284c7' }}
-                  isAnimationActive={true}
-                  animationDuration={1500}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </motion.div>
 
-        {/* Chart 5: Section Comparison */}
-        <motion.div 
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.32 }}
-          className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-3 hover:shadow-md transition-shadow"
-        >
-          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-            <div>
-              <h3 className="text-sm font-bold text-slate-800">Section Comparison (A vs B vs C)</h3>
-              <p className="text-[11px] text-slate-500">Average problems and engagement by classroom section</p>
-            </div>
-            <button
-              onClick={() => onNavigateTab('sections')}
-              className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center space-x-1 cursor-pointer"
+          {/* ========================================================= */}
+          {/* SECTION 3: RADAR COMPARISON & TIER DISTRIBUTION           */}
+          {/* ========================================================= */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+            {/* CHART 3: Multi-Axis Radar Graph */}
+            <motion.div 
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.15 }}
+              className="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-4 hover:shadow-md transition-all"
             >
-              <span>Details</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-          <div className="h-60 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={sectionChartData}>
-                <defs>
-                  <linearGradient id="secProblemsGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={1} />
-                    <stop offset="100%" stopColor="#1d4ed8" stopOpacity={0.8} />
-                  </linearGradient>
-                  <linearGradient id="secEngageGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#10b981" stopOpacity={1} />
-                    <stop offset="100%" stopColor="#047857" stopOpacity={0.8} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="section" stroke="#64748b" fontSize={11} tickLine={false} />
-                <YAxis stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', color: '#1e293b', borderRadius: '8px', fontSize: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                />
-                <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '6px' }} />
-                <Bar dataKey="avgProblems" name="Avg Problems / Student" fill="url(#secProblemsGrad)" radius={[6, 6, 0, 0]} isAnimationActive={true} animationDuration={1400} />
-                <Bar dataKey="avgEngagement" name="Avg CSBS Engagement" fill="url(#secEngageGrad)" radius={[6, 6, 0, 0]} isAnimationActive={true} animationDuration={1400} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </motion.div>
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center space-x-2">
+                  <Compass className="w-4 h-4 text-purple-600" />
+                  <h3 className="text-sm font-extrabold text-slate-900">Academic Year Multi-Axis Radar Graph</h3>
+                </div>
+                <span className="text-[11px] font-bold text-purple-600 bg-purple-50 px-2.5 py-0.5 rounded-full border border-purple-100">
+                  II Year vs III Year vs IV Year
+                </span>
+              </div>
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart data={radarData}>
+                    <PolarGrid stroke="#e2e8f0" />
+                    <PolarAngleAxis dataKey="metric" stroke="#64748b" fontSize={10} />
+                    <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="#cbd5e1" fontSize={9} />
+                    <Radar name="II Year" dataKey="II Year" stroke="#7c3aed" fill="#7c3aed" fillOpacity={0.4} isAnimationActive={true} animationDuration={1700} />
+                    <Radar name="III Year" dataKey="III Year" stroke="#ec4899" fill="#ec4899" fillOpacity={0.3} isAnimationActive={true} animationDuration={1700} />
+                    <Radar name="IV Year" dataKey="IV Year" stroke="#06b6d4" fill="#06b6d4" fillOpacity={0.3} isAnimationActive={true} animationDuration={1700} />
+                    <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '4px' }} />
+                    <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '12px', fontSize: '11px' }} />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
+            </motion.div>
 
-        {/* Chart 6: Weekly Activity Level */}
-        <motion.div 
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.4 }}
-          className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-3 hover:shadow-md transition-shadow"
-        >
-          <div className="border-b border-slate-100 pb-2">
-            <h3 className="text-sm font-bold text-slate-800">Student Activity Status</h3>
-            <p className="text-[11px] text-slate-500">Distribution of active vs inactive students across sections</p>
-          </div>
-          <div className="h-60 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={sectionStats}>
-                <defs>
-                  <linearGradient id="activeGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#22c55e" stopOpacity={1} />
-                    <stop offset="100%" stopColor="#15803d" stopOpacity={0.85} />
-                  </linearGradient>
-                  <linearGradient id="inactiveGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#f97316" stopOpacity={1} />
-                    <stop offset="100%" stopColor="#c2410c" stopOpacity={0.85} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="section" stroke="#64748b" fontSize={11} tickLine={false} />
-                <YAxis stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', color: '#1e293b', borderRadius: '8px', fontSize: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                />
-                <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '6px' }} />
-                <Bar dataKey="active_students" name="Active (≤14d)" fill="url(#activeGrad)" radius={[6, 6, 0, 0]} isAnimationActive={true} animationDuration={1400} />
-                <Bar dataKey="inactive_students" name="Inactive (>14d)" fill="url(#inactiveGrad)" radius={[6, 6, 0, 0]} isAnimationActive={true} animationDuration={1400} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </motion.div>
-
-        {/* Chart 7: Monthly Improvement (+Problems) */}
-        <motion.div 
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.48 }}
-          className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-3 hover:shadow-md transition-shadow"
-        >
-          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-            <div>
-              <h3 className="text-sm font-bold text-slate-800">Monthly Surge Leaders</h3>
-              <p className="text-[11px] text-slate-500">Students with the highest 30-day problem count increase</p>
-            </div>
-            <button
-              onClick={() => onNavigateTab('progress')}
-              className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center space-x-1 cursor-pointer"
+            {/* CHART 4: Performance Tier Pyramid & Difficulty Donut */}
+            <motion.div 
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.2 }}
+              className="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-4 hover:shadow-md transition-all flex flex-col justify-between"
             >
-              <span>Most Improved</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-          <div className="h-60 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthlyImpData}>
-                <defs>
-                  <linearGradient id="surgeFlameGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#f43f5e" stopOpacity={1} />
-                    <stop offset="100%" stopColor="#be123c" stopOpacity={0.85} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="name" stroke="#64748b" fontSize={11} tickLine={false} />
-                <YAxis stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', color: '#1e293b', borderRadius: '8px', fontSize: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                />
-                <Bar dataKey="added" name="Problems Added (Month)" fill="url(#surgeFlameGrad)" radius={[6, 6, 0, 0]} isAnimationActive={true} animationDuration={1500} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </motion.div>
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center space-x-2">
+                  <BarChart2 className="w-4 h-4 text-pink-500" />
+                  <h3 className="text-sm font-extrabold text-slate-900">Performance Tier Distribution</h3>
+                </div>
+                <span className="text-xs font-bold text-slate-500">{totalStudents} Total Solvers</span>
+              </div>
 
-        {/* Chart 8: Students Grouped by Performance Tier */}
-        <motion.div 
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.56 }}
-          className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-3 hover:shadow-md transition-shadow"
-        >
-          <div className="border-b border-slate-100 pb-2">
-            <h3 className="text-sm font-bold text-slate-800">Performance Tier Distribution</h3>
-            <p className="text-[11px] text-slate-500">Beginner (0-49), Developing (50-99), Proficient (100-199), Advanced (200+)</p>
-          </div>
-          <div className="h-60 w-full flex items-center justify-center">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={tierData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={55}
-                  outerRadius={85}
-                  paddingAngle={4}
-                  cornerRadius={6}
-                  dataKey="count"
-                  isAnimationActive={true}
-                  animationDuration={1500}
-                  animationEasing="ease-out"
-                >
-                  {tierData.map((entry, index) => (
-                    <Cell key={`cell-tier-${index}`} fill={entry.color} />
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
+                {/* Donut Chart (5 cols) */}
+                <div className="sm:col-span-5 h-44 relative flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={difficultyPieData} cx="50%" cy="50%" innerRadius={35} outerRadius={55} paddingAngle={4} dataKey="value" stroke="none">
+                        {difficultyPieData.map((entry, idx) => (
+                          <Cell key={`cell-${idx}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute text-center">
+                    <div className="text-base font-black text-slate-900">{summary.total_problems_solved}</div>
+                    <div className="text-[9px] font-bold text-slate-400 uppercase">Solved</div>
+                  </div>
+                </div>
+
+                {/* Tier Bars (7 cols) */}
+                <div className="sm:col-span-7 space-y-3">
+                  {pyramidData.map((item, idx) => (
+                    <div key={idx} className="space-y-1">
+                      <div className="flex justify-between items-center text-xs font-bold text-slate-700">
+                        <span>{item.name}</span>
+                        <span className="font-mono text-purple-700 font-extrabold">{item.count} ({item.pct}%)</span>
+                      </div>
+                      <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden p-0.5 border border-slate-200/60">
+                        <motion.div 
+                          initial={{ width: 0 }}
+                          animate={{ width: `${item.pct}%` }}
+                          transition={{ duration: 1.2, delay: idx * 0.1 }}
+                          className="h-full rounded-full"
+                          style={{ backgroundColor: item.color }}
+                        />
+                      </div>
+                    </div>
                   ))}
-                </Pie>
-                <Tooltip
-                  formatter={(value: any, name: any) => [`${value} Students`, name]}
-                  contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', color: '#1e293b', borderRadius: '8px', fontSize: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                />
-                <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '6px' }} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </motion.div>
+                </div>
+              </div>
 
-      </div>
+              <div className="p-3 bg-purple-50 rounded-xl border border-purple-100 text-xs font-semibold text-purple-900 flex items-center justify-between mt-2">
+                <span>Cohort Active Efficiency</span>
+                <span className="font-mono font-black text-purple-700">{activeRate}%</span>
+              </div>
+            </motion.div>
+
+          </div>
+
+          {/* ========================================================= */}
+          {/* SECTION 4: YEAR GROUP PROGRESS & TOP SOLVER SPOTLIGHT      */}
+          {/* ========================================================= */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+            
+            {/* Academic Year Group Progress Meters (Cols 7) */}
+            <div className="lg:col-span-7 bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-4">
+              <div className="border-b border-slate-100 pb-3">
+                <h3 className="text-sm font-extrabold text-slate-900">Academic Year Group Progress Meters</h3>
+                <p className="text-[11px] text-slate-500 font-medium">Completion rates for uploaded II Year, III Year, and IV Year cohorts</p>
+              </div>
+
+              <div className="space-y-4 pt-1">
+                {sectionStats.map((s, idx) => {
+                  const yearLabel = formatSectionName(s.section);
+                  const pct = maxAvgProblems > 0 ? Math.min(100, Math.round((s.avg_problems / maxAvgProblems) * 100)) : 0;
+                  const color = idx === 0 ? 'from-purple-600 to-indigo-600' : idx === 1 ? 'from-pink-500 to-rose-500' : 'from-cyan-500 to-blue-600';
+                  return (
+                    <div key={s.section} className="space-y-1.5">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="font-extrabold text-slate-800">{yearLabel} Cohort ({s.total_students} Students)</span>
+                        <span className="font-mono font-black text-purple-700">{pct}% Relative Solved Rate</span>
+                      </div>
+                      <div className="h-3.5 bg-slate-100 rounded-full overflow-hidden p-0.5 border border-slate-200/80 relative">
+                        <motion.div 
+                          initial={{ width: 0 }}
+                          animate={{ width: `${pct}%` }}
+                          transition={{ duration: 1.4, delay: idx * 0.15 }}
+                          className={`h-full rounded-full bg-gradient-to-r ${color}`}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Clean White Stat Card (Cols 5) */}
+            <div className="lg:col-span-5 bg-white border border-slate-200/90 text-slate-800 p-5 rounded-2xl shadow-2xs flex flex-col justify-between space-y-4 hover:shadow-md transition-all">
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-0.5 rounded-md">
+                    Top Department Solver
+                  </span>
+                  <Award className="w-5 h-5 text-amber-500" />
+                </div>
+                <div className="text-2xl font-black text-slate-900 mt-3">
+                  {formatName(summary.highest_problem_solver?.name) || 'Student Leader'}
+                </div>
+                <div className="text-xs text-slate-500 font-medium mt-1">
+                  Verified {summary.highest_problem_solver?.total_solved || 0} Total Solved Questions
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 pt-3 border-t border-slate-100 text-center">
+                <div className="p-2 bg-slate-50 rounded-xl border border-slate-100">
+                  <div className="text-xs font-bold text-slate-500">Easy</div>
+                  <div className="text-base font-black text-slate-900 mt-0.5">{summary.difficulty_distribution.easy}</div>
+                </div>
+                <div className="p-2 bg-slate-50 rounded-xl border border-slate-100">
+                  <div className="text-xs font-bold text-slate-500">Medium</div>
+                  <div className="text-base font-black text-slate-900 mt-0.5">{summary.difficulty_distribution.medium}</div>
+                </div>
+                <div className="p-2 bg-slate-50 rounded-xl border border-slate-100">
+                  <div className="text-xs font-bold text-slate-500">Hard</div>
+                  <div className="text-base font-black text-slate-900 mt-0.5">{summary.difficulty_distribution.hard}</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </>
+      )}
 
     </div>
   );

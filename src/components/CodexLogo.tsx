@@ -231,7 +231,7 @@ export const CodexLogo: React.FC<CodexLogoProps> = ({
             <motion.text
               x="8"
               y="26"
-              fontFamily="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+              fontFamily="'Merriweather', Georgia, Cambria, serif"
               fontSize="26"
               fontWeight="900"
               fill={textColor}
@@ -244,7 +244,7 @@ export const CodexLogo: React.FC<CodexLogoProps> = ({
             <motion.text
               x="48"
               y="26"
-              fontFamily="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+              fontFamily="'Merriweather', Georgia, Cambria, serif"
               fontSize="26"
               fontWeight="900"
               fill={textColor}
@@ -257,7 +257,7 @@ export const CodexLogo: React.FC<CodexLogoProps> = ({
             <motion.text
               x="90"
               y="26"
-              fontFamily="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+              fontFamily="'Merriweather', Georgia, Cambria, serif"
               fontSize="26"
               fontWeight="900"
               fill={textColor}
@@ -299,7 +299,7 @@ export const CodexLogo: React.FC<CodexLogoProps> = ({
             <motion.text
               x="174"
               y="26"
-              fontFamily="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+              fontFamily="'Merriweather', Georgia, Cambria, serif"
               fontSize="26"
               fontWeight="900"
               fill={textColor}
@@ -344,7 +344,7 @@ export const CodexLogo: React.FC<CodexLogoProps> = ({
               <motion.text
                 x="8"
                 y="26"
-                fontFamily="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+                fontFamily="'Merriweather', Georgia, Cambria, serif"
                 fontSize="26"
                 fontWeight="900"
                 fill={textColor}
@@ -356,7 +356,7 @@ export const CodexLogo: React.FC<CodexLogoProps> = ({
               <motion.text
                 x="48"
                 y="26"
-                fontFamily="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+                fontFamily="'Merriweather', Georgia, Cambria, serif"
                 fontSize="26"
                 fontWeight="900"
                 fill={textColor}
@@ -368,7 +368,7 @@ export const CodexLogo: React.FC<CodexLogoProps> = ({
               <motion.text
                 x="90"
                 y="26"
-                fontFamily="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+                fontFamily="'Merriweather', Georgia, Cambria, serif"
                 fontSize="26"
                 fontWeight="900"
                 fill={textColor}
@@ -408,7 +408,7 @@ export const CodexLogo: React.FC<CodexLogoProps> = ({
               <motion.text
                 x="174"
                 y="26"
-                fontFamily="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+                fontFamily="'Merriweather', Georgia, Cambria, serif"
                 fontSize="26"
                 fontWeight="900"
                 fill={textColor}

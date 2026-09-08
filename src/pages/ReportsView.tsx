@@ -4,7 +4,6 @@ import {
   Download, 
   Printer, 
   FileText, 
-  Layers, 
   CheckCircle2, 
   Calendar,
   Sparkles,
@@ -57,7 +56,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       </div>
 
       {/* Export Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         
         {/* Card 1: 9-Sheet Master Excel */}
         <div className="p-4 rounded-xl bg-white border border-emerald-300 hover:border-emerald-500 transition-all shadow-2xs flex flex-col justify-between space-y-3.5">
@@ -114,35 +113,6 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           >
             <Download className="w-4 h-4" />
             <span>Download CSV Roster</span>
-          </a>
-        </div>
-
-        {/* Card 3: Bulk Import Blank Template */}
-        <div className="p-4 rounded-xl bg-white border border-slate-200 hover:border-amber-300 transition-all shadow-2xs flex flex-col justify-between space-y-3.5">
-          <div className="space-y-2">
-            <div className="w-9 h-9 rounded-lg bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center">
-              <Layers className="w-4.5 h-4.5" />
-            </div>
-            <h3 className="font-bold text-slate-800 text-sm">
-              Roster Import Template
-            </h3>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Pre-formatted Excel sheet with column headers and sample data for bulk-uploading new student cohorts and register numbers.
-            </p>
-            <div className="pt-1">
-              <span className="text-[11px] font-mono bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded">
-                Blank Roster Blueprint
-              </span>
-            </div>
-          </div>
-
-          <a
-            href="/api/students/template?format=xlsx"
-            download="CSBS_Student_Import_Template.xlsx"
-            className="w-full flex items-center justify-center space-x-2 py-2 px-3 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-medium transition-colors cursor-pointer"
-          >
-            <Download className="w-4 h-4" />
-            <span>Download Blank Template</span>
           </a>
         </div>
 

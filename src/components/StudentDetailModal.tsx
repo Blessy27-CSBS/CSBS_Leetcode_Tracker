@@ -19,6 +19,7 @@ import {
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
 import { api } from '../services/api';
 import { StudentWithLatest, Snapshot } from '../types';
+import { formatSectionName } from '../utils/formatters';
 
 interface StudentDetailModalProps {
   studentId: string | null;
@@ -138,8 +139,8 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                 <span className="bg-slate-100 text-slate-700 text-xs px-2 py-0.5 rounded font-mono border border-slate-200">
                   {student?.register_no}
                 </span>
-                <span className="bg-blue-50 text-blue-700 border border-blue-200 text-xs px-2 py-0.5 rounded font-medium">
-                  Sec {student?.section} • Year {student?.year}
+                <span className="bg-purple-50 text-purple-700 border border-purple-200 text-xs px-2 py-0.5 rounded font-medium">
+                  {formatSectionName(student?.section)} • {student?.year} Year
                 </span>
               </div>
               <div className="flex items-center space-x-3 text-xs text-slate-500 mt-0.5">

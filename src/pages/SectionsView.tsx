@@ -13,6 +13,8 @@ import {
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
 import { SectionStat, BatchStat } from '../types';
 
+import { formatSectionName } from '../utils/formatters';
+
 interface SectionsViewProps {
   sectionStats: SectionStat[];
   batchStats: BatchStat[];
@@ -25,7 +27,7 @@ export const SectionsView: React.FC<SectionsViewProps> = ({
   onSelectStudent,
 }) => {
   const chartData = sectionStats.map(s => ({
-    section: `Section ${s.section}`,
+    section: formatSectionName(s.section),
     avgProblems: s.avg_problems,
     avgEngagement: s.avg_engagement,
     avgRating: s.avg_rating,
@@ -51,13 +53,13 @@ export const SectionsView: React.FC<SectionsViewProps> = ({
       >
         <div>
           <div className="flex items-center space-x-2">
-            <Grid className="w-5 h-5 text-blue-600" />
+            <Grid className="w-5 h-5 text-purple-600" />
             <h2 className="text-sm font-bold text-slate-800">
-              Classroom Sections & Academic Batches Comparison
+              Academic Years & Cohorts Comparison
             </h2>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Cross-sectional analysis of CSBS problem practice, average rating benchmarks, and classroom engagement
+            Cross-year analysis of CSBS problem practice, average rating benchmarks, and year group engagement
           </p>
         </div>
       </motion.div>
@@ -66,25 +68,26 @@ export const SectionsView: React.FC<SectionsViewProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {sectionStats.map((s, idx) => {
           const activePct = Math.round((s.active_students / (s.total_students || 1)) * 100);
+          const formattedYear = formatSectionName(s.section);
           return (
             <motion.div
               key={s.section}
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: idx * 0.08 }}
-              className="p-4 rounded-xl bg-white border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all shadow-2xs space-y-3.5"
+              className="p-4 rounded-xl bg-white border border-slate-200 hover:border-purple-300 hover:shadow-md transition-all shadow-2xs space-y-3.5"
             >
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center font-bold text-sm">
-                    {s.section}
+                <div className="flex items-center space-x-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center font-bold text-xs shrink-0">
+                    <Users className="w-4.5 h-4.5 text-purple-600" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-slate-800 text-sm">Section {s.section}</h3>
-                    <p className="text-[10px] text-slate-400">{s.total_students} Enrolled Students</p>
+                    <h3 className="font-extrabold text-slate-900 text-sm tracking-tight">{formattedYear}</h3>
+                    <p className="text-[11px] text-slate-500 font-medium">{s.total_students} Enrolled Students</p>
                   </div>
                 </div>
-                <span className="text-xs font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded">
+                <span className="text-xs font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-lg">
                   {activePct}% Active
                 </span>
               </div>
@@ -110,7 +113,7 @@ export const SectionsView: React.FC<SectionsViewProps> = ({
               </div>
 
               {/* Top Performer */}
-              {s.top_performer && (
+              {s.top_performer && s.top_performer.name ? (
                 <div
                   onClick={() => onSelectStudent(s.top_performer!.id)}
                   className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between cursor-pointer hover:bg-slate-100/80 transition-colors"
@@ -118,12 +121,25 @@ export const SectionsView: React.FC<SectionsViewProps> = ({
                   <div className="flex items-center space-x-2">
                     <Award className="w-4 h-4 text-amber-500 shrink-0" />
                     <div>
-                      <div className="text-[10px] text-slate-400">Section Top Solver</div>
-                      <div className="text-xs font-semibold text-slate-800">{s.top_performer.name}</div>
+                      <div className="text-[10px] font-bold text-slate-400">Year Top Solver</div>
+                      <div className="text-xs font-extrabold text-slate-800">{s.top_performer.name}</div>
                     </div>
                   </div>
-                  <span className="font-mono font-bold text-xs text-blue-600">
+                  <span className="font-mono font-bold text-xs text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded">
                     {s.top_performer.total_solved} Solved
+                  </span>
+                </div>
+              ) : (
+                <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Award className="w-4 h-4 text-slate-300 shrink-0" />
+                    <div>
+                      <div className="text-[10px] font-bold text-slate-400">Year Top Solver</div>
+                      <div className="text-xs font-medium text-slate-400 italic">No solver records yet</div>
+                    </div>
+                  </div>
+                  <span className="font-mono font-bold text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
+                    0 Solved
                   </span>
                 </div>
               )}

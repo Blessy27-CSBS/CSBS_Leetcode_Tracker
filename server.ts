@@ -443,17 +443,37 @@ app.get('/api/student/dashboard', (req, res) => {
       };
     });
 
-    // Rank calculations
+    // Rank calculations (Primary: total_solved, Tie-breakers: medium, hard, engagement_score, contest_rating)
+    const compareStudents = (a: any, b: any) => {
+      const snapA = a.latest_snapshot;
+      const snapB = b.latest_snapshot;
+      const solvedA = snapA?.total_solved || 0;
+      const solvedB = snapB?.total_solved || 0;
+      if (solvedB !== solvedA) return solvedB - solvedA;
+
+      const medA = snapA?.medium || 0;
+      const medB = snapB?.medium || 0;
+      if (medB !== medA) return medB - medA;
+
+      const hardA = snapA?.hard || 0;
+      const hardB = snapB?.hard || 0;
+      if (hardB !== hardA) return hardB - hardA;
+
+      const scoreA = snapA?.engagement_score || 0;
+      const scoreB = snapB?.engagement_score || 0;
+      if (scoreB !== scoreA) return scoreB - scoreA;
+
+      const rateA = snapA?.contest_rating || 0;
+      const rateB = snapB?.contest_rating || 0;
+      return rateB - rateA;
+    };
+
     const allStudents = getAllEnrichedStudents();
-    const deptSorted = [...allStudents].sort((a, b) => 
-      (b.latest_snapshot?.engagement_score || 0) - (a.latest_snapshot?.engagement_score || 0)
-    );
+    const deptSorted = [...allStudents].sort(compareStudents);
     const rankInDept = deptSorted.findIndex(s => s.id === student.id) + 1 || 1;
 
     const sectionStudents = allStudents.filter(s => s.section === student.section);
-    const sectionSorted = [...sectionStudents].sort((a, b) => 
-      (b.latest_snapshot?.engagement_score || 0) - (a.latest_snapshot?.engagement_score || 0)
-    );
+    const sectionSorted = [...sectionStudents].sort(compareStudents);
     const rankInSec = sectionSorted.findIndex(s => s.id === student.id) + 1 || 1;
 
     res.json({
@@ -797,21 +817,92 @@ app.post('/api/students/import', (req, res) => {
     const existingRegs = new Set(db.getStudents().map(s => s.register_no.toLowerCase()));
 
     rows.forEach((r, idx) => {
-      const regNo = (r.register_no || r['Register Number'] || r['Register No'] || r.reg_no || '').toString().trim().toUpperCase();
-      const name = (r.student_name || r['Student Name'] || r.name || '').toString().trim();
-      const section = (r.section || r['Section'] || 'A').toString().trim().toUpperCase();
-      const year = (r.year || r['Year'] || 'II').toString().trim();
-      const batch = (r.batch || r['Batch'] || '2023-2027').toString().trim();
-      const username = (r.username || r['LeetCode Username'] || r['Username'] || '').toString().trim();
-      const email = (r.email || r['Email'] || '').toString().trim();
-      const mentor = (r.mentor || r['Mentor'] || '').toString().trim();
+      let regNo = '';
+      let name = '';
+      let username = '';
+      let rawSec = '';
+      let rawYear = '';
+      let batch = '';
+      let email = '';
+      let mentor = '';
 
-      if (!regNo || !name || !username) {
-        errors.push({ row: idx + 1, identifier: regNo || name || `Row ${idx + 1}`, error: 'Missing mandatory field (Register No, Name, or Username).' });
+      // Collect all non-empty cell values
+      const keys = Object.keys(r);
+      const values = keys.map(k => (r[k] ?? '').toString().trim()).filter(v => v.length > 0);
+
+      // Skip table header rows (e.g. if row contains "Student Name", "Register Number", etc.)
+      const isHeaderRow = values.some(v => {
+        const lower = v.toLowerCase();
+        return lower === 'student name' || lower === 'register number' || lower === 'leetcode username' || lower === 'register no';
+      });
+      if (isHeaderRow) return;
+
+      // Strategy 1: Dynamic Key Matching
+      keys.forEach(key => {
+        const cleanKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const val = (r[key] ?? '').toString().trim();
+        if (!val) return;
+
+        if (cleanKey.includes('register') || cleanKey.includes('regno') || cleanKey.includes('regnum') || cleanKey === 'reg') {
+          if (!regNo) regNo = val.toUpperCase();
+        } else if (cleanKey.includes('leetcode') || cleanKey === 'username' || cleanKey === 'user') {
+          if (!username) username = val;
+        } else if (cleanKey.includes('name') || cleanKey === 'student' || cleanKey === 'studentname') {
+          if (!name) name = val;
+        } else if (cleanKey.includes('section') || cleanKey === 'class' || cleanKey === 'sec') {
+          if (!rawSec) rawSec = val.toUpperCase();
+        } else if (cleanKey.includes('year') || cleanKey === 'yr') {
+          if (!rawYear) rawYear = val.toUpperCase();
+        } else if (cleanKey.includes('batch')) {
+          if (!batch) batch = val;
+        } else if (cleanKey.includes('email') || cleanKey.includes('mail')) {
+          if (!email) email = val;
+        } else if (cleanKey.includes('mentor')) {
+          if (!mentor) mentor = val;
+        }
+      });
+
+      // Strategy 2: Value Pattern Fallback (if regNo or name still missing)
+      if (!regNo) {
+        const regMatch = values.find(v => /^[0-9]{4,}[A-Za-z0-9]+$/i.test(v));
+        if (regMatch) regNo = regMatch.toUpperCase();
+      }
+
+      if (!email) {
+        const emailMatch = values.find(v => v.includes('@'));
+        if (emailMatch) email = emailMatch;
+      }
+
+      if (!name) {
+        const nameMatch = values.find(v => {
+          if (v === regNo || v === email || v === username || v === rawSec || v === rawYear || v === batch) return false;
+          if (/^\d+$/.test(v) || v.includes('@') || v.length < 2) return false;
+          if (/^(section|year|batch|ii|iii|iv|202\d)/i.test(v)) return false;
+          return /[a-zA-Z]/.test(v);
+        });
+        if (nameMatch) name = nameMatch;
+      }
+
+      let section = 'A';
+      if (rawSec.includes('II') || rawSec === '2' || rawSec === 'A' || rawSec.includes('SECOND')) section = 'A';
+      else if (rawSec.includes('III') || rawSec === '3' || rawSec === 'B' || rawSec.includes('THIRD')) section = 'B';
+      else if (rawSec.includes('IV') || rawSec === '4' || rawSec === 'C' || rawSec.includes('FOURTH')) section = 'C';
+
+      let year = 'II';
+      if (rawYear.includes('II') || rawYear.includes('2')) year = 'II';
+      else if (rawYear.includes('III') || rawYear.includes('3')) year = 'III';
+      else if (rawYear.includes('IV') || rawYear.includes('4')) year = 'IV';
+
+      if (!batch) batch = '2024-2028';
+
+      if (!regNo || !name) {
+        errors.push({ row: idx + 1, identifier: regNo || name || `Row ${idx + 1}`, error: 'Missing mandatory field (Register No or Student Name).' });
         return;
       }
 
-      if (existingUsers.has(username.toLowerCase())) {
+      const finalUsername = username ? username : `pending_${regNo.toLowerCase()}`;
+
+      if (username && existingUsers.has(username.toLowerCase())) {
         errors.push({ row: idx + 1, identifier: username, error: `Duplicate username '${username}' already exists in database.` });
         return;
       }
@@ -827,14 +918,17 @@ app.post('/api/students/import', (req, res) => {
         section,
         year,
         batch,
-        username,
+        username: finalUsername,
         email: email || undefined,
         mentor: mentor || undefined,
         academic_year: db.getSettings().academic_year,
         active: true,
       });
 
-      existingUsers.add(username.toLowerCase());
+      if (username) {
+        existingUsers.add(username.toLowerCase());
+      }
+      existingUsers.add(finalUsername.toLowerCase());
       existingRegs.add(regNo.toLowerCase());
       inserted.push(newStudent);
     });

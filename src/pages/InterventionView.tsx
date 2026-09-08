@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { StudentWithLatest } from '../types';
 import { api } from '../services/api';
+import { formatSectionName } from '../utils/formatters';
 
 interface InterventionViewProps {
   students: StudentWithLatest[];
@@ -138,7 +139,7 @@ export const InterventionView: React.FC<InterventionViewProps> = ({
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 text-slate-600 uppercase tracking-wider text-[11px] font-bold border-b border-slate-200">
+            <thead className="bg-slate-50 text-slate-700 text-xs font-bold border-b border-slate-200">
               <tr>
                 <th className="py-3 px-4">Register No</th>
                 <th className="py-3 px-4">Student Name</th>
@@ -183,7 +184,7 @@ export const InterventionView: React.FC<InterventionViewProps> = ({
 
                       <td className="py-3 px-3 whitespace-nowrap">
                         <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[11px] font-semibold border border-slate-200">
-                          {s.section} • {s.year}
+                          Sec {s.section} • {s.year} Year
                         </span>
                       </td>
 

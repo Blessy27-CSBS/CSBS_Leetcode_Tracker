@@ -79,7 +79,7 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
             className="p-4 rounded-xl bg-white border border-emerald-300 hover:border-emerald-500 transition-all cursor-pointer shadow-2xs relative overflow-hidden group"
           >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">
+              <span className="text-[11px] font-bold text-emerald-700">
                 Monthly Growth Champion
               </span>
               <Award className="w-5 h-5 text-emerald-600" />
@@ -108,7 +108,7 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
             className="p-4 rounded-xl bg-white border border-blue-300 hover:border-blue-500 transition-all cursor-pointer shadow-2xs relative overflow-hidden group"
           >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-blue-700">
+              <span className="text-[11px] font-bold text-blue-700">
                 Weekly Sprint Leader
               </span>
               <Zap className="w-5 h-5 text-blue-600" />
@@ -137,7 +137,7 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
             className="p-4 rounded-xl bg-white border border-amber-300 hover:border-amber-500 transition-all cursor-pointer shadow-2xs relative overflow-hidden group"
           >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-amber-700">
+              <span className="text-[11px] font-bold text-amber-700">
                 Highest % Increase
               </span>
               <Sparkles className="w-5 h-5 text-amber-600" />
@@ -209,7 +209,7 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 text-slate-600 uppercase tracking-wider text-[11px] font-bold border-b border-slate-200">
+            <thead className="bg-slate-50 text-slate-700 text-xs font-bold border-b border-slate-200">
               <tr>
                 <th className="py-3 px-4 w-12">#</th>
                 <th className="py-3 px-4">Student Name</th>

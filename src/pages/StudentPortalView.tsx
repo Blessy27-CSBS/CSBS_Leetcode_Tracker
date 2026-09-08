@@ -41,21 +41,24 @@ import {
   Globe
 } from 'lucide-react';
 import { LeetCodeContestLeaderboard } from '../components/LeetCodeContestLeaderboard';
+import { StudentSidebar, StudentNavTab } from '../components/StudentSidebar';
 
 interface StudentPortalViewProps {
   currentUser: AuthUser;
   onStudentUpdated?: () => void;
   allStudents?: StudentWithLatest[];
+  sidebarOpen?: boolean;
+  setSidebarOpen?: React.Dispatch<React.SetStateAction<boolean>>;
 }
-
-type StudentSubTab = 'overview' | 'contests' | 'potd_tracks' | 'leaderboard' | 'submissions' | 'profile';
 
 export const StudentPortalView: React.FC<StudentPortalViewProps> = ({ 
   currentUser, 
   onStudentUpdated,
-  allStudents = []
+  allStudents = [],
+  sidebarOpen = true,
+  setSidebarOpen
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<StudentSubTab>('overview');
+  const [activeSubTab, setActiveSubTab] = useState<StudentNavTab>('overview');
   const [dashboardData, setDashboardData] = useState<StudentDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -260,108 +263,136 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
     })
     .sort((a, b) => (b.latest_snapshot?.engagement_score || 0) - (a.latest_snapshot?.engagement_score || 0));
 
-  return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
-      
-      {/* Top Banner / Student Hero Card */}
-      <div className="bg-gradient-to-r from-purple-800 via-indigo-900 to-slate-900 rounded-2xl text-white p-6 sm:p-8 shadow-xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-10 right-20 w-60 h-60 bg-blue-400/10 rounded-full blur-2xl pointer-events-none" />
+  // Format student names to title case
+  const formatName = (str?: string): string => {
+    if (!str) return '';
+    return str
+      .toLowerCase()
+      .split(' ')
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+  };
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-white/20 text-white backdrop-blur-md border border-white/20">
-                CSBS Year {student.year} • Sec {student.section}
-              </span>
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-500/30 text-purple-100 border border-purple-400/30">
-                Reg: {student.register_no}
-              </span>
-              <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-extrabold border ${getTierColor(snapshot?.performance_tier)}`}>
-                {snapshot?.performance_tier || 'Beginner'} Tier
-              </span>
+  // Dynamic Rank Calculation from allStudents (matching Leaderboard tie-breaker logic)
+  const compareStudents = (a: any, b: any) => {
+    const snapA = a.latest_snapshot;
+    const snapB = b.latest_snapshot;
+    const solvedA = snapA?.total_solved || 0;
+    const solvedB = snapB?.total_solved || 0;
+    if (solvedB !== solvedA) return solvedB - solvedA;
+
+    const medA = snapA?.medium || 0;
+    const medB = snapB?.medium || 0;
+    if (medB !== medA) return medB - medA;
+
+    const hardA = snapA?.hard || 0;
+    const hardB = snapB?.hard || 0;
+    if (hardB !== hardA) return hardB - hardA;
+
+    const scoreA = snapA?.engagement_score || 0;
+    const scoreB = snapB?.engagement_score || 0;
+    if (scoreB !== scoreA) return scoreB - scoreA;
+
+    const rateA = snapA?.contest_rating || 0;
+    const rateB = snapB?.contest_rating || 0;
+    return rateB - rateA;
+  };
+
+  const sortedDeptList = [...allStudents].sort(compareStudents);
+  const deptIdx = sortedDeptList.findIndex(s => s.id === student.id || s.register_no === student.register_no);
+  const liveDeptRank = deptIdx >= 0 ? deptIdx + 1 : (rankInDepartment || 1);
+  const liveTotalDept = allStudents.length || (totalStudentsDepartment || 1);
+
+  const sectionList = allStudents.filter(s => s.section === student.section);
+  const sortedSecList = [...sectionList].sort(compareStudents);
+  const secIdx = sortedSecList.findIndex(s => s.id === student.id || s.register_no === student.register_no);
+  const liveSecRank = secIdx >= 0 ? secIdx + 1 : (rankInSection || 1);
+  const liveTotalSec = sectionList.length || (totalStudentsSection || 1);
+
+  return (
+    <div className="flex-1 flex flex-col md:flex-row w-full min-h-[calc(100vh-3.5rem)]">
+      
+      {/* Student Navigation Sidebar */}
+      <StudentSidebar
+        activeTab={activeSubTab}
+        setActiveTab={setActiveSubTab}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen && setSidebarOpen(false)}
+        student={student}
+        snapshot={snapshot}
+        potdCount={potdList.length}
+        recentCount={recentSubmissions.length}
+      />
+
+      {/* Main Content Area */}
+      <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 overflow-y-auto bg-[#f8fafc]">
+        <div className="max-w-7xl mx-auto w-full space-y-6">
+          
+          {/* Top Banner / Student Hero Card */}
+          <div className="bg-white rounded-xl text-slate-900 p-5 sm:p-6 shadow-2xs border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                  CSBS Year {student.year} • Section {student.section}
+                </span>
+                <span className="px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                  Reg No: {student.register_no}
+                </span>
+                <span className={`px-2.5 py-0.5 rounded-md text-[11px] font-bold border ${getTierColor(snapshot?.performance_tier)}`}>
+                  {snapshot?.performance_tier || 'Beginner'} Tier
+                </span>
+              </div>
+
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+                <span>{formatName(student.student_name)}</span>
+              </h1>
+
+              <div className="flex items-center gap-4 text-xs text-slate-600 flex-wrap pt-0.5">
+                <a 
+                  href={`https://leetcode.com/${student.username}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-800 underline font-medium transition-colors"
+                >
+                  <Code2 className="w-3.5 h-3.5" />
+                  <span>@{student.username}</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+
+                {student.mentor && (
+                  <span className="flex items-center gap-1 text-slate-600 font-medium">
+                    <User className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Faculty Mentor: {student.mentor}</span>
+                  </span>
+                )}
+
+                <span className="flex items-center gap-1 text-slate-500">
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>Last Synced: {snapshot?.captured_at ? new Date(snapshot.captured_at).toLocaleDateString() : 'Never'}</span>
+                </span>
+              </div>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-2">
-              <span>{student.student_name}</span>
-            </h1>
-
-            <div className="flex items-center gap-4 text-xs text-purple-100 flex-wrap">
-              <a 
-                href={`https://leetcode.com/${student.username}`}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 text-purple-200 hover:text-white underline font-semibold transition-colors"
+            {/* Sync Button & Live Status */}
+            <div className="flex flex-col items-start md:items-end gap-2 shrink-0">
+              <button
+                onClick={handleSyncLeetCode}
+                disabled={syncing}
+                className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs rounded-lg shadow-xs transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Fetch fresh data from LeetCode"
               >
-                <Code2 className="w-3.5 h-3.5" />
-                <span>@{student.username}</span>
-                <ExternalLink className="w-3 h-3" />
-              </a>
+                <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+                <span>{syncing ? 'Syncing Profile...' : 'Sync LeetCode Data'}</span>
+              </button>
 
-              {student.mentor && (
-                <span className="flex items-center gap-1 text-purple-200/80">
-                  <User className="w-3.5 h-3.5" />
-                  <span>Mentor: {student.mentor}</span>
+              {syncSuccessMsg && (
+                <span className="text-[11px] font-semibold text-emerald-600 flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>{syncSuccessMsg}</span>
                 </span>
               )}
-
-              <span className="flex items-center gap-1 text-purple-200/80">
-                <Clock className="w-3.5 h-3.5" />
-                <span>Last Updated: {snapshot?.captured_at ? new Date(snapshot.captured_at).toLocaleDateString() : 'Never'}</span>
-              </span>
             </div>
           </div>
-
-          {/* Sync Button & Live Status */}
-          <div className="flex flex-col items-start md:items-end gap-2 shrink-0">
-            <button
-              onClick={handleSyncLeetCode}
-              disabled={syncing}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-slate-100 text-purple-900 font-bold text-xs rounded-xl shadow-lg transition-all transform active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Fetch fresh data from LeetCode"
-            >
-              <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin text-purple-600' : 'text-purple-600'}`} />
-              <span>{syncing ? 'Syncing LeetCode...' : 'Sync LeetCode Now'}</span>
-            </button>
-
-            {syncSuccessMsg && (
-              <span className="text-[11px] font-semibold text-emerald-300 flex items-center gap-1 animate-pulse">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>{syncSuccessMsg}</span>
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Sub-Navigation Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 overflow-x-auto pb-1">
-        {[
-          { id: 'overview', label: 'My Dashboard', icon: BarChart3 },
-          { id: 'contests', label: 'LeetCode Contests', icon: Trophy },
-          { id: 'potd_tracks', label: 'POTD & Practice Tracks', icon: Flame },
-          { id: 'leaderboard', label: 'Class Leaderboard', icon: Award },
-          { id: 'submissions', label: 'Recent Submissions', icon: BookOpen },
-          { id: 'profile', label: 'My Account & Security', icon: KeyRound },
-        ].map(tab => {
-          const Icon = tab.icon;
-          const isActive = activeSubTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveSubTab(tab.id as StudentSubTab)}
-              className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold rounded-xl transition-all whitespace-nowrap cursor-pointer ${
-                isActive
-                  ? 'bg-purple-600 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
-      </div>
 
       {/* TAB 1: OVERVIEW */}
       {activeSubTab === 'overview' && (
@@ -371,9 +402,9 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             
             {/* Total Solved Card */}
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-3">
+            <div className="bg-white rounded-lg p-5 border border-slate-200 border-t-4 border-t-purple-600 shadow-2xs space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Solved</span>
+                <span className="text-xs font-bold text-slate-700">Total Solved</span>
                 <div className="p-2 bg-purple-50 text-purple-600 rounded-lg">
                   <Code2 className="w-4 h-4" />
                 </div>
@@ -390,9 +421,9 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
             </div>
 
             {/* Daily Streak & Activity */}
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-3">
+            <div className="bg-white rounded-lg p-5 border border-slate-200 border-t-4 border-t-orange-500 shadow-2xs space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Active Streak</span>
+                <span className="text-xs font-bold text-slate-700">Active Streak</span>
                 <div className="p-2 bg-orange-50 text-orange-600 rounded-lg">
                   <Flame className="w-4 h-4" />
                 </div>
@@ -409,28 +440,28 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
             </div>
 
             {/* Department Standings */}
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-3">
+            <div className="bg-white rounded-lg p-5 border border-slate-200 border-t-4 border-t-amber-500 shadow-2xs space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Class Rank</span>
+                <span className="text-xs font-bold text-slate-700">Class Rank</span>
                 <div className="p-2 bg-amber-50 text-amber-600 rounded-lg">
                   <Trophy className="w-4 h-4" />
                 </div>
               </div>
               <div>
                 <div className="text-3xl font-black text-slate-900 tracking-tight">
-                  #{rankInSection}
-                  <span className="text-xs font-normal text-slate-500 ml-1">of {totalStudentsSection} (Sec {student.section})</span>
+                  #{liveSecRank}
+                  <span className="text-xs font-normal text-slate-500 ml-1">of {liveTotalSec} (Sec {student.section})</span>
                 </div>
                 <div className="text-xs text-slate-500 mt-1">
-                  Dept Rank: <strong className="text-slate-700">#{rankInDepartment}</strong> of {totalStudentsDepartment}
+                  Dept Rank: <strong className="text-slate-700">#{liveDeptRank}</strong> of {liveTotalDept}
                 </div>
               </div>
             </div>
 
             {/* Contest Rating & Score */}
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-3">
+            <div className="bg-white rounded-lg p-5 border border-slate-200 border-t-4 border-t-indigo-600 shadow-2xs space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Engagement</span>
+                <span className="text-xs font-bold text-slate-700">Engagement Score</span>
                 <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
                   <Award className="w-4 h-4" />
                 </div>
@@ -1107,6 +1138,8 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
         </div>
       )}
 
+        </div>
+      </main>
     </div>
   );
 };
