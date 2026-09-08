@@ -72,9 +72,15 @@ export const StudentFormModal: React.FC<StudentFormModalProps> = ({
       setIsSubmitting(true);
       setError('');
       if (studentToEdit) {
-        await api.updateStudent(studentToEdit.id, formData);
+        const updated = await api.updateStudent(studentToEdit.id, formData);
+        if (updated && updated.id) {
+          try { await api.fetchStudentData(updated.id); } catch (e) { /* silent fallback */ }
+        }
       } else {
-        await api.createStudent(formData);
+        const created = await api.createStudent(formData);
+        if (created && created.id) {
+          try { await api.fetchStudentData(created.id); } catch (e) { /* silent fallback */ }
+        }
       }
       onSaved();
       onClose();

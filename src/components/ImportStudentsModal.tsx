@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   X, 
   UploadCloud, 
@@ -7,10 +7,13 @@ import {
   AlertTriangle, 
   CheckCircle2, 
   Layers,
-  ArrowRight
+  ArrowRight,
+  RefreshCw,
+  Terminal
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { api } from '../services/api';
+import { BatchFetchProgress } from '../types';
 
 interface ImportStudentsModalProps {
   isOpen: boolean;
@@ -32,7 +35,32 @@ export const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({
     errorsCount: number;
     errors: { row: number; identifier: string; error: string }[];
   } | null>(null);
+  const [batchProgress, setBatchProgress] = useState<BatchFetchProgress | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Poll background batch fetch progress when import finishes
+  useEffect(() => {
+    let timer: any = null;
+    const pollProgress = async () => {
+      try {
+        const p = await api.getBatchProgress();
+        setBatchProgress(p);
+        if (p.is_running) {
+          onImportComplete();
+        }
+      } catch (err) {
+        // ignore
+      }
+    };
+
+    if (isOpen && importResult && importResult.insertedCount > 0) {
+      pollProgress();
+      timer = setInterval(pollProgress, 1200);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [isOpen, importResult]);
 
   if (!isOpen) return null;
 
@@ -55,6 +83,7 @@ export const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({
     setFile(f);
     setParseError('');
     setImportResult(null);
+    setBatchProgress(null);
 
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -107,6 +136,10 @@ export const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({
     }
   };
 
+  const pct = batchProgress && batchProgress.total > 0 
+    ? Math.round((batchProgress.processed / batchProgress.total) * 100) 
+    : 0;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
       <div className="bg-white border border-slate-200 rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden text-slate-800">
@@ -138,54 +171,58 @@ export const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({
         <div className="p-6 space-y-5 overflow-y-auto flex-1">
           
           {/* Template Download & Instructions banner */}
-          <div className="p-4 rounded-lg bg-blue-50/80 border border-blue-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-            <div>
-              <div className="font-semibold text-blue-900">Need the department format?</div>
-              <div className="text-slate-600 text-[11px] mt-0.5">
-                Download the sample Excel template with columns for Register No, Name, Section, Year, and LeetCode Username.
+          {!importResult && (
+            <div className="p-4 rounded-lg bg-blue-50/80 border border-blue-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div>
+                <div className="font-semibold text-blue-900">Need the department format?</div>
+                <div className="text-slate-600 text-[11px] mt-0.5">
+                  Download the sample Excel template with columns for Register No, Name, Section, Year, and LeetCode Username.
+                </div>
+              </div>
+              <div className="flex items-center space-x-2 shrink-0">
+                <a
+                  href="/api/students/template?format=xlsx"
+                  download
+                  className="flex items-center space-x-1.5 px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-2xs"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Excel Template</span>
+                </a>
+                <a
+                  href="/api/students/template?format=csv"
+                  download
+                  className="flex items-center space-x-1.5 px-3 py-1.5 rounded-md bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-medium"
+                >
+                  <span>CSV</span>
+                </a>
               </div>
             </div>
-            <div className="flex items-center space-x-2 shrink-0">
-              <a
-                href="/api/students/template?format=xlsx"
-                download
-                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-2xs"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Excel Template</span>
-              </a>
-              <a
-                href="/api/students/template?format=csv"
-                download
-                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-md bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-medium"
-              >
-                <span>CSV</span>
-              </a>
-            </div>
-          </div>
+          )}
 
           {/* Drag and Drop Zone */}
-          <div
-            onDragOver={e => e.preventDefault()}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-xl p-6 text-center cursor-pointer bg-slate-50 hover:bg-blue-50/30 transition-all"
-          >
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              accept=".xlsx,.xls,.csv"
-              className="hidden"
-            />
-            <UploadCloud className="w-10 h-10 mx-auto text-blue-600 mb-2" />
-            <div className="text-sm font-semibold text-slate-800">
-              {file ? file.name : 'Click to select or drag and drop roster file'}
+          {!importResult && (
+            <div
+              onDragOver={e => e.preventDefault()}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className="border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-xl p-6 text-center cursor-pointer bg-slate-50 hover:bg-blue-50/30 transition-all"
+            >
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept=".xlsx,.xls,.csv"
+                className="hidden"
+              />
+              <UploadCloud className="w-10 h-10 mx-auto text-blue-600 mb-2" />
+              <div className="text-sm font-semibold text-slate-800">
+                {file ? file.name : 'Click to select or drag and drop roster file'}
+              </div>
+              <div className="text-xs text-slate-500 mt-1">
+                Supports Microsoft Excel (.xlsx, .xls) and Comma-Separated Values (.csv)
+              </div>
             </div>
-            <div className="text-xs text-slate-500 mt-1">
-              Supports Microsoft Excel (.xlsx, .xls) and Comma-Separated Values (.csv)
-            </div>
-          </div>
+          )}
 
           {parseError && (
             <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-xs flex items-center space-x-2">
@@ -196,27 +233,94 @@ export const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({
 
           {/* Import Result Notification */}
           {importResult && (
-            <div className={`p-4 rounded-lg border text-xs space-y-2 ${
-              importResult.insertedCount > 0 
-                ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
-                : 'bg-amber-50 border-amber-200 text-amber-800'
-            }`}>
-              <div className="flex items-center space-x-2 font-bold text-sm">
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Import Completed: {importResult.insertedCount} students inserted.</span>
-              </div>
-              {importResult.errorsCount > 0 && (
-                <div className="text-slate-700 space-y-1 pt-1 border-t border-slate-200">
-                  <div className="font-semibold text-amber-800">
-                    {importResult.errorsCount} rows skipped due to duplicate or invalid data:
+            <div className="space-y-4">
+              <div className={`p-4 rounded-lg border text-xs space-y-2 ${
+                importResult.insertedCount > 0 
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
+                  : 'bg-amber-50 border-amber-200 text-amber-800'
+              }`}>
+                <div className="flex items-center space-x-2 font-bold text-sm">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                  <span>Roster Import Completed: {importResult.insertedCount} students inserted.</span>
+                </div>
+                {importResult.errorsCount > 0 && (
+                  <div className="text-slate-700 space-y-1 pt-1 border-t border-slate-200">
+                    <div className="font-semibold text-amber-800">
+                      {importResult.errorsCount} rows skipped due to duplicate or invalid data:
+                    </div>
+                    <ul className="list-disc list-inside text-[11px] text-slate-600 max-h-24 overflow-y-auto space-y-0.5">
+                      {importResult.errors.map((err, i) => (
+                        <li key={i}>
+                          Row {err.row} ({err.identifier}): {err.error}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                  <ul className="list-disc list-inside text-[11px] text-slate-600 max-h-24 overflow-y-auto space-y-0.5">
-                    {importResult.errors.map((err, i) => (
-                      <li key={i}>
-                        Row {err.row} ({err.identifier}): {err.error}
-                      </li>
-                    ))}
-                  </ul>
+                )}
+              </div>
+
+              {/* Automatic Profile Fetch Status Widget */}
+              {batchProgress && (batchProgress.is_running || batchProgress.processed > 0) && (
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <RefreshCw className={`w-4 h-4 text-blue-600 ${batchProgress.is_running ? 'animate-spin' : ''}`} />
+                      <span className="text-xs font-bold text-slate-800">
+                        {batchProgress.is_running 
+                          ? '⚡ Automatically Fetching LeetCode Profile Statistics...' 
+                          : '✓ Profile Statistics Fetch Complete!'}
+                      </span>
+                    </div>
+                    <span className="font-mono text-xs font-bold text-blue-600">{pct}%</span>
+                  </div>
+
+                  {/* Progress track */}
+                  <div className="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full transition-all duration-300 ${
+                        batchProgress.is_running ? 'bg-blue-600' : 'bg-emerald-500'
+                      }`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                    <div className="p-2 rounded-md bg-white border border-slate-200">
+                      <div className="text-slate-400 text-[10px] uppercase font-medium">Fetched</div>
+                      <div className="font-mono font-bold text-slate-800">{batchProgress.processed} / {batchProgress.total}</div>
+                    </div>
+                    <div className="p-2 rounded-md bg-white border border-slate-200">
+                      <div className="text-emerald-600 text-[10px] uppercase font-medium">Successful</div>
+                      <div className="font-mono font-bold text-emerald-700">{batchProgress.successful}</div>
+                    </div>
+                    <div className="p-2 rounded-md bg-white border border-slate-200">
+                      <div className="text-amber-600 text-[10px] uppercase font-medium">Failed</div>
+                      <div className="font-mono font-bold text-amber-700">{batchProgress.failed}</div>
+                    </div>
+                  </div>
+
+                  {batchProgress.current_student && (
+                    <div className="text-xs text-blue-700 font-mono flex items-center space-x-1.5 truncate pt-1">
+                      <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping shrink-0" />
+                      <span>Fetching profile details for: {batchProgress.current_student}</span>
+                    </div>
+                  )}
+
+                  {/* Console Log Feed */}
+                  <div className="space-y-1 pt-1">
+                    <div className="flex items-center space-x-1.5 text-[11px] text-slate-500 font-semibold">
+                      <Terminal className="w-3.5 h-3.5" />
+                      <span>Live Sync Activity</span>
+                    </div>
+                    <div className="bg-slate-900 rounded-lg p-2.5 max-h-32 overflow-y-auto font-mono text-[11px] space-y-0.5 text-slate-300">
+                      {batchProgress.logs.slice().reverse().slice(0, 10).map((log, i) => (
+                        <div key={i} className={log.type === 'success' ? 'text-emerald-400' : log.type === 'warn' ? 'text-amber-400' : 'text-slate-300'}>
+                          <span className="text-slate-500 mr-1.5">[{log.timestamp.split('T')[1]?.split('.')[0] || 'LOG'}]</span>
+                          {log.message}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

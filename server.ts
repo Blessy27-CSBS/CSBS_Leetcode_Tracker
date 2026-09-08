@@ -716,7 +716,7 @@ app.get('/api/students/:id', (req, res) => {
 });
 
 // 5. Student - Create
-app.post('/api/students', (req, res) => {
+app.post('/api/students', async (req, res) => {
   try {
     const { register_no, student_name, section, year, batch, username, email, mentor, academic_year, notes } = req.body;
 
@@ -750,6 +750,76 @@ app.post('/api/students', (req, res) => {
     });
 
     db.addLog('INFO', `Added student ${student.student_name} (${student.register_no}) with LeetCode handle ${student.username}.`);
+
+    // Automatically fetch LeetCode profile statistics for the new student
+    if (student.username && !student.username.startsWith('pending_')) {
+      try {
+        const settings = db.getSettings();
+        const fetchResult = await fetchLeetCodeProfile(
+          student.username,
+          settings.api_timeout_seconds * 1000
+        );
+
+        if (fetchResult.status === 'SUCCESS' && fetchResult.data) {
+          const data = fetchResult.data;
+          const daysInactive = getDaysInactive(data.last_active);
+          const activityStatus = getActivityStatus(daysInactive, settings.inactivity_threshold_days);
+          const tier = getPerformanceTier(data.total_solved, settings);
+
+          const engagement = calculateEngagementScore({
+            total_solved: data.total_solved,
+            medium: data.medium,
+            hard: data.hard,
+            streak: data.streak,
+            contest_rating: data.contest_rating,
+            contests_attended: data.contests_attended,
+            days_inactive: daysInactive,
+            improvement_rate: 0,
+          }, settings);
+
+          db.addSnapshot({
+            student_id: student.id,
+            captured_at: new Date().toISOString(),
+            total_solved: data.total_solved,
+            easy: data.easy,
+            medium: data.medium,
+            hard: data.hard,
+            acceptance_rate: data.acceptance_rate,
+            ranking: data.ranking,
+            reputation: data.reputation,
+            contest_rating: data.contest_rating,
+            contest_rank: data.contest_rank,
+            contests_attended: data.contests_attended,
+            top_percentage: data.top_percentage,
+            streak: data.streak,
+            active_days: data.active_days,
+            last_active: data.last_active,
+            languages: data.languages,
+            skills: data.skills,
+            badges: data.badges,
+            submission_calendar: data.submission_calendar,
+            engagement_score: engagement,
+            performance_tier: tier,
+            activity_status: activityStatus,
+            status: 'SUCCESS',
+          });
+
+          if (data.recent_submissions && data.recent_submissions.length > 0) {
+            db.setSubmissions(student.id, data.recent_submissions.map((s, idx) => ({
+              id: `sub_${student.id}_${Date.now()}_${idx}`,
+              student_id: student.id,
+              title: s.title,
+              titleSlug: s.titleSlug,
+              timestamp: s.timestamp,
+              language: s.language || s.lang || 'Python3',
+              statusDisplay: s.statusDisplay || 'Accepted',
+            })));
+          }
+        }
+      } catch (autoFetchErr) {
+        console.warn(`[Auto-Fetch] Failed to fetch LeetCode profile for new student ${student.username}:`, autoFetchErr);
+      }
+    }
 
     res.status(201).json(student);
   } catch (err: any) {
@@ -935,12 +1005,24 @@ app.post('/api/students/import', (req, res) => {
 
     db.addLog('INFO', `Imported ${inserted.length} students. Encountered ${errors.length} validation errors.`);
 
+    // Automatically trigger background LeetCode profile fetch for newly imported students with handles
+    const toFetch = inserted.filter(s => s.username && !s.username.startsWith('pending_'));
+    if (toFetch.length > 0) {
+      setTimeout(() => {
+        runBatchFetchWorker(toFetch, 'Auto-Sync Post Roster Upload').catch(err => {
+          console.error('[Auto-Fetch] Roster upload worker error:', err);
+        });
+      }, 100);
+    }
+
     res.json({
       success: true,
       insertedCount: inserted.length,
       errorsCount: errors.length,
       errors,
       inserted,
+      autoFetchStarted: toFetch.length > 0,
+      autoFetchCount: toFetch.length,
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Failed to import student dataset.' });
