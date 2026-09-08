@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import Database from 'better-sqlite3';
+import { supabase, isSupabaseConfigured } from './supabase.js';
 import { 
   Student, 
   Snapshot, 
@@ -553,6 +554,26 @@ export class DatabaseService {
       active,
     };
 
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('students').upsert({
+        id: newStudent.id,
+        register_no: newStudent.register_no,
+        student_name: newStudent.student_name,
+        section: newStudent.section,
+        year: newStudent.year,
+        batch: newStudent.batch,
+        username: newStudent.username,
+        email: newStudent.email || null,
+        mentor: newStudent.mentor || null,
+        academic_year: newStudent.academic_year,
+        active: newStudent.active,
+        created_at: newStudent.created_at,
+        notes: newStudent.notes || null,
+      }).then(({ error }) => {
+        if (error) console.error('[Supabase] addStudent sync error:', error.message);
+      });
+    }
+
     if (this.isFallbackMode || !this.sqliteDb) {
       this.memStore.students.push(newStudent);
       this.ensureStudentUser(newStudent);
@@ -777,6 +798,39 @@ export class DatabaseService {
       ...snapshot,
       id,
     };
+
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('snapshots').insert({
+        id: newSnap.id,
+        student_id: newSnap.student_id,
+        captured_at: newSnap.captured_at,
+        total_solved: newSnap.total_solved || 0,
+        easy: newSnap.easy || 0,
+        medium: newSnap.medium || 0,
+        hard: newSnap.hard || 0,
+        acceptance_rate: newSnap.acceptance_rate || 0,
+        ranking: newSnap.ranking || 0,
+        reputation: newSnap.reputation || 0,
+        contest_rating: newSnap.contest_rating || 0,
+        contest_rank: newSnap.contest_rank || 0,
+        contests_attended: newSnap.contests_attended || 0,
+        top_percentage: newSnap.top_percentage || 0,
+        streak: newSnap.streak || 0,
+        active_days: newSnap.active_days || 0,
+        last_active: newSnap.last_active || null,
+        languages: newSnap.languages || [],
+        skills: newSnap.skills || [],
+        badges: newSnap.badges || [],
+        submission_calendar: newSnap.submission_calendar || {},
+        engagement_score: newSnap.engagement_score || 0,
+        performance_tier: newSnap.performance_tier || 'Beginner',
+        activity_status: newSnap.activity_status || 'No Data',
+        status: newSnap.status || 'SUCCESS',
+        error: newSnap.error || null,
+      }).then(({ error }) => {
+        if (error) console.error('[Supabase] addSnapshot sync error:', error.message);
+      });
+    }
 
     if (this.isFallbackMode || !this.sqliteDb) {
       this.memStore.snapshots.push(newSnap);
