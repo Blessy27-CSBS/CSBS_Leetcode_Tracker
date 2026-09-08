@@ -140,9 +140,57 @@ export const api = {
         if (v && v !== 'ALL') params.append(k, v);
       });
     }
-    const res = await fetch(`/api/students?${params.toString()}`);
-    if (!res.ok) throw new Error('Failed to fetch students');
-    return res.json();
+
+    try {
+      const res = await fetch(`/api/students?${params.toString()}`);
+      if (res.ok) {
+        const data: StudentWithLatest[] = await res.json();
+        // If server returns students, cache them in localStorage
+        if (Array.isArray(data) && data.length > 0 && !filters?.search && (!filters?.section || filters.section === 'ALL')) {
+          try {
+            localStorage.setItem('csbs_students_cache', JSON.stringify(data));
+          } catch (e) {}
+          return data;
+        } else if (Array.isArray(data) && data.length === 0) {
+          // Server returned empty list (e.g. Vercel cold-start). Check client localStorage cache!
+          const cached = localStorage.getItem('csbs_students_cache');
+          if (cached) {
+            try {
+              const parsed: StudentWithLatest[] = JSON.parse(cached);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                // Asynchronously re-seed Vercel backend
+                this.syncCache(parsed).catch(() => {});
+                return parsed;
+              }
+            } catch (e) {}
+          }
+        }
+        return data;
+      }
+    } catch (err) {
+      // Network error or offline - fallback to localStorage cache
+      const cached = localStorage.getItem('csbs_students_cache');
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        } catch (e) {}
+      }
+    }
+    return [];
+  },
+
+  async syncCache(students: StudentWithLatest[]): Promise<{ success: boolean; count: number }> {
+    try {
+      const res = await fetch('/api/cache/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ students }),
+      });
+      return await res.json();
+    } catch (e) {
+      return { success: false, count: 0 };
+    }
   },
 
   async getStudent(id: string): Promise<{

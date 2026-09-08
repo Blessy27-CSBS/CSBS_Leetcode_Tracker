@@ -101,7 +101,7 @@ async function runBatchFetchWorker(studentsToFetch: Student[], reason: string = 
     logs: [
       {
         timestamp: new Date().toISOString(),
-        message: `Started ${reason} for ${studentsToFetch.length} students with ${settings.fetch_delay_ms}ms delay.`,
+        message: `Started ${reason} for ${studentsToFetch.length} students in parallel concurrency pools.`,
         type: 'info',
       }
     ],
@@ -109,100 +109,106 @@ async function runBatchFetchWorker(studentsToFetch: Student[], reason: string = 
 
   db.addLog('INFO', `Started ${reason} for ${studentsToFetch.length} students.`);
 
-  for (const student of studentsToFetch) {
+  // On Vercel / serverless, use 5 concurrent workers for fast response without timing out
+  const CONCURRENCY = process.env.VERCEL ? 6 : 4;
+  const timeoutMs = process.env.VERCEL ? 7000 : 12000;
+
+  for (let i = 0; i < studentsToFetch.length; i += CONCURRENCY) {
     if (!batchProgress.is_running) break; // Allow cancel
 
-    batchProgress.current_student = `${student.student_name} (${student.username})`;
-    try {
-      const fetchResult = await fetchLeetCodeProfile(
-        student.username,
-        settings.api_timeout_seconds * 1000
-      );
+    const chunk = studentsToFetch.slice(i, i + CONCURRENCY);
+    batchProgress.current_student = chunk.map(s => s.student_name).join(', ');
 
-      const prevSnapshot = db.getLatestSnapshot(student.id);
+    await Promise.all(chunk.map(async (student) => {
+      try {
+        const fetchResult = await fetchLeetCodeProfile(student.username, timeoutMs, 1);
+        const prevSnapshot = db.getLatestSnapshot(student.id);
 
-      if (fetchResult.status === 'SUCCESS' && fetchResult.data) {
-        const data = fetchResult.data;
-        const daysInactive = getDaysInactive(data.last_active);
-        const activityStatus = getActivityStatus(daysInactive, settings.inactivity_threshold_days);
-        const tier = getPerformanceTier(data.total_solved, settings);
+        if (fetchResult.status === 'SUCCESS' && fetchResult.data) {
+          const data = fetchResult.data;
+          const daysInactive = getDaysInactive(data.last_active);
+          const activityStatus = getActivityStatus(daysInactive, settings.inactivity_threshold_days);
+          const tier = getPerformanceTier(data.total_solved, settings);
 
-        const impRate = prevSnapshot ? Math.max(0, data.total_solved - prevSnapshot.total_solved) : 0;
-        const engagement = calculateEngagementScore({
-          total_solved: data.total_solved,
-          medium: data.medium,
-          hard: data.hard,
-          streak: data.streak,
-          contest_rating: data.contest_rating,
-          contests_attended: data.contests_attended,
-          days_inactive: daysInactive,
-          improvement_rate: impRate,
-        }, settings);
+          const impRate = prevSnapshot ? Math.max(0, data.total_solved - prevSnapshot.total_solved) : 0;
+          const engagement = calculateEngagementScore({
+            total_solved: data.total_solved,
+            medium: data.medium,
+            hard: data.hard,
+            streak: data.streak,
+            contest_rating: data.contest_rating,
+            contests_attended: data.contests_attended,
+            days_inactive: daysInactive,
+            improvement_rate: impRate,
+          }, settings);
 
-        db.addSnapshot({
-          student_id: student.id,
-          captured_at: new Date().toISOString(),
-          total_solved: data.total_solved,
-          easy: data.easy,
-          medium: data.medium,
-          hard: data.hard,
-          acceptance_rate: data.acceptance_rate,
-          ranking: data.ranking,
-          reputation: data.reputation,
-          contest_rating: data.contest_rating,
-          contest_rank: data.contest_rank,
-          contests_attended: data.contests_attended,
-          top_percentage: data.top_percentage,
-          streak: data.streak,
-          active_days: data.active_days,
-          last_active: data.last_active,
-          languages: data.languages,
-          skills: data.skills,
-          badges: data.badges,
-          submission_calendar: data.submission_calendar,
-          engagement_score: engagement,
-          performance_tier: tier,
-          activity_status: activityStatus,
-          status: 'SUCCESS',
-        });
-
-        if (data.recent_submissions && data.recent_submissions.length > 0) {
-          db.setSubmissions(student.id, data.recent_submissions.map((s, idx) => ({
-            id: `sub_${student.id}_${Date.now()}_${idx}`,
+          db.addSnapshot({
             student_id: student.id,
-            title: s.title,
-            titleSlug: s.titleSlug,
-            timestamp: s.timestamp,
-            language: s.language || s.lang || (data.languages && data.languages.length > 0 ? data.languages[0].languageName : 'Python3'),
-            statusDisplay: s.statusDisplay || 'Accepted',
-          })));
-        }
+            captured_at: new Date().toISOString(),
+            total_solved: data.total_solved,
+            easy: data.easy,
+            medium: data.medium,
+            hard: data.hard,
+            acceptance_rate: data.acceptance_rate,
+            ranking: data.ranking,
+            reputation: data.reputation,
+            contest_rating: data.contest_rating,
+            contest_rank: data.contest_rank,
+            contests_attended: data.contests_attended,
+            top_percentage: data.top_percentage,
+            streak: data.streak,
+            active_days: data.active_days,
+            last_active: data.last_active,
+            languages: data.languages,
+            skills: data.skills,
+            badges: data.badges,
+            submission_calendar: data.submission_calendar,
+            engagement_score: engagement,
+            performance_tier: tier,
+            activity_status: activityStatus,
+            status: 'SUCCESS',
+          });
 
-        batchProgress.successful++;
-        batchProgress.logs.push({
-          timestamp: new Date().toISOString(),
-          message: `[SUCCESS] ${student.student_name}: ${data.total_solved} solved (Easy: ${data.easy}, Med: ${data.medium}, Hard: ${data.hard}).`,
-          type: 'success',
-        });
-      } else {
+          if (data.recent_submissions && data.recent_submissions.length > 0) {
+            db.setSubmissions(student.id, data.recent_submissions.map((s, idx) => ({
+              id: `sub_${student.id}_${Date.now()}_${idx}`,
+              student_id: student.id,
+              title: s.title,
+              titleSlug: s.titleSlug,
+              timestamp: s.timestamp,
+              language: s.language || s.lang || 'Python3',
+              statusDisplay: s.statusDisplay || 'Accepted',
+            })));
+          }
+
+          batchProgress.successful++;
+          batchProgress.logs.push({
+            timestamp: new Date().toISOString(),
+            message: `[SUCCESS] ${student.student_name}: ${data.total_solved} solved (Easy: ${data.easy}, Med: ${data.medium}, Hard: ${data.hard}).`,
+            type: 'success',
+          });
+        } else {
+          batchProgress.failed++;
+          batchProgress.logs.push({
+            timestamp: new Date().toISOString(),
+            message: `[${fetchResult.status}] ${student.student_name} (@${student.username}): ${fetchResult.error || 'Failed'}`,
+            type: 'warn',
+          });
+        }
+      } catch (err: any) {
         batchProgress.failed++;
         batchProgress.logs.push({
           timestamp: new Date().toISOString(),
-          message: `[${fetchResult.status}] ${student.student_name} (@${student.username}): ${fetchResult.error || 'Failed'}`,
-          type: 'warn',
+          message: `[ERROR] ${student.student_name}: ${err.message}`,
+          type: 'error',
         });
+      } finally {
+        batchProgress.processed++;
       }
-    } catch (err: any) {
-      batchProgress.failed++;
-      batchProgress.logs.push({
-        timestamp: new Date().toISOString(),
-        message: `[ERROR] ${student.student_name}: ${err.message}`,
-        type: 'error',
-      });
-    }
+    }));
 
-    batchProgress.processed++;
-    await new Promise(r => setTimeout(r, settings.fetch_delay_ms));
+    // Slight pause between concurrency batches to prevent LeetCode rate limit
+    await new Promise(r => setTimeout(r, 400));
   }
 
   batchProgress.is_running = false;
@@ -1769,6 +1775,69 @@ app.post('/api/settings/clear-history', (req, res) => {
     res.json({ success: true, message: 'Snapshots cleared successfully.' });
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Failed to clear snapshots.' });
+  }
+});
+
+// 22. Client LocalStorage Cache Re-seeding (Vercel Serverless Persistence Fallback)
+app.post('/api/cache/sync', (req, res) => {
+  try {
+    const { students } = req.body || {};
+    if (Array.isArray(students) && students.length > 0) {
+      const currentStudents = db.getStudents();
+      if (currentStudents.length < students.length) {
+        const existingRegs = new Set(currentStudents.map(s => s.register_no.toLowerCase()));
+        students.forEach((s: any) => {
+          if (s.register_no && !existingRegs.has(s.register_no.toLowerCase())) {
+            const added = db.addStudent({
+              register_no: s.register_no,
+              student_name: s.student_name,
+              section: s.section || 'A',
+              year: s.year || 'II',
+              batch: s.batch || '2024-2028',
+              username: s.username,
+              email: s.email,
+              mentor: s.mentor,
+              academic_year: s.academic_year || '2024-2025',
+              notes: s.notes,
+              active: true,
+            });
+
+            if (s.latestSnapshot && s.latestSnapshot.total_solved !== undefined) {
+              db.addSnapshot({
+                student_id: added.id,
+                captured_at: s.latestSnapshot.captured_at || new Date().toISOString(),
+                total_solved: s.latestSnapshot.total_solved || 0,
+                easy: s.latestSnapshot.easy || 0,
+                medium: s.latestSnapshot.medium || 0,
+                hard: s.latestSnapshot.hard || 0,
+                acceptance_rate: s.latestSnapshot.acceptance_rate || 0,
+                ranking: s.latestSnapshot.ranking || 0,
+                reputation: s.latestSnapshot.reputation || 0,
+                contest_rating: s.latestSnapshot.contest_rating || 0,
+                contest_rank: s.latestSnapshot.contest_rank || 0,
+                contests_attended: s.latestSnapshot.contests_attended || 0,
+                top_percentage: s.latestSnapshot.top_percentage || 0,
+                streak: s.latestSnapshot.streak || 0,
+                active_days: s.latestSnapshot.active_days || 0,
+                last_active: s.latestSnapshot.last_active,
+                languages: s.latestSnapshot.languages || [],
+                skills: s.latestSnapshot.skills || [],
+                badges: s.latestSnapshot.badges || [],
+                submission_calendar: s.latestSnapshot.submission_calendar || {},
+                engagement_score: s.latestSnapshot.engagement_score || 0,
+                performance_tier: s.latestSnapshot.performance_tier || 'Beginner',
+                activity_status: s.latestSnapshot.activity_status || 'No Data',
+                status: 'SUCCESS',
+              });
+            }
+          }
+        });
+        db.addLog('INFO', `[Vercel Sync] Re-seeded ${students.length} student profiles from client cache.`);
+      }
+    }
+    res.json({ success: true, count: db.getStudents().length });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Cache sync failed' });
   }
 });
 

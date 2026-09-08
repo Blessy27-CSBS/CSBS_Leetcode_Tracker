@@ -118,8 +118,8 @@ query getUserProfile($username: String!) {
 
 export async function fetchLeetCodeProfile(
   username: string, 
-  timeoutMs: number = 25000,
-  maxRetries: number = 2
+  timeoutMs: number = 8000,
+  maxRetries: number = 1
 ): Promise<LeetCodeFetchResult> {
   if (!username || !username.trim()) {
     return {
