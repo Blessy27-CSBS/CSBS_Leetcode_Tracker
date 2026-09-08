@@ -232,7 +232,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <div className="text-xs font-bold text-slate-600 mt-0.5">Active Cohort Rate</div>
                 <div className="text-[10px] text-emerald-600 font-bold flex items-center gap-1 mt-1">
                   <ArrowUpRight className="w-3 h-3" />
-                  <span>{summary.active_students} Active Solvers</span>
+                  <span>{computedActiveStudents} Active Solvers</span>
                 </div>
               </div>
               <div className="w-14 h-14 relative flex items-center justify-center">
@@ -260,7 +260,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <div className="text-xs font-bold text-slate-600 mt-0.5">Target Progress</div>
                 <div className="text-[10px] text-purple-600 font-bold flex items-center gap-1 mt-1">
                   <ArrowUpRight className="w-3 h-3" />
-                  <span>{summary.total_problems_solved} Total Solved</span>
+                  <span>{computedTotalSolved} Total Solved</span>
                 </div>
               </div>
               <div className="w-14 h-14 relative flex items-center justify-center">
@@ -355,7 +355,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <p className="text-[11px] text-slate-500 font-medium mt-0.5">Dual-tone wave chart tracking student solved volume vs benchmark curve</p>
                 </div>
                 <span className="text-[11px] font-black text-purple-700 bg-purple-50 border border-purple-100 px-3 py-1 rounded-full">
-                  {summary.total_problems_solved} Total Solved
+                  {computedTotalSolved} Total Solved
                 </span>
               </div>
               
@@ -528,7 +528,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </PieChart>
                   </ResponsiveContainer>
                   <div className="absolute text-center">
-                    <div className="text-base font-black text-slate-900">{summary.total_problems_solved}</div>
+                    <div className="text-base font-black text-slate-900">{computedTotalSolved}</div>
                     <div className="text-[9px] font-bold text-slate-400 uppercase">Solved</div>
                   </div>
                 </div>
