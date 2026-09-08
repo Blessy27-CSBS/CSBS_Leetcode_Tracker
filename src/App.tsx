@@ -110,17 +110,16 @@ export function App() {
       setLoading(true);
       setError('');
 
-      const [dashData, studentList] = await Promise.all([
-        api.getDashboard(),
-        api.getStudents(),
-      ]);
+      const studentList = await api.getStudents();
+      setStudents(studentList);
+
+      const dashData = await api.getDashboard();
 
       setSummary(dashData.summary);
       setSectionStats(dashData.sectionStats);
       setBatchStats(dashData.batchStats);
       setTimeline(dashData.timeline);
       setSettings(dashData.settings);
-      setStudents(studentList);
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'Failed to connect to backend service');

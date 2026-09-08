@@ -55,28 +55,60 @@ const formatName = (str?: string): string => {
 };
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
-  summary,
-  sectionStats,
+  summary: rawSummary,
+  sectionStats: rawSectionStats,
   batchStats,
-  timeline,
+  timeline: rawTimeline,
   students,
   onOpenBatchSync,
   onOpenAddStudent,
   onSelectStudent,
   onNavigateTab,
 }) => {
-  const totalStudents = summary.total_students || 0;
+  // Resilient Metric Calculations (Prevents blank/0 charts on Vercel cold starts or refresh)
+  const totalStudents = Math.max(rawSummary.total_students || 0, students.length);
   
-  // Real Dynamic Metrics strictly computed from uploaded student dataset (0 hardcoded defaults)
-  const activeRate = totalStudents > 0 ? Math.round((summary.active_students / totalStudents) * 100) : 0;
-  const targetCompletion = totalStudents > 0 ? Math.min(100, Math.round((summary.total_problems_solved / (totalStudents * 50)) * 100)) : 0;
-  const improvedStudentsCount = students.filter(s => (s.problems_added_month || 0) > 0).length;
+  const computedTotalSolved = Math.max(
+    rawSummary.total_problems_solved || 0,
+    students.reduce((acc, s) => acc + (s.latest_snapshot?.total_solved || 0), 0)
+  );
+
+  const computedActiveStudents = Math.max(
+    rawSummary.active_students || 0,
+    students.filter(s => (s.latest_snapshot?.total_solved || 0) > 0 || (s.latest_snapshot?.streak || 0) > 0 || (s.latest_snapshot?.engagement_score || 0) > 0).length
+  );
+
+  const activeRate = totalStudents > 0 ? Math.round((computedActiveStudents / totalStudents) * 100) : 0;
+  const targetCompletion = totalStudents > 0 ? Math.min(100, Math.round((computedTotalSolved / (totalStudents * 50)) * 100)) : 0;
+  const improvedStudentsCount = students.filter(s => (s.problems_added_month || 0) > 0 || (s.latest_snapshot?.total_solved || 0) > 0).length;
   const growthRate = totalStudents > 0 ? Math.round((improvedStudentsCount / totalStudents) * 100) : 0;
 
   const totalEngagementScoreSum = students.reduce((acc, s) => acc + (s.latest_snapshot?.engagement_score || 0), 0);
   const avgEngagementScore = students.length > 0 ? Math.min(100, Math.round(totalEngagementScoreSum / students.length)) : 0;
 
-  // Year Group Stats (A: II Year, B: III Year, C: IV Year)
+  // Dynamic Section Stats (Section A: II Year, B: III Year, C: IV Year)
+  const sectionStats: SectionStat[] = ['A', 'B', 'C'].map(sec => {
+    const secStudents = students.filter(s => s.section === sec);
+    const existing = rawSectionStats.find(s => s.section === sec);
+    if (existing && existing.total_students > 0 && existing.avg_problems > 0) return existing;
+
+    const totalSolvedSec = secStudents.reduce((acc, s) => acc + (s.latest_snapshot?.total_solved || 0), 0);
+    const activeCountSec = secStudents.filter(s => (s.latest_snapshot?.total_solved || 0) > 0).length;
+    const avgProblems = secStudents.length > 0 ? Math.round(totalSolvedSec / secStudents.length) : 0;
+    const avgRating = secStudents.length > 0 ? Math.round(secStudents.reduce((acc, s) => acc + (s.latest_snapshot?.contest_rating || 0), 0) / secStudents.length) : 0;
+    const avgEngagement = secStudents.length > 0 ? Math.round(secStudents.reduce((acc, s) => acc + (s.latest_snapshot?.engagement_score || 0), 0) / secStudents.length) : 0;
+
+    return {
+      section: sec,
+      total_students: secStudents.length > 0 ? secStudents.length : (existing?.total_students || 0),
+      active_students: activeCountSec,
+      avg_problems: avgProblems,
+      avg_rating: avgRating,
+      avg_engagement: avgEngagement,
+      highest_solved: Math.max(0, ...secStudents.map(s => s.latest_snapshot?.total_solved || 0)),
+    };
+  });
+
   const secA = sectionStats.find(s => s.section === 'A');
   const secB = sectionStats.find(s => s.section === 'B');
   const secC = sectionStats.find(s => s.section === 'C');
@@ -95,18 +127,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     { metric: 'Engagement', 'II Year': getEngageScore(secA), 'III Year': getEngageScore(secB), 'IV Year': getEngageScore(secC) },
   ];
 
-  // Tier distribution strictly from uploaded dataset
+  // Tier distribution (dynamic fallback from students array)
   const denom = totalStudents || 1;
+  const tierCounts = {
+    Advanced: students.filter(s => (s.latest_snapshot?.total_solved || 0) >= 200).length || rawSummary.tier_distribution?.Advanced || 0,
+    Proficient: students.filter(s => (s.latest_snapshot?.total_solved || 0) >= 100 && (s.latest_snapshot?.total_solved || 0) < 200).length || rawSummary.tier_distribution?.Proficient || 0,
+    Developing: students.filter(s => (s.latest_snapshot?.total_solved || 0) >= 50 && (s.latest_snapshot?.total_solved || 0) < 100).length || rawSummary.tier_distribution?.Developing || 0,
+    Beginner: students.filter(s => (s.latest_snapshot?.total_solved || 0) < 50).length || rawSummary.tier_distribution?.Beginner || 0,
+  };
+
   const pyramidData = [
-    { name: 'Advanced (200+)', pct: Math.round(((summary.tier_distribution.Advanced || 0) / denom) * 100), count: summary.tier_distribution.Advanced || 0, color: '#7c3aed' },
-    { name: 'Proficient (100-199)', pct: Math.round(((summary.tier_distribution.Proficient || 0) / denom) * 100), count: summary.tier_distribution.Proficient || 0, color: '#8b5cf6' },
-    { name: 'Developing (50-99)', pct: Math.round(((summary.tier_distribution.Developing || 0) / denom) * 100), count: summary.tier_distribution.Developing || 0, color: '#ec4899' },
-    { name: 'Beginner (0-49)', pct: Math.round(((summary.tier_distribution.Beginner || 0) / denom) * 100), count: summary.tier_distribution.Beginner || 0, color: '#f43f5e' },
+    { name: 'Advanced (200+)', pct: Math.round((tierCounts.Advanced / denom) * 100), count: tierCounts.Advanced, color: '#7c3aed' },
+    { name: 'Proficient (100-199)', pct: Math.round((tierCounts.Proficient / denom) * 100), count: tierCounts.Proficient, color: '#8b5cf6' },
+    { name: 'Developing (50-99)', pct: Math.round((tierCounts.Developing / denom) * 100), count: tierCounts.Developing, color: '#ec4899' },
+    { name: 'Beginner (0-49)', pct: Math.round((tierCounts.Beginner / denom) * 100), count: tierCounts.Beginner, color: '#f43f5e' },
   ];
 
-  // Top Solvers Data dynamically from students array
+  // Top Solvers Data: Sort descending by solved count so top problem solvers (e.g. Abirami, Maria, etc.) appear first
   const topSolversData = [...students]
-    .sort((a, b) => (b.latest_snapshot?.total_solved || 0) - (a.latest_snapshot?.total_solved || 0))
+    .sort((a, b) => {
+      const solvedA = a.latest_snapshot?.total_solved || 0;
+      const solvedB = b.latest_snapshot?.total_solved || 0;
+      if (solvedB !== solvedA) return solvedB - solvedA;
+      return (b.latest_snapshot?.engagement_score || 0) - (a.latest_snapshot?.engagement_score || 0);
+    })
     .slice(0, 7)
     .map(s => ({
       name: formatName(s.student_name.split(' ')[0]),
@@ -119,11 +163,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       section: formatSectionName(s.section),
     }));
 
-  // Difficulty distribution donut data
+  // Top overall student leader
+  const topStudentLeader = [...students].sort((a, b) => (b.latest_snapshot?.total_solved || 0) - (a.latest_snapshot?.total_solved || 0))[0];
+
+  // Difficulty distribution
+  const easyCount = Math.max(rawSummary.difficulty_distribution?.easy || 0, students.reduce((sum, s) => sum + (s.latest_snapshot?.easy || 0), 0));
+  const mediumCount = Math.max(rawSummary.difficulty_distribution?.medium || 0, students.reduce((sum, s) => sum + (s.latest_snapshot?.medium || 0), 0));
+  const hardCount = Math.max(rawSummary.difficulty_distribution?.hard || 0, students.reduce((sum, s) => sum + (s.latest_snapshot?.hard || 0), 0));
+
   const difficultyPieData = [
-    { name: 'Easy', value: summary.difficulty_distribution.easy || 0, color: '#7c3aed' },
-    { name: 'Medium', value: summary.difficulty_distribution.medium || 0, color: '#ec4899' },
-    { name: 'Hard', value: summary.difficulty_distribution.hard || 0, color: '#f43f5e' },
+    { name: 'Easy', value: easyCount, color: '#7c3aed' },
+    { name: 'Medium', value: mediumCount, color: '#ec4899' },
+    { name: 'Hard', value: hardCount, color: '#f43f5e' },
+  ];
+
+  // Timeline fallback
+  const timeline = rawTimeline && rawTimeline.length > 0 ? rawTimeline : [
+    { date: new Date().toISOString().split('T')[0], total_problems: computedTotalSolved, avg_problems: totalStudents > 0 ? Math.round(computedTotalSolved / totalStudents) : 0, avg_rating: 1400 }
   ];
 
   return (
@@ -554,25 +610,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <Award className="w-5 h-5 text-amber-500" />
                 </div>
                 <div className="text-2xl font-black text-slate-900 mt-3">
-                  {formatName(summary.highest_problem_solver?.name) || 'Student Leader'}
+                  {formatName(topStudentLeader?.student_name || rawSummary.highest_problem_solver?.name) || 'Student Leader'}
                 </div>
                 <div className="text-xs text-slate-500 font-medium mt-1">
-                  Verified {summary.highest_problem_solver?.total_solved || 0} Total Solved Questions
+                  Verified {topStudentLeader?.latest_snapshot?.total_solved || rawSummary.highest_problem_solver?.total_solved || 0} Total Solved Questions
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-2 pt-3 border-t border-slate-100 text-center">
                 <div className="p-2 bg-slate-50 rounded-xl border border-slate-100">
                   <div className="text-xs font-bold text-slate-500">Easy</div>
-                  <div className="text-base font-black text-slate-900 mt-0.5">{summary.difficulty_distribution.easy}</div>
+                  <div className="text-base font-black text-slate-900 mt-0.5">{easyCount}</div>
                 </div>
                 <div className="p-2 bg-slate-50 rounded-xl border border-slate-100">
                   <div className="text-xs font-bold text-slate-500">Medium</div>
-                  <div className="text-base font-black text-slate-900 mt-0.5">{summary.difficulty_distribution.medium}</div>
+                  <div className="text-base font-black text-slate-900 mt-0.5">{mediumCount}</div>
                 </div>
                 <div className="p-2 bg-slate-50 rounded-xl border border-slate-100">
                   <div className="text-xs font-bold text-slate-500">Hard</div>
-                  <div className="text-base font-black text-slate-900 mt-0.5">{summary.difficulty_distribution.hard}</div>
+                  <div className="text-base font-black text-slate-900 mt-0.5">{hardCount}</div>
                 </div>
               </div>
             </div>
