@@ -322,6 +322,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
         snapshot={snapshot}
         potdCount={potdList.length}
         recentCount={recentSubmissions.length}
+        contestCount={contests.length}
       />
 
       {/* Main Content Area */}
@@ -477,6 +478,84 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
               </div>
             </div>
 
+          </div>
+
+          {/* Upcoming Faculty Contests Banner / Section */}
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-purple-100 text-purple-700 rounded-lg">
+                  <Trophy className="w-4 h-4 text-purple-600" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-slate-900">Upcoming LeetCode Contests</h2>
+                  <p className="text-[11px] text-slate-500">Scheduled by Faculty for CSBS Department</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setActiveSubTab('contests')}
+                className="text-xs font-bold text-purple-600 hover:text-purple-700 flex items-center gap-1 cursor-pointer"
+              >
+                <span>Contest Arena ({contests.length})</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {contests.length === 0 ? (
+              <div className="p-6 bg-slate-50 border border-slate-200 rounded-xl text-center text-xs text-slate-500">
+                No active faculty contests posted at the moment. Check back soon or visit the Contests Arena tab.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {contests.slice(0, 2).map((c) => {
+                  const countdown = formatCountdown(c.startTime);
+                  return (
+                    <div key={c.id} className="p-4 bg-purple-50/50 border border-purple-100 rounded-xl flex flex-col justify-between space-y-3">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="px-2 py-0.5 bg-purple-600 text-white rounded text-[10px] font-bold">
+                            {c.type}
+                          </span>
+                          <span className="px-2 py-0.5 bg-amber-100 text-amber-900 rounded text-[10px] font-bold flex items-center gap-1">
+                            <Timer className="w-3 h-3 text-amber-600" />
+                            <span>{countdown}</span>
+                          </span>
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-extrabold text-slate-900">{c.title}</h3>
+                          {c.description && <p className="text-xs text-slate-600 line-clamp-2 mt-0.5">{c.description}</p>}
+                        </div>
+                        <div className="flex items-center gap-3 text-[11px] text-slate-600">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3 text-slate-400" />
+                            <span>{new Date(c.startTime).toLocaleDateString()}</span>
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-slate-400" />
+                            <span>{c.durationMinutes} mins</span>
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-purple-100 flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-semibold text-purple-700">
+                          {c.problems?.length ? `${c.problems.length} Problems` : 'Official Challenge'}
+                        </span>
+                        <a
+                          href={c.contestUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-lg flex items-center gap-1 shadow-xs"
+                        >
+                          <span>Enter Contest</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* POTD Section Preview */}

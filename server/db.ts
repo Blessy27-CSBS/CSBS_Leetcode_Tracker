@@ -493,10 +493,27 @@ export class DatabaseService {
           startTime: c.startTime,
           durationMinutes: c.durationMinutes || 90,
           description: c.description || undefined,
-          problems: typeof c.problems === 'string' ? JSON.parse(c.problems) : (c.problems || []),
+          problems: typeof c.problems === 'string' ? (c.problems.startsWith('[') ? JSON.parse(c.problems) : []) : (c.problems || []),
           status: c.status || 'UPCOMING',
           created_at: c.created_at,
         }));
+        if (this.sqliteDb) {
+          try {
+            const ins = this.sqliteDb.prepare(`
+              INSERT OR REPLACE INTO contests (id, title, titleSlug, type, contestUrl, startTime, durationMinutes, description, problems, status, created_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `);
+            for (const c of this.memStore.contests) {
+              ins.run(
+                c.id, c.title, c.titleSlug, c.type, c.contestUrl, c.startTime,
+                c.durationMinutes, c.description || '', JSON.stringify(c.problems || []),
+                c.status, c.created_at || new Date().toISOString()
+              );
+            }
+          } catch (e) {
+            console.error('Error syncing contests to SQLite:', e);
+          }
+        }
       }
 
       // 9. Users
@@ -626,6 +643,29 @@ export class DatabaseService {
                   sub.timestamp,
                   sub.language,
                   sub.statusDisplay
+                );
+              }
+            }
+
+            if (Array.isArray(legacy.contests)) {
+              const insertContest = this.sqliteDb.prepare(`
+                INSERT OR REPLACE INTO contests (
+                  id, title, titleSlug, type, contestUrl, startTime, durationMinutes, description, problems, status, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              `);
+              for (const c of legacy.contests) {
+                insertContest.run(
+                  c.id,
+                  c.title,
+                  c.titleSlug,
+                  c.type,
+                  c.contestUrl,
+                  c.startTime,
+                  c.durationMinutes || 90,
+                  c.description || '',
+                  JSON.stringify(c.problems || []),
+                  c.status || 'UPCOMING',
+                  c.created_at || new Date().toISOString()
                 );
               }
             }
@@ -1443,22 +1483,25 @@ export class DatabaseService {
 
     try {
       const rows = this.sqliteDb.prepare('SELECT * FROM contests ORDER BY startTime DESC').all() as any[];
-      return rows.map(r => ({
-        id: r.id,
-        title: r.title,
-        titleSlug: r.titleSlug,
-        type: r.type,
-        contestUrl: r.contestUrl,
-        startTime: r.startTime,
-        durationMinutes: r.durationMinutes || 90,
-        description: r.description,
-        problems: r.problems ? JSON.parse(r.problems) : [],
-        status: r.status || 'UPCOMING',
-        created_at: r.created_at,
-      }));
+      if (rows && rows.length > 0) {
+        return rows.map(r => ({
+          id: r.id,
+          title: r.title,
+          titleSlug: r.titleSlug,
+          type: r.type,
+          contestUrl: r.contestUrl,
+          startTime: r.startTime,
+          durationMinutes: r.durationMinutes || 90,
+          description: r.description,
+          problems: r.problems ? (typeof r.problems === 'string' ? JSON.parse(r.problems) : r.problems) : [],
+          status: r.status || 'UPCOMING',
+          created_at: r.created_at,
+        }));
+      }
+      return this.memStore.contests || [];
     } catch (e) {
       console.error('Error fetching contests:', e);
-      return [];
+      return this.memStore.contests || [];
     }
   }
 
@@ -1468,7 +1511,9 @@ export class DatabaseService {
     }
 
     const r = this.sqliteDb.prepare('SELECT * FROM contests WHERE id = ?').get(id) as any;
-    if (!r) return null;
+    if (!r) {
+      return (this.memStore.contests || []).find(c => c.id === id) || null;
+    }
     return {
       id: r.id,
       title: r.title,
@@ -1478,7 +1523,7 @@ export class DatabaseService {
       startTime: r.startTime,
       durationMinutes: r.durationMinutes || 90,
       description: r.description,
-      problems: r.problems ? JSON.parse(r.problems) : [],
+      problems: r.problems ? (typeof r.problems === 'string' ? JSON.parse(r.problems) : r.problems) : [],
       status: r.status || 'UPCOMING',
       created_at: r.created_at,
     };
@@ -1508,6 +1553,24 @@ export class DatabaseService {
       this.memStore.contests[memIdx] = newContest;
     } else {
       this.memStore.contests.push(newContest);
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('contests').upsert({
+        id: newContest.id,
+        title: newContest.title,
+        titleSlug: newContest.titleSlug,
+        type: newContest.type,
+        contestUrl: newContest.contestUrl,
+        startTime: newContest.startTime,
+        durationMinutes: newContest.durationMinutes,
+        description: newContest.description || '',
+        problems: JSON.stringify(newContest.problems || []),
+        status: newContest.status,
+        created_at: newContest.created_at,
+      }).then(({ error }) => {
+        if (error) console.error('[Supabase] Contest insert error:', error);
+      });
     }
 
     if (this.isFallbackMode || !this.sqliteDb) {
@@ -1547,32 +1610,53 @@ export class DatabaseService {
       this.memStore.contests[memIdx] = { ...this.memStore.contests[memIdx], ...item };
     }
 
-    if (this.isFallbackMode || !this.sqliteDb) {
-      if (memIdx === -1) return null;
-      this.persistMemoryStore();
-      return this.memStore.contests[memIdx];
-    }
-
     const current = this.getContestById(id);
     if (!current) return null;
 
     const updated: ContestItem = { ...current, ...item };
-    this.sqliteDb.prepare(`
-      UPDATE contests SET
-        title = ?, titleSlug = ?, type = ?, contestUrl = ?, startTime = ?, durationMinutes = ?, description = ?, problems = ?, status = ?
-      WHERE id = ?
-    `).run(
-      updated.title,
-      updated.titleSlug,
-      updated.type,
-      updated.contestUrl,
-      updated.startTime,
-      updated.durationMinutes,
-      updated.description || '',
-      JSON.stringify(updated.problems || []),
-      updated.status,
-      id
-    );
+
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('contests').upsert({
+        id: updated.id,
+        title: updated.title,
+        titleSlug: updated.titleSlug,
+        type: updated.type,
+        contestUrl: updated.contestUrl,
+        startTime: updated.startTime,
+        durationMinutes: updated.durationMinutes,
+        description: updated.description || '',
+        problems: JSON.stringify(updated.problems || []),
+        status: updated.status,
+      }).then(({ error }) => {
+        if (error) console.error('[Supabase] Contest update error:', error);
+      });
+    }
+
+    if (this.isFallbackMode || !this.sqliteDb) {
+      this.persistMemoryStore();
+      return updated;
+    }
+
+    try {
+      this.sqliteDb.prepare(`
+        UPDATE contests SET
+          title = ?, titleSlug = ?, type = ?, contestUrl = ?, startTime = ?, durationMinutes = ?, description = ?, problems = ?, status = ?
+        WHERE id = ?
+      `).run(
+        updated.title,
+        updated.titleSlug,
+        updated.type,
+        updated.contestUrl,
+        updated.startTime,
+        updated.durationMinutes,
+        updated.description || '',
+        JSON.stringify(updated.problems || []),
+        updated.status,
+        id
+      );
+    } catch (e) {
+      console.error('Error updating contest in SQLite:', e);
+    }
 
     this.persistMemoryStore();
     return updated;
@@ -1582,14 +1666,25 @@ export class DatabaseService {
     if (!this.memStore.contests) this.memStore.contests = [];
     const initial = this.memStore.contests.length;
     this.memStore.contests = this.memStore.contests.filter(c => c.id !== id);
+
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('contests').delete().eq('id', id).then(({ error }) => {
+        if (error) console.error('[Supabase] Contest delete error:', error);
+      });
+    }
+
     this.persistMemoryStore();
 
     if (this.isFallbackMode || !this.sqliteDb) {
       return this.memStore.contests.length < initial;
     }
 
-    const res = this.sqliteDb.prepare('DELETE FROM contests WHERE id = ?').run(id);
-    return res.changes > 0;
+    try {
+      const res = this.sqliteDb.prepare('DELETE FROM contests WHERE id = ?').run(id);
+      return res.changes > 0 || this.memStore.contests.length < initial;
+    } catch (e) {
+      return this.memStore.contests.length < initial;
+    }
   }
 
   // ================= CURATED TRACKS & PROBLEMS =================

@@ -23,6 +23,7 @@ interface StudentSidebarProps {
   snapshot?: any;
   potdCount?: number;
   recentCount?: number;
+  contestCount?: number;
 }
 
 export const StudentSidebar: React.FC<StudentSidebarProps> = ({
@@ -34,10 +35,11 @@ export const StudentSidebar: React.FC<StudentSidebarProps> = ({
   snapshot,
   potdCount = 0,
   recentCount = 0,
+  contestCount = 0,
 }) => {
   const mainItems: { id: StudentNavTab; label: string; badge: string | null; badgeColor?: string }[] = [
     { id: 'overview', label: 'My Dashboard', badge: null },
-    { id: 'contests', label: 'LeetCode Contests', badge: null },
+    { id: 'contests', label: 'LeetCode Contests', badge: contestCount > 0 ? `${contestCount}` : null, badgeColor: 'bg-purple-600 text-white' },
     { id: 'potd_tracks', label: 'POTD & Practice Tracks', badge: potdCount > 0 ? `${potdCount}` : null, badgeColor: 'bg-orange-500 text-white' },
     { id: 'leaderboard', label: 'Class Leaderboard', badge: null },
     { id: 'submissions', label: 'Recent Submissions', badge: recentCount > 0 ? `${recentCount}` : null, badgeColor: 'bg-slate-700 text-slate-200' },
