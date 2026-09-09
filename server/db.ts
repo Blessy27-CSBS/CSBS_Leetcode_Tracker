@@ -338,11 +338,14 @@ export class DatabaseService {
   }
 
   public async loadFromSupabase() {
+    if (this.memStore.students.length === 0) {
+      this.getStudents();
+    }
     if (!isSupabaseConfigured || !supabase) return;
     try {
       // 1. Students
-      const { data: studentsData } = await supabase.from('students').select('*').order('student_name', { ascending: true });
-      if (studentsData && studentsData.length > 0) {
+      const { data: studentsData, error: studentErr } = await supabase.from('students').select('*').order('student_name', { ascending: true });
+      if (!studentErr && studentsData && studentsData.length > 0) {
         this.memStore.students = studentsData.map((s: any) => ({
           id: s.id,
           register_no: s.register_no,
@@ -359,6 +362,10 @@ export class DatabaseService {
           notes: s.notes || undefined,
         }));
         console.log(`[Supabase] Loaded ${studentsData.length} students from cloud database.`);
+      } else {
+        // Fallback: Populate memory store from local database if Supabase query is empty or errored
+        const localStudents = this.getStudents();
+        console.log(`[Database] Using ${localStudents.length} local students dataset.`);
       }
 
       // 2. Snapshots
@@ -633,25 +640,34 @@ export class DatabaseService {
 
   // Students CRUD
   public getStudents(): Student[] {
-    if (this.isFallbackMode || !this.sqliteDb) {
+    if (this.memStore.students.length > 0) {
       return this.memStore.students;
     }
-    const rows = this.sqliteDb.prepare('SELECT * FROM students ORDER BY student_name ASC').all() as any[];
-    return rows.map(r => ({
-      id: r.id,
-      register_no: r.register_no,
-      student_name: r.student_name,
-      section: r.section,
-      year: r.year,
-      batch: r.batch,
-      username: r.username,
-      email: r.email || undefined,
-      mentor: r.mentor || undefined,
-      academic_year: r.academic_year,
-      active: Boolean(r.active),
-      created_at: r.created_at,
-      notes: r.notes || undefined,
-    }));
+    if (this.sqliteDb) {
+      try {
+        const rows = this.sqliteDb.prepare('SELECT * FROM students ORDER BY student_name ASC').all() as any[];
+        if (rows.length > 0) {
+          const loaded = rows.map(r => ({
+            id: r.id,
+            register_no: r.register_no,
+            student_name: r.student_name,
+            section: r.section,
+            year: r.year,
+            batch: r.batch,
+            username: r.username,
+            email: r.email || undefined,
+            mentor: r.mentor || undefined,
+            academic_year: r.academic_year,
+            active: Boolean(r.active),
+            created_at: r.created_at,
+            notes: r.notes || undefined,
+          }));
+          this.memStore.students = loaded;
+          return loaded;
+        }
+      } catch (e) {}
+    }
+    return this.memStore.students;
   }
 
   public getStudentById(id: string): Student | undefined {
