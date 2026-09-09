@@ -1848,7 +1848,34 @@ export class DatabaseService {
     }
   }
 
+  public ensureStudentInSqlite(student: Student): void {
+    if (!this.sqliteDb) return;
+    try {
+      this.sqliteDb.prepare(`
+        INSERT OR REPLACE INTO students (
+          id, register_no, student_name, section, year, batch, username, email, mentor, academic_year, active, created_at, notes
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        student.id,
+        student.register_no,
+        student.student_name,
+        student.section || 'A',
+        student.year || 'II',
+        student.batch || '2023-2027',
+        student.username,
+        student.email || null,
+        student.mentor || null,
+        student.academic_year || DEFAULT_SETTINGS.academic_year,
+        student.active ? 1 : 0,
+        student.created_at || new Date().toISOString(),
+        student.notes || null
+      );
+    } catch (e) {}
+  }
+
   public ensureStudentUser(student: Student): DBUser {
+    this.ensureStudentInSqlite(student);
+
     const studentEmail = (student.email && student.email.trim()) 
       ? student.email.trim().toLowerCase() 
       : `${student.register_no.toLowerCase()}@kgkite.ac.in`;
