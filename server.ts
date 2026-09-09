@@ -997,16 +997,32 @@ app.post('/api/students/import', (req, res) => {
 
       let section: string | undefined = undefined;
       if (rawSec) {
-        if (rawSec.includes('II') || rawSec === '2' || rawSec === 'A' || rawSec.includes('SECOND')) section = 'A';
-        else if (rawSec.includes('III') || rawSec === '3' || rawSec === 'B' || rawSec.includes('THIRD')) section = 'B';
-        else if (rawSec.includes('IV') || rawSec === '4' || rawSec === 'C' || rawSec.includes('FOURTH')) section = 'C';
+        const cleanSec = rawSec.trim().toUpperCase();
+        if (cleanSec.includes('SECTION A') || cleanSec.includes('SEC A') || cleanSec.includes('SEC-A') || cleanSec === 'A' || cleanSec === '1') {
+          section = 'A';
+        } else if (cleanSec.includes('SECTION B') || cleanSec.includes('SEC B') || cleanSec.includes('SEC-B') || cleanSec === 'B' || cleanSec === '2') {
+          section = 'B';
+        } else if (cleanSec.includes('SECTION C') || cleanSec.includes('SEC C') || cleanSec.includes('SEC-C') || cleanSec === 'C' || cleanSec === '3') {
+          section = 'C';
+        } else {
+          section = cleanSec;
+        }
       }
 
       let year: string | undefined = undefined;
       if (rawYear) {
-        if (rawYear.includes('II') || rawYear.includes('2')) year = 'II';
-        else if (rawYear.includes('III') || rawYear.includes('3')) year = 'III';
-        else if (rawYear.includes('IV') || rawYear.includes('4')) year = 'IV';
+        const cleanYr = rawYear.trim().toUpperCase();
+        if (cleanYr.includes('IV') || cleanYr.includes('4') || cleanYr.includes('FOURTH')) {
+          year = 'IV';
+        } else if (cleanYr.includes('III') || cleanYr.includes('3') || cleanYr.includes('THIRD')) {
+          year = 'III';
+        } else if (cleanYr.includes('II') || cleanYr.includes('2') || cleanYr.includes('SECOND')) {
+          year = 'II';
+        } else if (cleanYr.includes('I') || cleanYr.includes('1') || cleanYr.includes('FIRST')) {
+          year = 'I';
+        } else {
+          year = cleanYr;
+        }
       }
 
       if (!regNo && !name && !email) {
@@ -1024,12 +1040,12 @@ app.post('/api/students/import', (req, res) => {
       }
 
       if (existingStudent) {
-        // UPDATE existing student record with new values from uploaded dataset row
+        // UPDATE existing student record dynamically with new values from uploaded dataset row
         const updateFields: any = {};
         let updatedAny = false;
 
-        if (name && name !== existingStudent.student_name) {
-          updateFields.student_name = name;
+        if (name && name.trim() !== existingStudent.student_name) {
+          updateFields.student_name = name.trim();
           updatedAny = true;
         }
         if (section && section !== existingStudent.section) {
@@ -1085,7 +1101,7 @@ app.post('/api/students/import', (req, res) => {
           updated.push(existingStudent);
         }
       } else {
-        // INSERT new student record
+        // INSERT new student record dynamically
         if (!regNo || !name) {
           errors.push({ row: idx + 1, identifier: regNo || name || `Row ${idx + 1}`, error: 'Missing mandatory field (Register No or Student Name).' });
           return;
