@@ -83,6 +83,7 @@ export class DatabaseService {
   private isFallbackMode = false;
 
   constructor() {
+    this.loadMemoryStore();
     this.ensureDataDir();
     this.initDatabase();
   }
