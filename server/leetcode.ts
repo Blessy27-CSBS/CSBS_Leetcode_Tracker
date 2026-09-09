@@ -121,14 +121,14 @@ export async function fetchLeetCodeProfile(
   timeoutMs: number = 8000,
   maxRetries: number = 1
 ): Promise<LeetCodeFetchResult> {
-  if (!username || !username.trim()) {
+  const cleanUsername = username.trim().replace(/\s+/g, '');
+  if (!cleanUsername || cleanUsername.toLowerCase().startsWith('pending_')) {
     return {
-      status: 'USERNAME_MISSING',
-      error: 'Username is required and cannot be empty.',
+      status: 'USERNAME_NOT_FOUND',
+      error: 'Student LeetCode username is pending or not configured.',
     };
   }
 
-  const cleanUsername = username.trim();
   let attempt = 0;
 
   while (attempt <= maxRetries) {

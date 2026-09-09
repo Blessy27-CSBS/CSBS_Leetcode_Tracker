@@ -1031,9 +1031,43 @@ export class DatabaseService {
     }
 
     if (this.isFallbackMode || !this.sqliteDb) {
+      this.memStore.snapshots = this.memStore.snapshots.filter(s => s.id !== newSnap.id);
       this.memStore.snapshots.push(newSnap);
       this.persistMemoryStore();
       return newSnap;
+    }
+
+    // Always keep memStore updated
+    this.memStore.snapshots = this.memStore.snapshots.filter(s => s.id !== newSnap.id);
+    this.memStore.snapshots.push(newSnap);
+
+    // Auto-ensure student exists in SQLite students table to prevent FOREIGN KEY constraint failure
+    const studentInDb = this.sqliteDb.prepare('SELECT id FROM students WHERE id = ?').get(snapshot.student_id);
+    if (!studentInDb) {
+      const studentObj = this.getStudentById(snapshot.student_id);
+      if (studentObj) {
+        try {
+          this.sqliteDb.prepare(`
+            INSERT OR REPLACE INTO students (
+              id, register_no, student_name, section, year, batch, username, email, mentor, academic_year, active, created_at, notes
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(
+            studentObj.id,
+            studentObj.register_no,
+            studentObj.student_name,
+            studentObj.section || 'A',
+            studentObj.year || 'II',
+            studentObj.batch || '2023-2027',
+            studentObj.username,
+            studentObj.email || null,
+            studentObj.mentor || null,
+            studentObj.academic_year || DEFAULT_SETTINGS.academic_year,
+            studentObj.active ? 1 : 0,
+            studentObj.created_at || new Date().toISOString(),
+            studentObj.notes || null
+          );
+        } catch (e) {}
+      }
     }
 
     this.sqliteDb.prepare(`
@@ -1111,11 +1145,40 @@ export class DatabaseService {
   }
 
   public setSubmissions(studentId: string, subs: RecentSubmission[]): void {
+    this.memStore.recent_submissions = this.memStore.recent_submissions.filter(r => r.student_id !== studentId);
+    this.memStore.recent_submissions.push(...subs);
+
     if (this.isFallbackMode || !this.sqliteDb) {
-      this.memStore.recent_submissions = this.memStore.recent_submissions.filter(r => r.student_id !== studentId);
-      this.memStore.recent_submissions.push(...subs);
       this.persistMemoryStore();
       return;
+    }
+
+    const studentInDb = this.sqliteDb.prepare('SELECT id FROM students WHERE id = ?').get(studentId);
+    if (!studentInDb) {
+      const studentObj = this.getStudentById(studentId);
+      if (studentObj) {
+        try {
+          this.sqliteDb.prepare(`
+            INSERT OR REPLACE INTO students (
+              id, register_no, student_name, section, year, batch, username, email, mentor, academic_year, active, created_at, notes
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(
+            studentObj.id,
+            studentObj.register_no,
+            studentObj.student_name,
+            studentObj.section || 'A',
+            studentObj.year || 'II',
+            studentObj.batch || '2023-2027',
+            studentObj.username,
+            studentObj.email || null,
+            studentObj.mentor || null,
+            studentObj.academic_year || DEFAULT_SETTINGS.academic_year,
+            studentObj.active ? 1 : 0,
+            studentObj.created_at || new Date().toISOString(),
+            studentObj.notes || null
+          );
+        } catch (e) {}
+      }
     }
 
     const insertSub = this.sqliteDb.prepare(`
