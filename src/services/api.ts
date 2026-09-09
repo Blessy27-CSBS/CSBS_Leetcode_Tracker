@@ -320,8 +320,13 @@ export const api = {
   async importStudents(rows: any[]): Promise<{
     success: boolean;
     insertedCount: number;
+    updatedCount?: number;
     errorsCount: number;
     errors: { row: number; identifier: string; error: string }[];
+    inserted?: Student[];
+    updated?: Student[];
+    autoFetchStarted?: boolean;
+    autoFetchCount?: number;
   }> {
     const res = await fetch('/api/students/import', {
       method: 'POST',

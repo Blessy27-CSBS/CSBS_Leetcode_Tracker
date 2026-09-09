@@ -906,9 +906,27 @@ app.post('/api/students/import', (req, res) => {
     }
 
     const inserted: any[] = [];
+    const updated: any[] = [];
     const errors: { row: number; identifier: string; error: string }[] = [];
-    const existingUsers = new Set(db.getStudents().map(s => s.username.toLowerCase()));
-    const existingRegs = new Set(db.getStudents().map(s => s.register_no.toLowerCase()));
+
+    const allStudents = db.getStudents();
+    const studentByRegMap = new Map<string, any>();
+    const studentByUsernameMap = new Map<string, any>();
+    const studentByEmailMap = new Map<string, any>();
+
+    allStudents.forEach(s => {
+      if (s.register_no) {
+        studentByRegMap.set(s.register_no.trim().toLowerCase(), s);
+      }
+      if (s.username && !s.username.toLowerCase().startsWith('pending_')) {
+        studentByUsernameMap.set(s.username.trim().toLowerCase(), s);
+      }
+      if (s.email) {
+        studentByEmailMap.set(s.email.trim().toLowerCase(), s);
+      }
+    });
+
+    const activeUsernames = new Set(allStudents.map(s => s.username.toLowerCase()));
 
     rows.forEach((r, idx) => {
       let regNo = '';
@@ -977,63 +995,137 @@ app.post('/api/students/import', (req, res) => {
         if (nameMatch) name = nameMatch;
       }
 
-      let section = 'A';
-      if (rawSec.includes('II') || rawSec === '2' || rawSec === 'A' || rawSec.includes('SECOND')) section = 'A';
-      else if (rawSec.includes('III') || rawSec === '3' || rawSec === 'B' || rawSec.includes('THIRD')) section = 'B';
-      else if (rawSec.includes('IV') || rawSec === '4' || rawSec === 'C' || rawSec.includes('FOURTH')) section = 'C';
+      let section: string | undefined = undefined;
+      if (rawSec) {
+        if (rawSec.includes('II') || rawSec === '2' || rawSec === 'A' || rawSec.includes('SECOND')) section = 'A';
+        else if (rawSec.includes('III') || rawSec === '3' || rawSec === 'B' || rawSec.includes('THIRD')) section = 'B';
+        else if (rawSec.includes('IV') || rawSec === '4' || rawSec === 'C' || rawSec.includes('FOURTH')) section = 'C';
+      }
 
-      let year = 'II';
-      if (rawYear.includes('II') || rawYear.includes('2')) year = 'II';
-      else if (rawYear.includes('III') || rawYear.includes('3')) year = 'III';
-      else if (rawYear.includes('IV') || rawYear.includes('4')) year = 'IV';
+      let year: string | undefined = undefined;
+      if (rawYear) {
+        if (rawYear.includes('II') || rawYear.includes('2')) year = 'II';
+        else if (rawYear.includes('III') || rawYear.includes('3')) year = 'III';
+        else if (rawYear.includes('IV') || rawYear.includes('4')) year = 'IV';
+      }
 
-      if (!batch) batch = '2024-2028';
-
-      if (!regNo || !name) {
-        errors.push({ row: idx + 1, identifier: regNo || name || `Row ${idx + 1}`, error: 'Missing mandatory field (Register No or Student Name).' });
+      if (!regNo && !name && !email) {
+        errors.push({ row: idx + 1, identifier: `Row ${idx + 1}`, error: 'Missing mandatory field (Register No or Student Name).' });
         return;
       }
 
-      const finalUsername = username ? username : `pending_${regNo.toLowerCase()}`;
-
-      if (username && existingUsers.has(username.toLowerCase())) {
-        errors.push({ row: idx + 1, identifier: username, error: `Duplicate username '${username}' already exists in database.` });
-        return;
+      // Find existing student by Register No, Email, or Username
+      let existingStudent = regNo ? studentByRegMap.get(regNo.toLowerCase()) : null;
+      if (!existingStudent && email) {
+        existingStudent = studentByEmailMap.get(email.toLowerCase());
+      }
+      if (!existingStudent && username && !username.toLowerCase().startsWith('pending_')) {
+        existingStudent = studentByUsernameMap.get(username.toLowerCase());
       }
 
-      if (existingRegs.has(regNo.toLowerCase())) {
-        errors.push({ row: idx + 1, identifier: regNo, error: `Duplicate Register No '${regNo}' already exists in database.` });
-        return;
-      }
+      if (existingStudent) {
+        // UPDATE existing student record with new values from uploaded dataset row
+        const updateFields: any = {};
+        let updatedAny = false;
 
-      const newStudent = db.addStudent({
-        register_no: regNo,
-        student_name: name,
-        section,
-        year,
-        batch,
-        username: finalUsername,
-        email: email || undefined,
-        mentor: mentor || undefined,
-        academic_year: db.getSettings().academic_year,
-        active: true,
-      });
+        if (name && name !== existingStudent.student_name) {
+          updateFields.student_name = name;
+          updatedAny = true;
+        }
+        if (section && section !== existingStudent.section) {
+          updateFields.section = section;
+          updatedAny = true;
+        }
+        if (year && year !== existingStudent.year) {
+          updateFields.year = year;
+          updatedAny = true;
+        }
+        if (batch && batch !== existingStudent.batch) {
+          updateFields.batch = batch;
+          updatedAny = true;
+        }
+        if (email && email !== existingStudent.email) {
+          updateFields.email = email;
+          updatedAny = true;
+        }
+        if (mentor && mentor !== existingStudent.mentor) {
+          updateFields.mentor = mentor;
+          updatedAny = true;
+        }
+        if (regNo && regNo !== existingStudent.register_no) {
+          updateFields.register_no = regNo;
+          updatedAny = true;
+        }
 
-      if (username) {
-        existingUsers.add(username.toLowerCase());
+        if (username) {
+          const cleanUsername = username.trim();
+          const oldUsername = existingStudent.username || '';
+          if (cleanUsername.toLowerCase() !== oldUsername.toLowerCase()) {
+            const matchOther = studentByUsernameMap.get(cleanUsername.toLowerCase());
+            if (matchOther && matchOther.id !== existingStudent.id) {
+              errors.push({ row: idx + 1, identifier: regNo || name, error: `LeetCode handle '${cleanUsername}' is already assigned to another student (${matchOther.student_name}).` });
+            } else {
+              updateFields.username = cleanUsername;
+              updatedAny = true;
+            }
+          }
+        }
+
+        if (updatedAny) {
+          const resStudent = db.updateStudent(existingStudent.id, updateFields);
+          if (resStudent) {
+            updated.push(resStudent);
+            if (resStudent.register_no) studentByRegMap.set(resStudent.register_no.toLowerCase(), resStudent);
+            if (resStudent.username && !resStudent.username.startsWith('pending_')) {
+              studentByUsernameMap.set(resStudent.username.toLowerCase(), resStudent);
+            }
+            if (resStudent.email) studentByEmailMap.set(resStudent.email.toLowerCase(), resStudent);
+          }
+        } else {
+          updated.push(existingStudent);
+        }
+      } else {
+        // INSERT new student record
+        if (!regNo || !name) {
+          errors.push({ row: idx + 1, identifier: regNo || name || `Row ${idx + 1}`, error: 'Missing mandatory field (Register No or Student Name).' });
+          return;
+        }
+
+        const finalUsername = username ? username : `pending_${regNo.toLowerCase()}`;
+        if (username && activeUsernames.has(username.toLowerCase())) {
+          errors.push({ row: idx + 1, identifier: username, error: `Duplicate username '${username}' already exists in database.` });
+          return;
+        }
+
+        const newStudent = db.addStudent({
+          register_no: regNo,
+          student_name: name,
+          section: section || 'A',
+          year: year || 'II',
+          batch: batch || '2024-2028',
+          username: finalUsername,
+          email: email || undefined,
+          mentor: mentor || undefined,
+          academic_year: db.getSettings().academic_year,
+          active: true,
+        });
+
+        inserted.push(newStudent);
+        if (newStudent.register_no) studentByRegMap.set(newStudent.register_no.toLowerCase(), newStudent);
+        if (username) studentByUsernameMap.set(username.toLowerCase(), newStudent);
+        if (email) studentByEmailMap.set(email.toLowerCase(), newStudent);
+        activeUsernames.add(finalUsername.toLowerCase());
       }
-      existingUsers.add(finalUsername.toLowerCase());
-      existingRegs.add(regNo.toLowerCase());
-      inserted.push(newStudent);
     });
 
-    db.addLog('INFO', `Imported ${inserted.length} students. Encountered ${errors.length} validation errors.`);
+    db.addLog('INFO', `Imported ${inserted.length} new students and updated ${updated.length} existing students. Encountered ${errors.length} validation errors.`);
 
-    // Automatically trigger background LeetCode profile fetch for newly imported students with handles
-    const toFetch = inserted.filter(s => s.username && !s.username.startsWith('pending_'));
+    // Automatically trigger background LeetCode profile fetch for newly inserted or updated students with handles
+    const allProcessed = [...inserted, ...updated];
+    const toFetch = allProcessed.filter(s => s.username && !s.username.startsWith('pending_'));
     if (toFetch.length > 0) {
       setTimeout(() => {
-        runBatchFetchWorker(toFetch, 'Auto-Sync Post Roster Upload').catch(err => {
+        runBatchFetchWorker(toFetch, 'Auto-Sync Post Roster Upload/Update').catch(err => {
           console.error('[Auto-Fetch] Roster upload worker error:', err);
         });
       }, 100);
@@ -1042,9 +1134,11 @@ app.post('/api/students/import', (req, res) => {
     res.json({
       success: true,
       insertedCount: inserted.length,
+      updatedCount: updated.length,
       errorsCount: errors.length,
       errors,
       inserted,
+      updated,
       autoFetchStarted: toFetch.length > 0,
       autoFetchCount: toFetch.length,
     });

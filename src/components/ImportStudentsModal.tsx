@@ -126,7 +126,7 @@ export const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({
       setImporting(true);
       const res = await api.importStudents(previewRows);
       setImportResult(res);
-      if (res.insertedCount > 0) {
+      if (res.insertedCount > 0 || (res.updatedCount || 0) > 0) {
         onImportComplete();
       }
     } catch (err: any) {
@@ -235,18 +235,20 @@ export const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({
           {importResult && (
             <div className="space-y-4">
               <div className={`p-4 rounded-lg border text-xs space-y-2 ${
-                importResult.insertedCount > 0 
+                (importResult.insertedCount > 0 || (importResult.updatedCount || 0) > 0)
                   ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
                   : 'bg-amber-50 border-amber-200 text-amber-800'
               }`}>
                 <div className="flex items-center space-x-2 font-bold text-sm">
                   <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                  <span>Roster Import Completed: {importResult.insertedCount} students inserted.</span>
+                  <span>
+                    Roster Import Completed: {importResult.insertedCount} new student(s) added, {importResult.updatedCount || 0} existing student record(s) updated.
+                  </span>
                 </div>
                 {importResult.errorsCount > 0 && (
                   <div className="text-slate-700 space-y-1 pt-1 border-t border-slate-200">
                     <div className="font-semibold text-amber-800">
-                      {importResult.errorsCount} rows skipped due to duplicate or invalid data:
+                      {importResult.errorsCount} rows skipped due to invalid data:
                     </div>
                     <ul className="list-disc list-inside text-[11px] text-slate-600 max-h-24 overflow-y-auto space-y-0.5">
                       {importResult.errors.map((err, i) => (

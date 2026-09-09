@@ -844,13 +844,35 @@ export class DatabaseService {
   }
 
   public updateStudent(id: string, updates: Partial<Student>): Student | null {
+    const memIdx = this.memStore.students.findIndex(s => s.id === id);
+
     if (this.isFallbackMode || !this.sqliteDb) {
-      const idx = this.memStore.students.findIndex(s => s.id === id);
-      if (idx === -1) return null;
-      this.memStore.students[idx] = { ...this.memStore.students[idx], ...updates };
-      this.ensureStudentUser(this.memStore.students[idx]);
+      if (memIdx === -1) return null;
+      this.memStore.students[memIdx] = { ...this.memStore.students[memIdx], ...updates };
+      const s = this.memStore.students[memIdx];
+      this.ensureStudentUser(s);
       this.persistMemoryStore();
-      return this.memStore.students[idx];
+
+      if (isSupabaseConfigured && supabase) {
+        supabase.from('students').upsert({
+          id: s.id,
+          register_no: s.register_no,
+          student_name: s.student_name,
+          section: s.section,
+          year: s.year,
+          batch: s.batch,
+          username: s.username,
+          email: s.email || null,
+          mentor: s.mentor || null,
+          academic_year: s.academic_year,
+          active: s.active,
+          created_at: s.created_at,
+          notes: s.notes || null,
+        }).then(({ error }) => {
+          if (error) console.error('[Supabase] Student update error:', error);
+        });
+      }
+      return s;
     }
 
     const existing = this.getStudentById(id);
@@ -858,36 +880,67 @@ export class DatabaseService {
 
     const merged = { ...existing, ...updates };
 
-    this.sqliteDb.prepare(`
-      UPDATE students SET
-        register_no = ?,
-        student_name = ?,
-        section = ?,
-        year = ?,
-        batch = ?,
-        username = ?,
-        email = ?,
-        mentor = ?,
-        academic_year = ?,
-        active = ?,
-        notes = ?
-      WHERE id = ?
-    `).run(
-      merged.register_no,
-      merged.student_name,
-      merged.section,
-      merged.year,
-      merged.batch,
-      merged.username,
-      merged.email || null,
-      merged.mentor || null,
-      merged.academic_year,
-      merged.active ? 1 : 0,
-      merged.notes || null,
-      id
-    );
+    if (memIdx >= 0) {
+      this.memStore.students[memIdx] = merged;
+    } else {
+      this.memStore.students.push(merged);
+    }
+
+    try {
+      this.sqliteDb.prepare(`
+        UPDATE students SET
+          register_no = ?,
+          student_name = ?,
+          section = ?,
+          year = ?,
+          batch = ?,
+          username = ?,
+          email = ?,
+          mentor = ?,
+          academic_year = ?,
+          active = ?,
+          notes = ?
+        WHERE id = ?
+      `).run(
+        merged.register_no,
+        merged.student_name,
+        merged.section,
+        merged.year,
+        merged.batch,
+        merged.username,
+        merged.email || null,
+        merged.mentor || null,
+        merged.academic_year,
+        merged.active ? 1 : 0,
+        merged.notes || null,
+        id
+      );
+    } catch (e) {
+      console.error('Error updating student in SQLite:', e);
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('students').upsert({
+        id: merged.id,
+        register_no: merged.register_no,
+        student_name: merged.student_name,
+        section: merged.section,
+        year: merged.year,
+        batch: merged.batch,
+        username: merged.username,
+        email: merged.email || null,
+        mentor: merged.mentor || null,
+        academic_year: merged.academic_year,
+        active: merged.active,
+        created_at: merged.created_at,
+        notes: merged.notes || null,
+      }).then(({ error }) => {
+        if (error) console.error('[Supabase] Student update error:', error);
+      });
+    }
 
     this.ensureStudentUser(merged);
+    this.persistMemoryStore();
     return merged;
   }
 
