@@ -120,9 +120,32 @@ export const api = {
     timeline: { date: string; total_problems: number; avg_problems: number; avg_rating: number }[];
     settings: SystemSettings;
   }> {
-    const res = await fetch('/api/dashboard');
-    if (!res.ok) throw new Error('Failed to load dashboard data');
-    return res.json();
+    try {
+      const res = await fetch('/api/dashboard');
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.summary) {
+          try {
+            localStorage.setItem('csbs_dashboard_cache', JSON.stringify(data));
+          } catch (e) {}
+        }
+        return data;
+      }
+    } catch (err) {
+      const cached = localStorage.getItem('csbs_dashboard_cache');
+      if (cached) {
+        try {
+          return JSON.parse(cached);
+        } catch (e) {}
+      }
+    }
+    const cached = localStorage.getItem('csbs_dashboard_cache');
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch (e) {}
+    }
+    throw new Error('Failed to load dashboard data');
   },
 
   // Students

@@ -340,6 +340,7 @@ export class DatabaseService {
   public async loadFromSupabase() {
     if (!isSupabaseConfigured || !supabase) return;
     try {
+      // 1. Students
       const { data: studentsData } = await supabase.from('students').select('*').order('student_name', { ascending: true });
       if (studentsData && studentsData.length > 0) {
         this.memStore.students = studentsData.map((s: any) => ({
@@ -360,6 +361,7 @@ export class DatabaseService {
         console.log(`[Supabase] Loaded ${studentsData.length} students from cloud database.`);
       }
 
+      // 2. Snapshots
       const { data: snapData } = await supabase.from('snapshots').select('*').order('captured_at', { ascending: true });
       if (snapData && snapData.length > 0) {
         this.memStore.snapshots = snapData.map((r: any) => ({
@@ -392,6 +394,121 @@ export class DatabaseService {
         }));
         console.log(`[Supabase] Loaded ${snapData.length} snapshots from cloud database.`);
       }
+
+      // 3. Recent Submissions
+      const { data: subData } = await supabase.from('recent_submissions').select('*');
+      if (subData && subData.length > 0) {
+        this.memStore.recent_submissions = subData.map((s: any) => ({
+          id: s.id,
+          student_id: s.student_id,
+          title: s.title,
+          titleSlug: s.titleSlug,
+          timestamp: s.timestamp,
+          language: s.language,
+          statusDisplay: s.statusDisplay,
+        }));
+        console.log(`[Supabase] Loaded ${subData.length} recent submissions from cloud database.`);
+      }
+
+      // 4. Settings
+      const { data: settingsData } = await supabase.from('settings').select('*').eq('id', 1).maybeSingle();
+      if (settingsData) {
+        this.memStore.settings = {
+          inactivity_threshold_days: settingsData.inactivity_threshold_days ?? 14,
+          academic_year: settingsData.academic_year || '2024-2025',
+          fetch_delay_ms: settingsData.fetch_delay_ms ?? 1500,
+          api_timeout_seconds: settingsData.api_timeout_seconds ?? 25,
+          tier_beginner_max: settingsData.tier_beginner_max ?? 49,
+          tier_developing_max: settingsData.tier_developing_max ?? 99,
+          tier_proficient_max: settingsData.tier_proficient_max ?? 199,
+          auto_sync_enabled: Boolean(settingsData.auto_sync_enabled),
+          auto_sync_interval_hours: settingsData.auto_sync_interval_hours ?? 12,
+          weights: typeof settingsData.weights === 'string' ? JSON.parse(settingsData.weights) : (settingsData.weights || DEFAULT_SETTINGS.weights),
+        };
+      }
+
+      // 5. POTD Items
+      const { data: potdData } = await supabase.from('potd_items').select('*').order('date', { ascending: false });
+      if (potdData && potdData.length > 0) {
+        this.memStore.potd_items = potdData.map((p: any) => ({
+          id: p.id,
+          date: p.date,
+          title: p.title,
+          titleSlug: p.titleSlug,
+          difficulty: p.difficulty,
+          topic: p.topic,
+          acceptanceRate: p.acceptanceRate ? Number(p.acceptanceRate) : undefined,
+          leetcodeUrl: p.leetcodeUrl,
+          hint: p.hint || undefined,
+          orderIndex: p.orderIndex || 0,
+          created_at: p.created_at,
+        }));
+      }
+
+      // 6. Curated Tracks
+      const { data: tracksData } = await supabase.from('curated_tracks').select('*');
+      if (tracksData && tracksData.length > 0) {
+        this.memStore.curated_tracks = tracksData.map((t: any) => ({
+          id: t.id,
+          title: t.title,
+          description: t.description,
+          category: t.category,
+          icon: t.icon || undefined,
+          totalProblems: t.totalProblems || 0,
+        }));
+      }
+
+      // 7. Curated Problems
+      const { data: probsData } = await supabase.from('curated_problems').select('*').order('orderIndex', { ascending: true });
+      if (probsData && probsData.length > 0) {
+        this.memStore.curated_problems = probsData.map((p: any) => ({
+          id: p.id,
+          trackId: p.trackId,
+          title: p.title,
+          titleSlug: p.titleSlug,
+          difficulty: p.difficulty,
+          topic: p.topic,
+          orderIndex: p.orderIndex,
+          leetcodeUrl: p.leetcodeUrl,
+        }));
+      }
+
+      // 8. Contests
+      const { data: contestData } = await supabase.from('contests').select('*').order('startTime', { ascending: true });
+      if (contestData && contestData.length > 0) {
+        this.memStore.contests = contestData.map((c: any) => ({
+          id: c.id,
+          title: c.title,
+          titleSlug: c.titleSlug,
+          type: c.type,
+          contestUrl: c.contestUrl,
+          startTime: c.startTime,
+          durationMinutes: c.durationMinutes || 90,
+          description: c.description || undefined,
+          problems: typeof c.problems === 'string' ? JSON.parse(c.problems) : (c.problems || []),
+          status: c.status || 'UPCOMING',
+          created_at: c.created_at,
+        }));
+      }
+
+      // 9. Users
+      const { data: usersData } = await supabase.from('users').select('*');
+      if (usersData && usersData.length > 0) {
+        this.memStore.users = usersData.map((u: any) => ({
+          id: u.id,
+          username: u.username,
+          password_hash: u.password_hash,
+          role: u.role,
+          student_id: u.student_id || undefined,
+          name: u.name,
+          email: u.email || undefined,
+          created_at: u.created_at,
+        }));
+      }
+
+      // Ensure faculty initial seed user exists in memory store if users was empty
+      this.seedInitialUsers();
+
     } catch (err) {
       console.error('[Supabase] Initial load error:', err);
     }
