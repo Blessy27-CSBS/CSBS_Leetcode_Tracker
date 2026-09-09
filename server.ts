@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -1137,6 +1140,11 @@ app.post('/api/students/import', (req, res) => {
     });
 
     db.addLog('INFO', `Imported ${inserted.length} new students and updated ${updated.length} existing students. Encountered ${errors.length} validation errors.`);
+
+    // Ensure complete cloud database synchronization for all newly imported/updated student records
+    db.syncAllToSupabase().catch(err => {
+      console.error('[Supabase] Post-import cloud sync error:', err);
+    });
 
     // Automatically trigger background LeetCode profile fetch for newly inserted or updated students with handles
     const allProcessed = [...inserted, ...updated];

@@ -367,6 +367,10 @@ export class DatabaseService {
         // Fallback: Populate memory store from local database if Supabase query is empty or errored
         const localStudents = this.getStudents();
         console.log(`[Database] Using ${localStudents.length} local students dataset.`);
+        if (!studentErr && localStudents.length > 0) {
+          console.log(`[Supabase] Initial cloud database empty. Seeding ${localStudents.length} students to Supabase Cloud...`);
+          this.syncAllToSupabase().catch(e => console.error('[Supabase] Initial seed error:', e));
+        }
       }
 
       // 2. Snapshots
@@ -536,6 +540,74 @@ export class DatabaseService {
 
     } catch (err) {
       console.error('[Supabase] Initial load error:', err);
+    }
+  }
+
+  public async syncAllToSupabase() {
+    if (!isSupabaseConfigured || !supabase) return;
+    try {
+      const students = this.getStudents();
+      if (students.length > 0) {
+        const studentPayloads = students.map(s => ({
+          id: s.id,
+          register_no: s.register_no,
+          student_name: s.student_name,
+          section: s.section,
+          year: s.year,
+          batch: s.batch,
+          username: s.username,
+          email: s.email || null,
+          mentor: s.mentor || null,
+          academic_year: s.academic_year,
+          active: s.active,
+          created_at: s.created_at || new Date().toISOString(),
+          notes: s.notes || null,
+        }));
+        const { error: studentErr } = await supabase.from('students').upsert(studentPayloads);
+        if (studentErr) {
+          console.error('[Supabase] Error syncing students to cloud:', studentErr.message);
+        } else {
+          console.log(`⚡ [Supabase] Successfully synced ${students.length} students to cloud database.`);
+        }
+      }
+
+      const snapshots = this.getSnapshots();
+      if (snapshots.length > 0) {
+        const snapshotPayloads = snapshots.map(s => ({
+          id: s.id,
+          student_id: s.student_id,
+          captured_at: s.captured_at,
+          total_solved: s.total_solved || 0,
+          easy: s.easy || 0,
+          medium: s.medium || 0,
+          hard: s.hard || 0,
+          acceptance_rate: s.acceptance_rate || 0,
+          ranking: s.ranking || 0,
+          reputation: s.reputation || 0,
+          contest_rating: s.contest_rating || 0,
+          contest_rank: s.contest_rank || 0,
+          contests_attended: s.contests_attended || 0,
+          top_percentage: s.top_percentage || 0,
+          streak: s.streak || 0,
+          active_days: s.active_days || 0,
+          last_active: s.last_active || null,
+          languages: s.languages || [],
+          skills: s.skills || [],
+          badges: s.badges || [],
+          submission_calendar: s.submission_calendar || {},
+          engagement_score: s.engagement_score || 0,
+          performance_tier: s.performance_tier || 'Beginner',
+          activity_status: s.activity_status || 'No Data',
+          status: s.status || 'SUCCESS',
+          error: s.error || null,
+        }));
+        const { error: snapErr } = await supabase.from('snapshots').upsert(snapshotPayloads);
+        if (snapErr) {
+          console.error('[Supabase] Error syncing snapshots to cloud:', snapErr.message);
+        }
+      }
+    } catch (e: any) {
+      console.error('[Supabase] syncAllToSupabase error:', e.message || e);
     }
   }
 
@@ -792,6 +864,9 @@ export class DatabaseService {
       active,
     };
 
+    this.memStore.students = this.memStore.students.filter(s => s.id !== newStudent.id);
+    this.memStore.students.push(newStudent);
+
     if (isSupabaseConfigured && supabase) {
       supabase.from('students').upsert({
         id: newStudent.id,
@@ -813,33 +888,37 @@ export class DatabaseService {
     }
 
     if (this.isFallbackMode || !this.sqliteDb) {
-      this.memStore.students.push(newStudent);
       this.ensureStudentUser(newStudent);
       this.persistMemoryStore();
       return newStudent;
     }
 
-    this.sqliteDb.prepare(`
-      INSERT INTO students (
-        id, register_no, student_name, section, year, batch, username, email, mentor, academic_year, active, created_at, notes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      id,
-      student.register_no.trim().toUpperCase(),
-      student.student_name.trim(),
-      (student.section || 'A').trim().toUpperCase(),
-      (student.year || 'II').trim(),
-      (student.batch || '2023-2027').trim(),
-      student.username.trim(),
-      student.email ? student.email.trim() : null,
-      student.mentor ? student.mentor.trim() : null,
-      student.academic_year || DEFAULT_SETTINGS.academic_year,
-      active ? 1 : 0,
-      created_at,
-      student.notes ? student.notes.trim() : null
-    );
+    try {
+      this.sqliteDb.prepare(`
+        INSERT OR REPLACE INTO students (
+          id, register_no, student_name, section, year, batch, username, email, mentor, academic_year, active, created_at, notes
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        id,
+        student.register_no.trim().toUpperCase(),
+        student.student_name.trim(),
+        (student.section || 'A').trim().toUpperCase(),
+        (student.year || 'II').trim(),
+        (student.batch || '2023-2027').trim(),
+        student.username.trim(),
+        student.email ? student.email.trim() : null,
+        student.mentor ? student.mentor.trim() : null,
+        student.academic_year || DEFAULT_SETTINGS.academic_year,
+        active ? 1 : 0,
+        created_at,
+        student.notes ? student.notes.trim() : null
+      );
+    } catch (e) {
+      console.error('Error inserting student into SQLite:', e);
+    }
 
     this.ensureStudentUser(newStudent);
+    this.persistMemoryStore();
     return newStudent;
   }
 
@@ -945,17 +1024,28 @@ export class DatabaseService {
   }
 
   public deleteStudent(id: string): boolean {
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('students').delete().eq('id', id).then(({ error }) => {
+        if (error) console.error('[Supabase] Student delete error:', error.message);
+      });
+    }
+
+    const initLen = this.memStore.students.length;
+    this.memStore.students = this.memStore.students.filter(s => s.id !== id);
+    this.memStore.snapshots = this.memStore.snapshots.filter(s => s.student_id !== id);
+    this.memStore.recent_submissions = this.memStore.recent_submissions.filter(s => s.student_id !== id);
+    this.persistMemoryStore();
+
     if (this.isFallbackMode || !this.sqliteDb) {
-      const initLen = this.memStore.students.length;
-      this.memStore.students = this.memStore.students.filter(s => s.id !== id);
-      this.memStore.snapshots = this.memStore.snapshots.filter(s => s.student_id !== id);
-      this.memStore.recent_submissions = this.memStore.recent_submissions.filter(s => s.student_id !== id);
-      this.persistMemoryStore();
       return this.memStore.students.length < initLen;
     }
 
-    const res = this.sqliteDb.prepare('DELETE FROM students WHERE id = ?').run(id);
-    return res.changes > 0;
+    try {
+      const res = this.sqliteDb.prepare('DELETE FROM students WHERE id = ?').run(id);
+      return res.changes > 0;
+    } catch (e) {
+      return true;
+    }
   }
 
   // Snapshots
