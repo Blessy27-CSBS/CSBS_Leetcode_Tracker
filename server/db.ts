@@ -2323,12 +2323,13 @@ export class DatabaseService {
         password_hash: hash,
         username: u?.username || 'user',
         role: u?.role || 'student',
+        student_id: u?.student_id || null,
         name: u?.name || 'User',
         email: u?.email || null,
         created_at: u?.created_at || new Date().toISOString()
       }, { onConflict: 'id' }).then(({ error }) => {
         if (error) {
-          supabase.from('users').update({ password_hash: hash }).eq('id', userId).then(({ error: err2 }) => {
+          supabase.from('users').update({ password_hash: hash, student_id: u?.student_id || null }).eq('id', userId).then(({ error: err2 }) => {
             if (err2) console.error('[Supabase] User password update error:', err2.message);
           });
         }
