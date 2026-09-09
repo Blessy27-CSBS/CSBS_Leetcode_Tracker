@@ -86,26 +86,46 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const totalEngagementScoreSum = students.reduce((acc, s) => acc + (s.latest_snapshot?.engagement_score || 0), 0);
   const avgEngagementScore = students.length > 0 ? Math.min(100, Math.round(totalEngagementScoreSum / students.length)) : 0;
 
-  // Dynamic Section Stats (Section A: II Year, B: III Year, C: IV Year)
-  const sectionStats: SectionStat[] = ['A', 'B', 'C'].map(sec => {
+  // Dynamic Section Stats (Section A, B, C or custom sections)
+  const uniqueSections = Array.from(new Set([...students.map(s => s.section || 'A'), 'A', 'B', 'C']));
+  const sectionStats: SectionStat[] = uniqueSections.map(sec => {
     const secStudents = students.filter(s => s.section === sec);
+    if (secStudents.length > 0) {
+      const totalSolvedSec = secStudents.reduce((acc, s) => acc + (s.latest_snapshot?.total_solved || 0), 0);
+      const activeCountSec = secStudents.filter(s => (s.latest_snapshot?.total_solved || 0) > 0 || (s.days_inactive !== undefined && s.days_inactive <= 14)).length;
+      const avgProblems = Math.round(totalSolvedSec / secStudents.length);
+      const avgRating = Math.round(secStudents.reduce((acc, s) => acc + (s.latest_snapshot?.contest_rating || 0), 0) / secStudents.length);
+      const avgEngagement = Math.round(secStudents.reduce((acc, s) => acc + (s.latest_snapshot?.engagement_score || 0), 0) / secStudents.length);
+      const topStudent = [...secStudents].sort((a, b) => (b.latest_snapshot?.total_solved || 0) - (a.latest_snapshot?.total_solved || 0))[0];
+
+      return {
+        section: sec,
+        total_students: secStudents.length,
+        active_students: activeCountSec,
+        inactive_students: secStudents.length - activeCountSec,
+        avg_problems: avgProblems,
+        total_problems: totalSolvedSec,
+        avg_rating: avgRating,
+        avg_engagement: avgEngagement,
+        top_performer: topStudent?.student_name || 'None',
+        top_performer_problems: topStudent?.latest_snapshot?.total_solved || 0,
+        highest_solved: Math.max(0, ...secStudents.map(s => s.latest_snapshot?.total_solved || 0)),
+      };
+    }
+
     const existing = rawSectionStats.find(s => s.section === sec);
-    if (existing && existing.total_students > 0 && existing.avg_problems > 0) return existing;
-
-    const totalSolvedSec = secStudents.reduce((acc, s) => acc + (s.latest_snapshot?.total_solved || 0), 0);
-    const activeCountSec = secStudents.filter(s => (s.latest_snapshot?.total_solved || 0) > 0).length;
-    const avgProblems = secStudents.length > 0 ? Math.round(totalSolvedSec / secStudents.length) : 0;
-    const avgRating = secStudents.length > 0 ? Math.round(secStudents.reduce((acc, s) => acc + (s.latest_snapshot?.contest_rating || 0), 0) / secStudents.length) : 0;
-    const avgEngagement = secStudents.length > 0 ? Math.round(secStudents.reduce((acc, s) => acc + (s.latest_snapshot?.engagement_score || 0), 0) / secStudents.length) : 0;
-
-    return {
+    return existing || {
       section: sec,
-      total_students: secStudents.length > 0 ? secStudents.length : (existing?.total_students || 0),
-      active_students: activeCountSec,
-      avg_problems: avgProblems,
-      avg_rating: avgRating,
-      avg_engagement: avgEngagement,
-      highest_solved: Math.max(0, ...secStudents.map(s => s.latest_snapshot?.total_solved || 0)),
+      total_students: 0,
+      active_students: 0,
+      inactive_students: 0,
+      avg_problems: 0,
+      total_problems: 0,
+      avg_rating: 0,
+      avg_engagement: 0,
+      top_performer: 'None',
+      top_performer_problems: 0,
+      highest_solved: 0,
     };
   });
 
@@ -127,13 +147,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     { metric: 'Engagement', 'II Year': getEngageScore(secA), 'III Year': getEngageScore(secB), 'IV Year': getEngageScore(secC) },
   ];
 
-  // Tier distribution (dynamic fallback from students array)
+  // Tier distribution (recalculated live from current students dataset)
   const denom = totalStudents || 1;
   const tierCounts = {
-    Advanced: students.filter(s => (s.latest_snapshot?.total_solved || 0) >= 200).length || rawSummary.tier_distribution?.Advanced || 0,
-    Proficient: students.filter(s => (s.latest_snapshot?.total_solved || 0) >= 100 && (s.latest_snapshot?.total_solved || 0) < 200).length || rawSummary.tier_distribution?.Proficient || 0,
-    Developing: students.filter(s => (s.latest_snapshot?.total_solved || 0) >= 50 && (s.latest_snapshot?.total_solved || 0) < 100).length || rawSummary.tier_distribution?.Developing || 0,
-    Beginner: students.filter(s => (s.latest_snapshot?.total_solved || 0) < 50).length || rawSummary.tier_distribution?.Beginner || 0,
+    Advanced: students.filter(s => (s.latest_snapshot?.total_solved || 0) >= 200 || s.latest_snapshot?.performance_tier === 'Advanced').length,
+    Proficient: students.filter(s => {
+      const solved = s.latest_snapshot?.total_solved || 0;
+      return (solved >= 100 && solved < 200) || s.latest_snapshot?.performance_tier === 'Proficient';
+    }).length,
+    Developing: students.filter(s => {
+      const solved = s.latest_snapshot?.total_solved || 0;
+      return (solved >= 50 && solved < 100) || s.latest_snapshot?.performance_tier === 'Developing';
+    }).length,
+    Beginner: students.filter(s => {
+      const solved = s.latest_snapshot?.total_solved || 0;
+      return (solved < 50 && s.latest_snapshot?.performance_tier !== 'Developing' && s.latest_snapshot?.performance_tier !== 'Proficient' && s.latest_snapshot?.performance_tier !== 'Advanced');
+    }).length,
   };
 
   const pyramidData = [

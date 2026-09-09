@@ -105,7 +105,7 @@ export function enrichStudentWithSnapshots(
   let riskLevel: RiskLevel = 'Unknown';
 
   if (latest) {
-    daysInactive = getDaysInactive(latest.last_active);
+    daysInactive = getDaysInactive(latest.last_active || latest.captured_at);
     riskLevel = getRiskLevel(daysInactive, settings.inactivity_threshold_days);
 
     const nowTime = new Date(latest.captured_at).getTime();
