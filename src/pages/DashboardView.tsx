@@ -208,8 +208,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     .slice(0, 5)
     .map(s => {
       let displayName = formatName(s.student_name.split(' ')[0]);
-      if (displayName.length > 9) {
-        displayName = displayName.substring(0, 8) + '…';
+      if (displayName.length > 8) {
+        displayName = displayName.substring(0, 7) + '…';
       }
       return {
         name: displayName,
@@ -491,7 +491,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
               <div className="h-72 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={topSolversData}>
+                  <BarChart data={topSolversData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
                     <defs>
                       <linearGradient id="easyGradBar" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor="#7c3aed" stopOpacity={1} />
@@ -512,6 +512,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       stroke="#64748b" 
                       interval={0}
                       tick={{ fontSize: 10, fill: '#475569', fontWeight: 600 }}
+                      angle={-25}
+                      textAnchor="end"
+                      height={45}
                       tickLine={false} 
                     />
                     <YAxis stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} />

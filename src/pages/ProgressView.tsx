@@ -42,14 +42,20 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
   const topPct = improvedPct[0];
 
   // Chart data for top 8 surge students
-  const chartData = improvedMonthly.slice(0, 8).map(s => ({
-    name: s.student_name.split(' ')[0],
-    fullName: s.student_name,
-    addedMonth: s.problems_added_month || 0,
-    addedWeek: s.problems_added_week || 0,
-    total: s.latest_snapshot?.total_solved || 0,
-    section: s.section,
-  }));
+  const chartData = improvedMonthly.slice(0, 8).map(s => {
+    let displayName = s.student_name.split(' ')[0];
+    if (displayName.length > 8) {
+      displayName = displayName.substring(0, 7) + '…';
+    }
+    return {
+      name: displayName,
+      fullName: s.student_name,
+      addedMonth: s.problems_added_month || 0,
+      addedWeek: s.problems_added_week || 0,
+      total: s.latest_snapshot?.total_solved || 0,
+      section: s.section,
+    };
+  });
 
   return (
     <div className="space-y-5">
@@ -172,9 +178,9 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
           <h3 className="text-xs font-bold text-slate-800">Top Growth Velocity Comparison</h3>
           <p className="text-[11px] text-slate-500">Problems added during last 30 days vs weekly acceleration</p>
         </div>
-        <div className="h-64 w-full">
+        <div className="h-72 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData}>
+            <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
               <defs>
                 <linearGradient id="progMonthGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#06b6d4" stopOpacity={1} />
@@ -186,7 +192,16 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-              <XAxis dataKey="name" stroke="#64748b" fontSize={11} tickLine={false} />
+              <XAxis 
+                dataKey="name" 
+                stroke="#64748b" 
+                interval={0}
+                tick={{ fontSize: 10, fill: '#475569', fontWeight: 600 }}
+                angle={-25}
+                textAnchor="end"
+                height={45}
+                tickLine={false} 
+              />
               <YAxis stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} />
               <Tooltip
                 contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', color: '#1e293b', borderRadius: '8px', fontSize: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}

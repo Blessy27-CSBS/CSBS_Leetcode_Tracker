@@ -35,7 +35,8 @@ export const SectionsView: React.FC<SectionsViewProps> = ({
   }));
 
   const batchChartData = batchStats.map(b => ({
-    batch: `${b.year} Year (${b.batch})`,
+    batch: `${b.year} Year`,
+    fullBatch: `${b.year} Year (${b.batch})`,
     avgProblems: b.avg_problems,
     avgEngagement: b.avg_engagement,
     students: b.total_students,
