@@ -1901,27 +1901,54 @@ export class DatabaseService {
     }
 
     // Student Authentication
-    // The username credential is the student's mail id (or register_no/username fallback)
-    // The password credential is the student's register number (default on creation) or updated password
+    // The username credential is the student's mail id, register_no, or username
+    // The password credential is the student's register number (default) or updated password
 
     let foundStudent: Student | undefined;
-
-    // Search in students by email, register_no, or username
     const allStudents = this.getStudents();
-    foundStudent = allStudents.find(s => 
-      (s.email && s.email.toLowerCase().trim() === cleanId.toLowerCase()) ||
-      s.register_no.toLowerCase().trim() === cleanId.toLowerCase() ||
-      s.username.toLowerCase().trim() === cleanId.toLowerCase() ||
-      `${s.register_no.toLowerCase()}@kgkite.ac.in` === cleanId.toLowerCase()
-    );
+    const cleanIdPrefix = cleanId.includes('@') ? cleanId.split('@')[0].trim().toLowerCase() : cleanId.toLowerCase();
+
+    foundStudent = allStudents.find(s => {
+      const regNo = (s.register_no || '').toLowerCase().trim();
+      const uname = (s.username || '').toLowerCase().trim();
+      const email = (s.email || '').toLowerCase().trim();
+      const targetId = cleanId.toLowerCase();
+
+      return (
+        (email && email === targetId) ||
+        regNo === targetId ||
+        uname === targetId ||
+        regNo === cleanIdPrefix ||
+        uname === cleanIdPrefix ||
+        `${regNo}@kgkite.ac.in` === targetId ||
+        `${uname}@kgkite.ac.in` === targetId ||
+        targetId.includes(regNo) ||
+        targetId.includes(uname)
+      );
+    });
 
     if (foundStudent) {
       const studentUser = this.ensureStudentUser(foundStudent);
 
-      // Check password: match strictly against user's stored password_hash.
+      // Password matching:
+      // 1. Exact stored password hash match
       const isHashMatch = studentUser.password_hash === hashedPwd;
 
-      if (isHashMatch) {
+      // 2. Case-insensitive register number or username match (default student password)
+      const regNo = (foundStudent.register_no || '').trim().toLowerCase();
+      const uname = (foundStudent.username || '').trim().toLowerCase();
+      const pwdLower = cleanPwd.toLowerCase();
+
+      const isRegNoMatch = pwdLower === regNo;
+      const isUsernameMatch = pwdLower === uname;
+      const isAltHashMatch = studentUser.password_hash === this.hashPassword(cleanPwd.toLowerCase()) || 
+                             studentUser.password_hash === this.hashPassword(cleanPwd.toUpperCase());
+
+      if (isHashMatch || isRegNoMatch || isUsernameMatch || isAltHashMatch) {
+        if (cleanId.includes('@') && studentUser.email !== cleanId) {
+          studentUser.email = cleanId;
+          studentUser.username = cleanId;
+        }
         return { user: studentUser, student: foundStudent };
       }
     }
@@ -1930,17 +1957,24 @@ export class DatabaseService {
     let userRow: DBUser | undefined;
     if (this.isFallbackMode || !this.sqliteDb) {
       userRow = this.memStore.users.find(u => 
-        (u.username.toLowerCase() === cleanId.toLowerCase() || (u.email && u.email.toLowerCase() === cleanId.toLowerCase()))
+        u.username.toLowerCase() === cleanId.toLowerCase() || 
+        (u.email && u.email.toLowerCase() === cleanId.toLowerCase()) ||
+        u.username.toLowerCase().startsWith(cleanIdPrefix)
       );
     } else {
       userRow = this.sqliteDb.prepare(`
-        SELECT * FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?)
-      `).get(cleanId, cleanId) as DBUser | undefined;
+        SELECT * FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?) OR LOWER(username) LIKE LOWER(?)
+      `).get(cleanId, cleanId, `${cleanIdPrefix}%`) as DBUser | undefined;
     }
 
     if (userRow) {
-      if (userRow.password_hash === hashedPwd) {
-        const student = userRow.student_id ? this.getStudentById(userRow.student_id) : undefined;
+      const isHashMatch = userRow.password_hash === hashedPwd ||
+                          userRow.password_hash === this.hashPassword(cleanPwd.toLowerCase()) ||
+                          userRow.password_hash === this.hashPassword(cleanPwd.toUpperCase());
+      const student = userRow.student_id ? this.getStudentById(userRow.student_id) : undefined;
+      const isRegNoMatch = student && cleanPwd.toLowerCase() === (student.register_no || '').trim().toLowerCase();
+
+      if (isHashMatch || isRegNoMatch) {
         return { user: userRow, student };
       }
     }
