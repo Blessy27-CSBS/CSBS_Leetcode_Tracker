@@ -2121,64 +2121,42 @@ export class DatabaseService {
     const defaultPasswordHash = this.hashPassword(student.register_no.trim());
     const userId = `usr_${student.id}`;
 
-    if (this.isFallbackMode || !this.sqliteDb) {
-      let existing = this.memStore.users.find(u => u.student_id === student.id || u.username.toLowerCase() === studentEmail);
-      if (existing) {
-        existing.student_id = student.id;
-        existing.name = student.student_name;
-        existing.email = studentEmail;
-        existing.username = studentEmail;
-        return existing;
+    // 1. Check if user already exists in memStore
+    let existingMem = this.memStore.users.find(u => u.id === userId || u.student_id === student.id || u.username.toLowerCase() === studentEmail);
+    if (existingMem) {
+      existingMem.student_id = student.id;
+      existingMem.name = student.student_name;
+      existingMem.email = studentEmail;
+      existingMem.username = studentEmail;
+      return existingMem;
+    }
+
+    // 2. Check if user exists in SQLite
+    if (this.sqliteDb) {
+      const existingDb = this.sqliteDb.prepare(`
+        SELECT * FROM users WHERE id = ? OR student_id = ? OR LOWER(username) = LOWER(?)
+      `).get(userId, student.id, studentEmail) as DBUser | undefined;
+
+      if (existingDb) {
+        const updatedUser: DBUser = {
+          ...existingDb,
+          student_id: student.id,
+          name: student.student_name,
+          email: studentEmail,
+          username: studentEmail,
+        };
+        const idx = this.memStore.users.findIndex(x => x.id === updatedUser.id);
+        if (idx >= 0) {
+          this.memStore.users[idx] = updatedUser;
+        } else {
+          this.memStore.users.push(updatedUser);
+        }
+        return updatedUser;
       }
-      const newUser: DBUser = {
-        id: userId,
-        username: studentEmail,
-        password_hash: defaultPasswordHash,
-        role: 'student',
-        student_id: student.id,
-        name: student.student_name,
-        email: studentEmail,
-        created_at: new Date().toISOString()
-      };
-      this.memStore.users.push(newUser);
-      this.persistMemoryStore();
-      return newUser;
     }
 
-    // Check if user already exists for this student
-    const existing = this.sqliteDb.prepare(`
-      SELECT * FROM users WHERE student_id = ? OR LOWER(username) = LOWER(?)
-    `).get(student.id, studentEmail) as DBUser | undefined;
-
-    if (existing) {
-      this.sqliteDb.prepare(`
-        UPDATE users SET student_id = ?, name = ?, email = ?, username = ?
-        WHERE id = ?
-      `).run(student.id, student.student_name, studentEmail, studentEmail, existing.id);
-      return {
-        ...existing,
-        student_id: student.id,
-        name: student.student_name,
-        email: studentEmail,
-        username: studentEmail
-      };
-    }
-
-    this.sqliteDb.prepare(`
-      INSERT INTO users (id, username, password_hash, role, student_id, name, email, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      userId,
-      studentEmail,
-      defaultPasswordHash,
-      'student',
-      student.id,
-      student.student_name,
-      studentEmail,
-      new Date().toISOString()
-    );
-
-    return {
+    // 3. Otherwise create new student user with default password
+    const newUser: DBUser = {
       id: userId,
       username: studentEmail,
       password_hash: defaultPasswordHash,
@@ -2188,6 +2166,25 @@ export class DatabaseService {
       email: studentEmail,
       created_at: new Date().toISOString()
     };
+
+    const idx = this.memStore.users.findIndex(x => x.id === newUser.id);
+    if (idx >= 0) {
+      this.memStore.users[idx] = newUser;
+    } else {
+      this.memStore.users.push(newUser);
+    }
+
+    if (this.sqliteDb) {
+      try {
+        this.sqliteDb.prepare(`
+          INSERT OR REPLACE INTO users (id, username, password_hash, role, student_id, name, email, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(newUser.id, newUser.username, newUser.password_hash, newUser.role, newUser.student_id, newUser.name, newUser.email, newUser.created_at);
+      } catch (e) {}
+    }
+
+    this.persistMemoryStore();
+    return newUser;
   }
 
   public authenticateUser(identifier: string, plainPassword: string, role?: UserRole): { user: DBUser; student?: Student } | null {
@@ -2238,16 +2235,22 @@ export class DatabaseService {
         };
       }
 
-      // Check if password matches Kite@123 or stored password
-      if (staffUser.password_hash === hashedPwd || cleanPwd === 'Kite@123') {
+      // Default password ('Kite@123') ONLY works if the faculty has NOT updated their password yet
+      const defaultStaffHash = this.hashPassword('Kite@123');
+      const isDefaultStaffPassword = staffUser.password_hash === defaultStaffHash;
+      
+      const isExactMatch = staffUser.password_hash === hashedPwd;
+      const isDefaultMatch = isDefaultStaffPassword && cleanPwd === 'Kite@123';
+
+      if (isExactMatch || isDefaultMatch) {
         return { user: staffUser };
       }
       if (role === 'staff') return null;
     }
 
     // Student Authentication
-    // The username credential is the student's mail id, register_no, or username
-    // The password credential is the student's register number (default) or updated password
+    // Username credential: student's email id, register_no, or username
+    // Password credential: student's register number (default) OR updated password
 
     let foundStudent: Student | undefined;
     const allStudents = this.getStudents();
@@ -2275,21 +2278,26 @@ export class DatabaseService {
     if (foundStudent) {
       const studentUser = this.ensureStudentUser(foundStudent);
 
-      // Password matching:
-      // 1. Exact stored password hash match
-      const isHashMatch = studentUser.password_hash === hashedPwd;
+      // Check if student is still using default register_no password
+      const defaultRegNoHash = this.hashPassword(foundStudent.register_no.trim());
+      const isDefaultPassword = studentUser.password_hash === defaultRegNoHash;
 
-      // 2. Case-insensitive register number or username match (default student password)
+      // 1. Exact stored password hash match (works for updated password or default password)
+      const isExactHashMatch = studentUser.password_hash === hashedPwd;
+
+      // 2. Default password matches (ONLY allowed if student has NOT changed their password yet)
       const regNo = (foundStudent.register_no || '').trim().toLowerCase();
       const uname = (foundStudent.username || '').trim().toLowerCase();
       const pwdLower = cleanPwd.toLowerCase();
 
-      const isRegNoMatch = pwdLower === regNo;
-      const isUsernameMatch = pwdLower === uname;
-      const isAltHashMatch = studentUser.password_hash === this.hashPassword(cleanPwd.toLowerCase()) || 
-                             studentUser.password_hash === this.hashPassword(cleanPwd.toUpperCase());
+      const isRegNoMatch = isDefaultPassword && pwdLower === regNo;
+      const isUsernameMatch = isDefaultPassword && pwdLower === uname;
+      const isAltHashMatch = isDefaultPassword && (
+        studentUser.password_hash === this.hashPassword(cleanPwd.toLowerCase()) || 
+        studentUser.password_hash === this.hashPassword(cleanPwd.toUpperCase())
+      );
 
-      if (isHashMatch || isRegNoMatch || isUsernameMatch || isAltHashMatch) {
+      if (isExactHashMatch || isRegNoMatch || isUsernameMatch || isAltHashMatch) {
         if (cleanId.includes('@') && studentUser.email !== cleanId) {
           studentUser.email = cleanId;
           studentUser.username = cleanId;
@@ -2313,13 +2321,18 @@ export class DatabaseService {
     }
 
     if (userRow) {
-      const isHashMatch = userRow.password_hash === hashedPwd ||
-                          userRow.password_hash === this.hashPassword(cleanPwd.toLowerCase()) ||
-                          userRow.password_hash === this.hashPassword(cleanPwd.toUpperCase());
       const student = userRow.student_id ? this.getStudentById(userRow.student_id) : undefined;
-      const isRegNoMatch = student && cleanPwd.toLowerCase() === (student.register_no || '').trim().toLowerCase();
+      const defaultHash = student ? this.hashPassword(student.register_no.trim()) : '';
+      const isDefaultPassword = student ? userRow.password_hash === defaultHash : false;
 
-      if (isHashMatch || isRegNoMatch) {
+      const isExactHashMatch = userRow.password_hash === hashedPwd;
+      const isAltHashMatch = isDefaultPassword && (
+        userRow.password_hash === this.hashPassword(cleanPwd.toLowerCase()) ||
+        userRow.password_hash === this.hashPassword(cleanPwd.toUpperCase())
+      );
+      const isRegNoMatch = isDefaultPassword && student && cleanPwd.toLowerCase() === (student.register_no || '').trim().toLowerCase();
+
+      if (isExactHashMatch || isAltHashMatch || isRegNoMatch) {
         return { user: userRow, student };
       }
     }
@@ -2353,12 +2366,34 @@ export class DatabaseService {
     }
     this.persistMemoryStore();
 
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('users').upsert({
+        id: userId,
+        password_hash: hash,
+        username: u?.username || 'user',
+        role: u?.role || 'student',
+        name: u?.name || 'User',
+        email: u?.email || null,
+        created_at: u?.created_at || new Date().toISOString()
+      }, { onConflict: 'id' }).then(({ error }) => {
+        if (error) {
+          supabase.from('users').update({ password_hash: hash }).eq('id', userId).then(({ error: err2 }) => {
+            if (err2) console.error('[Supabase] User password update error:', err2.message);
+          });
+        }
+      });
+    }
+
     if (this.isFallbackMode || !this.sqliteDb) {
       return !!u;
     }
 
-    const res = this.sqliteDb.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, userId);
-    return res.changes > 0;
+    try {
+      const res = this.sqliteDb.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, userId);
+      return res.changes > 0 || !!u;
+    } catch (e) {
+      return !!u;
+    }
   }
 }
 

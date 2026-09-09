@@ -90,6 +90,20 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
     return () => clearInterval(timer);
   }, []);
 
+  const [studentListState, setStudentListState] = useState<StudentWithLatest[]>(allStudents || []);
+
+  useEffect(() => {
+    if (allStudents && allStudents.length > 0) {
+      setStudentListState(allStudents);
+    } else {
+      api.getStudents().then(data => {
+        if (data && data.length > 0) {
+          setStudentListState(data);
+        }
+      }).catch(err => console.error('Error loading leaderboard students:', err));
+    }
+  }, [allStudents]);
+
   // Load Dashboard Data
   useEffect(() => {
     loadDashboard();
@@ -1061,10 +1075,10 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
       {activeSubTab === 'leaderboard' && (
         <div className="space-y-4">
           <LeetCodeContestLeaderboard
-            students={allStudents && allStudents.length > 0 ? allStudents : (dashboardData ? [{
+            students={studentListState.length > 0 ? studentListState : (allStudents && allStudents.length > 0 ? allStudents : (dashboardData ? [{
               ...student,
               latest_snapshot: dashboardData.summary as any
-            }] : [])}
+            }] : []))}
             currentStudentId={student.id}
             isFaculty={false}
           />
