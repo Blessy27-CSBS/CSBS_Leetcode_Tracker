@@ -1049,128 +1049,73 @@ export class DatabaseService {
   }
 
   // Snapshots
+  // Snapshots
   public getSnapshots(studentId?: string): Snapshot[] {
-    if (this.isFallbackMode || !this.sqliteDb) {
-      if (studentId) {
-        return this.memStore.snapshots
-          .filter(s => s.student_id === studentId)
-          .sort((a, b) => new Date(a.captured_at).getTime() - new Date(b.captured_at).getTime());
-      }
-      return this.memStore.snapshots;
+    let snaps = this.memStore.snapshots;
+
+    if (snaps.length === 0 && this.sqliteDb) {
+      try {
+        let rows: any[];
+        if (studentId) {
+          rows = this.sqliteDb.prepare('SELECT * FROM snapshots WHERE student_id = ? ORDER BY datetime(captured_at) ASC').all(studentId);
+        } else {
+          rows = this.sqliteDb.prepare('SELECT * FROM snapshots ORDER BY datetime(captured_at) ASC').all();
+        }
+        snaps = rows.map(r => ({
+          id: r.id,
+          student_id: r.student_id,
+          captured_at: r.captured_at,
+          total_solved: r.total_solved || 0,
+          easy: r.easy || 0,
+          medium: r.medium || 0,
+          hard: r.hard || 0,
+          acceptance_rate: r.acceptance_rate || 0,
+          ranking: r.ranking || 0,
+          reputation: r.reputation || 0,
+          contest_rating: r.contest_rating || 0,
+          contest_rank: r.contest_rank || 0,
+          contests_attended: r.contests_attended || 0,
+          top_percentage: r.top_percentage || 0,
+          streak: r.streak || 0,
+          active_days: r.active_days || 0,
+          last_active: r.last_active || undefined,
+          languages: r.languages ? (typeof r.languages === 'string' ? JSON.parse(r.languages) : r.languages) : [],
+          skills: r.skills ? (typeof r.skills === 'string' ? JSON.parse(r.skills) : r.skills) : [],
+          badges: r.badges ? (typeof r.badges === 'string' ? JSON.parse(r.badges) : r.badges) : [],
+          submission_calendar: r.submission_calendar ? (typeof r.submission_calendar === 'string' ? JSON.parse(r.submission_calendar) : r.submission_calendar) : {},
+          engagement_score: r.engagement_score || 0,
+          performance_tier: r.performance_tier || 'Beginner',
+          activity_status: r.activity_status || 'No Data',
+          status: r.status || 'SUCCESS',
+          error: r.error || undefined,
+        }));
+      } catch (e) {}
     }
 
-    let rows: any[];
     if (studentId) {
-      rows = this.sqliteDb.prepare('SELECT * FROM snapshots WHERE student_id = ? ORDER BY datetime(captured_at) ASC').all(studentId);
-    } else {
-      rows = this.sqliteDb.prepare('SELECT * FROM snapshots ORDER BY datetime(captured_at) ASC').all();
+      const student = this.getStudentById(studentId);
+      const regNo = student?.register_no?.toLowerCase().trim();
+      const uname = student?.username?.toLowerCase().trim();
+
+      return snaps
+        .filter(s => {
+          const sId = (s.student_id || '').toLowerCase().trim();
+          return sId === studentId.toLowerCase() || (regNo && sId === regNo) || (uname && sId === uname);
+        })
+        .sort((a, b) => new Date(a.captured_at).getTime() - new Date(b.captured_at).getTime());
     }
 
-    return rows.map(r => ({
-      id: r.id,
-      student_id: r.student_id,
-      captured_at: r.captured_at,
-      total_solved: r.total_solved,
-      easy: r.easy,
-      medium: r.medium,
-      hard: r.hard,
-      acceptance_rate: r.acceptance_rate,
-      ranking: r.ranking,
-      reputation: r.reputation,
-      contest_rating: r.contest_rating,
-      contest_rank: r.contest_rank,
-      contests_attended: r.contests_attended,
-      top_percentage: r.top_percentage,
-      streak: r.streak,
-      active_days: r.active_days,
-      last_active: r.last_active || undefined,
-      languages: r.languages ? JSON.parse(r.languages) : [],
-      skills: r.skills ? JSON.parse(r.skills) : [],
-      badges: r.badges ? JSON.parse(r.badges) : [],
-      submission_calendar: r.submission_calendar ? JSON.parse(r.submission_calendar) : {},
-      engagement_score: r.engagement_score,
-      performance_tier: r.performance_tier,
-      activity_status: r.activity_status,
-      status: r.status,
-      error: r.error || undefined,
-    }));
+    return snaps;
   }
 
   public getLatestSnapshot(studentId: string): Snapshot | undefined {
-    if (this.isFallbackMode || !this.sqliteDb) {
-      const list = this.getSnapshots(studentId);
-      return list.length > 0 ? list[list.length - 1] : undefined;
-    }
-
-    const r = this.sqliteDb.prepare('SELECT * FROM snapshots WHERE student_id = ? ORDER BY datetime(captured_at) DESC LIMIT 1').get(studentId) as any;
-    if (!r) return undefined;
-    return {
-      id: r.id,
-      student_id: r.student_id,
-      captured_at: r.captured_at,
-      total_solved: r.total_solved,
-      easy: r.easy,
-      medium: r.medium,
-      hard: r.hard,
-      acceptance_rate: r.acceptance_rate,
-      ranking: r.ranking,
-      reputation: r.reputation,
-      contest_rating: r.contest_rating,
-      contest_rank: r.contest_rank,
-      contests_attended: r.contests_attended,
-      top_percentage: r.top_percentage,
-      streak: r.streak,
-      active_days: r.active_days,
-      last_active: r.last_active || undefined,
-      languages: r.languages ? JSON.parse(r.languages) : [],
-      skills: r.skills ? JSON.parse(r.skills) : [],
-      badges: r.badges ? JSON.parse(r.badges) : [],
-      submission_calendar: r.submission_calendar ? JSON.parse(r.submission_calendar) : {},
-      engagement_score: r.engagement_score,
-      performance_tier: r.performance_tier,
-      activity_status: r.activity_status,
-      status: r.status,
-      error: r.error || undefined,
-    };
+    const list = this.getSnapshots(studentId);
+    return list.length > 0 ? list[list.length - 1] : undefined;
   }
 
   public getPreviousSnapshot(studentId: string): Snapshot | undefined {
-    if (this.isFallbackMode || !this.sqliteDb) {
-      const list = this.getSnapshots(studentId);
-      return list.length > 1 ? list[list.length - 2] : undefined;
-    }
-
-    const rows = this.sqliteDb.prepare('SELECT * FROM snapshots WHERE student_id = ? ORDER BY datetime(captured_at) DESC LIMIT 2').all(studentId) as any[];
-    if (rows.length < 2) return undefined;
-    const r = rows[1];
-    return {
-      id: r.id,
-      student_id: r.student_id,
-      captured_at: r.captured_at,
-      total_solved: r.total_solved,
-      easy: r.easy,
-      medium: r.medium,
-      hard: r.hard,
-      acceptance_rate: r.acceptance_rate,
-      ranking: r.ranking,
-      reputation: r.reputation,
-      contest_rating: r.contest_rating,
-      contest_rank: r.contest_rank,
-      contests_attended: r.contests_attended,
-      top_percentage: r.top_percentage,
-      streak: r.streak,
-      active_days: r.active_days,
-      last_active: r.last_active || undefined,
-      languages: r.languages ? JSON.parse(r.languages) : [],
-      skills: r.skills ? JSON.parse(r.skills) : [],
-      badges: r.badges ? JSON.parse(r.badges) : [],
-      submission_calendar: r.submission_calendar ? JSON.parse(r.submission_calendar) : {},
-      engagement_score: r.engagement_score,
-      performance_tier: r.performance_tier,
-      activity_status: r.activity_status,
-      status: r.status,
-      error: r.error || undefined,
-    };
+    const list = this.getSnapshots(studentId);
+    return list.length > 1 ? list[list.length - 2] : undefined;
   }
 
   public addSnapshot(snapshot: Omit<Snapshot, 'id'>): Snapshot {
@@ -1213,118 +1158,124 @@ export class DatabaseService {
       });
     }
 
-    if (this.isFallbackMode || !this.sqliteDb) {
-      this.memStore.snapshots = this.memStore.snapshots.filter(s => s.id !== newSnap.id);
-      this.memStore.snapshots.push(newSnap);
-      this.persistMemoryStore();
-      return newSnap;
-    }
-
-    // Always keep memStore updated
     this.memStore.snapshots = this.memStore.snapshots.filter(s => s.id !== newSnap.id);
     this.memStore.snapshots.push(newSnap);
 
-    // Auto-ensure student exists in SQLite students table to prevent FOREIGN KEY constraint failure
-    const studentInDb = this.sqliteDb.prepare('SELECT id FROM students WHERE id = ?').get(snapshot.student_id);
-    if (!studentInDb) {
-      const studentObj = this.getStudentById(snapshot.student_id);
-      if (studentObj) {
-        try {
-          this.sqliteDb.prepare(`
-            INSERT OR REPLACE INTO students (
-              id, register_no, student_name, section, year, batch, username, email, mentor, academic_year, active, created_at, notes
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          `).run(
-            studentObj.id,
-            studentObj.register_no,
-            studentObj.student_name,
-            studentObj.section || 'A',
-            studentObj.year || 'II',
-            studentObj.batch || '2023-2027',
-            studentObj.username,
-            studentObj.email || null,
-            studentObj.mentor || null,
-            studentObj.academic_year || DEFAULT_SETTINGS.academic_year,
-            studentObj.active ? 1 : 0,
-            studentObj.created_at || new Date().toISOString(),
-            studentObj.notes || null
-          );
-        } catch (e) {}
-      }
-    }
+    if (this.sqliteDb) {
+      try {
+        const studentInDb = this.sqliteDb.prepare('SELECT id FROM students WHERE id = ?').get(snapshot.student_id);
+        if (!studentInDb) {
+          const studentObj = this.getStudentById(snapshot.student_id);
+          if (studentObj) {
+            this.sqliteDb.prepare(`
+              INSERT OR REPLACE INTO students (
+                id, register_no, student_name, section, year, batch, username, email, mentor, academic_year, active, created_at, notes
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(
+              studentObj.id,
+              studentObj.register_no,
+              studentObj.student_name,
+              studentObj.section || 'A',
+              studentObj.year || 'II',
+              studentObj.batch || '2023-2027',
+              studentObj.username,
+              studentObj.email || null,
+              studentObj.mentor || null,
+              studentObj.academic_year || DEFAULT_SETTINGS.academic_year,
+              studentObj.active ? 1 : 0,
+              studentObj.created_at || new Date().toISOString(),
+              studentObj.notes || null
+            );
+          }
+        }
 
-    this.sqliteDb.prepare(`
-      INSERT INTO snapshots (
-        id, student_id, captured_at, total_solved, easy, medium, hard, acceptance_rate,
-        ranking, reputation, contest_rating, contest_rank, contests_attended, top_percentage,
-        streak, active_days, last_active, languages, skills, badges, submission_calendar,
-        engagement_score, performance_tier, activity_status, status, error
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      id,
-      snapshot.student_id,
-      snapshot.captured_at,
-      snapshot.total_solved || 0,
-      snapshot.easy || 0,
-      snapshot.medium || 0,
-      snapshot.hard || 0,
-      snapshot.acceptance_rate || 0,
-      snapshot.ranking || 0,
-      snapshot.reputation || 0,
-      snapshot.contest_rating || 0,
-      snapshot.contest_rank || 0,
-      snapshot.contests_attended || 0,
-      snapshot.top_percentage || 0,
-      snapshot.streak || 0,
-      snapshot.active_days || 0,
-      snapshot.last_active || null,
-      JSON.stringify(snapshot.languages || []),
-      JSON.stringify(snapshot.skills || []),
-      JSON.stringify(snapshot.badges || []),
-      JSON.stringify(snapshot.submission_calendar || {}),
-      snapshot.engagement_score || 0,
-      snapshot.performance_tier || 'Beginner',
-      snapshot.activity_status || 'No Data',
-      snapshot.status || 'SUCCESS',
-      snapshot.error || null
-    );
+        this.sqliteDb.prepare(`
+          INSERT INTO snapshots (
+            id, student_id, captured_at, total_solved, easy, medium, hard, acceptance_rate,
+            ranking, reputation, contest_rating, contest_rank, contests_attended, top_percentage,
+            streak, active_days, last_active, languages, skills, badges, submission_calendar,
+            engagement_score, performance_tier, activity_status, status, error
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          id,
+          snapshot.student_id,
+          snapshot.captured_at,
+          snapshot.total_solved || 0,
+          snapshot.easy || 0,
+          snapshot.medium || 0,
+          snapshot.hard || 0,
+          snapshot.acceptance_rate || 0,
+          snapshot.ranking || 0,
+          snapshot.reputation || 0,
+          snapshot.contest_rating || 0,
+          snapshot.contest_rank || 0,
+          snapshot.contests_attended || 0,
+          snapshot.top_percentage || 0,
+          snapshot.streak || 0,
+          snapshot.active_days || 0,
+          snapshot.last_active || null,
+          JSON.stringify(snapshot.languages || []),
+          JSON.stringify(snapshot.skills || []),
+          JSON.stringify(snapshot.badges || []),
+          JSON.stringify(snapshot.submission_calendar || {}),
+          snapshot.engagement_score || 0,
+          snapshot.performance_tier || 'Beginner',
+          snapshot.activity_status || 'No Data',
+          snapshot.status || 'SUCCESS',
+          snapshot.error || null
+        );
+      } catch (e) {}
+    }
 
     return newSnap;
   }
 
   public deleteSnapshots(studentId?: string): void {
-    if (this.isFallbackMode || !this.sqliteDb) {
-      if (studentId) {
-        this.memStore.snapshots = this.memStore.snapshots.filter(s => s.student_id !== studentId);
-      } else {
-        this.memStore.snapshots = [];
-      }
-      this.persistMemoryStore();
-      return;
-    }
-
     if (studentId) {
-      this.sqliteDb.prepare('DELETE FROM snapshots WHERE student_id = ?').run(studentId);
+      this.memStore.snapshots = this.memStore.snapshots.filter(s => s.student_id !== studentId);
     } else {
-      this.sqliteDb.prepare('DELETE FROM snapshots').run();
+      this.memStore.snapshots = [];
+    }
+    this.persistMemoryStore();
+
+    if (this.sqliteDb) {
+      try {
+        if (studentId) {
+          this.sqliteDb.prepare('DELETE FROM snapshots WHERE student_id = ?').run(studentId);
+        } else {
+          this.sqliteDb.prepare('DELETE FROM snapshots').run();
+        }
+      } catch (e) {}
     }
   }
 
   // Recent Submissions
   public getSubmissions(studentId: string): RecentSubmission[] {
-    if (this.isFallbackMode || !this.sqliteDb) {
-      return this.memStore.recent_submissions.filter(r => r.student_id === studentId);
+    let list = this.memStore.recent_submissions;
+
+    if (list.length === 0 && this.sqliteDb) {
+      try {
+        const rows = this.sqliteDb.prepare('SELECT * FROM recent_submissions WHERE student_id = ? ORDER BY id DESC').all(studentId) as any[];
+        list = rows.map(r => ({
+          id: r.id,
+          student_id: r.student_id,
+          title: r.title,
+          titleSlug: r.titleSlug,
+          timestamp: r.timestamp,
+          language: r.language,
+          statusDisplay: r.statusDisplay,
+        }));
+      } catch (e) {}
     }
-    const rows = this.sqliteDb.prepare('SELECT * FROM recent_submissions WHERE student_id = ? ORDER BY id DESC').all(studentId) as any[];
-    return rows.map(r => ({
-      id: r.id,
-      student_id: r.student_id,
-      title: r.title,
-      titleSlug: r.titleSlug,
-      timestamp: r.timestamp,
-      language: r.language,
-      statusDisplay: r.statusDisplay,
-    }));
+
+    const student = this.getStudentById(studentId);
+    const regNo = student?.register_no?.toLowerCase().trim();
+    const uname = student?.username?.toLowerCase().trim();
+
+    return list.filter(r => {
+      const sId = (r.student_id || '').toLowerCase().trim();
+      return sId === studentId.toLowerCase() || (regNo && sId === regNo) || (uname && sId === uname);
+    });
   }
 
   public setSubmissions(studentId: string, subs: RecentSubmission[]): void {
