@@ -129,22 +129,47 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     };
   });
 
-  const secA = sectionStats.find(s => s.section === 'A');
-  const secB = sectionStats.find(s => s.section === 'B');
-  const secC = sectionStats.find(s => s.section === 'C');
+  // Dynamic Academic Year Cohort Stats (II Year, III Year, IV Year based on student.year)
+  const yearCohortStats = ['II', 'III', 'IV'].map(yr => {
+    const yrStudents = students.filter(s => {
+      const studentYr = (s.year || 'III').toUpperCase().trim();
+      return studentYr === yr;
+    });
 
-  const maxAvgProblems = Math.max(1, ...sectionStats.map(s => s.avg_problems || 0));
+    const totalSolvedYr = yrStudents.reduce((acc, s) => acc + (s.latest_snapshot?.total_solved || 0), 0);
+    const activeCountYr = yrStudents.filter(s => (s.latest_snapshot?.total_solved || 0) > 0 || (s.days_inactive !== undefined && s.days_inactive <= 14)).length;
+    const avgProblems = yrStudents.length > 0 ? Math.round(totalSolvedYr / yrStudents.length) : 0;
+    const avgRating = yrStudents.length > 0 ? Math.round(yrStudents.reduce((acc, s) => acc + (s.latest_snapshot?.contest_rating || 0), 0) / yrStudents.length) : 0;
+    const avgEngagement = yrStudents.length > 0 ? Math.round(yrStudents.reduce((acc, s) => acc + (s.latest_snapshot?.engagement_score || 0), 0) / yrStudents.length) : 0;
 
-  const getActivePct = (s?: SectionStat) => s && s.total_students > 0 ? Math.round((s.active_students / s.total_students) * 100) : 0;
-  const getRatingPct = (s?: SectionStat) => s && s.total_students > 0 ? Math.min(100, Math.round(((s.avg_rating || 0) / 2000) * 100)) : 0;
-  const getEngageScore = (s?: SectionStat) => s && s.total_students > 0 ? Math.min(100, Math.round(s.avg_engagement || 0)) : 0;
-  const getAvgProblemsPct = (s?: SectionStat) => s && s.total_students > 0 ? Math.min(100, Math.round((s.avg_problems / maxAvgProblems) * 100)) : 0;
+    return {
+      year: yr,
+      yearLabel: `${yr} Year`,
+      total_students: yrStudents.length,
+      active_students: activeCountYr,
+      avg_problems: avgProblems,
+      total_problems: totalSolvedYr,
+      avg_rating: avgRating,
+      avg_engagement: avgEngagement,
+    };
+  });
+
+  const yrII = yearCohortStats.find(y => y.year === 'II');
+  const yrIII = yearCohortStats.find(y => y.year === 'III');
+  const yrIV = yearCohortStats.find(y => y.year === 'IV');
+
+  const maxAvgProblemsYear = Math.max(1, ...yearCohortStats.map(y => y.avg_problems || 0));
+
+  const getActivePctYr = (y?: typeof yrII) => y && y.total_students > 0 ? Math.round((y.active_students / y.total_students) * 100) : 0;
+  const getRatingPctYr = (y?: typeof yrII) => y && y.total_students > 0 ? Math.min(100, Math.round(((y.avg_rating || 0) / 2000) * 100)) : 0;
+  const getEngageScoreYr = (y?: typeof yrII) => y && y.total_students > 0 ? Math.min(100, Math.round(y.avg_engagement || 0)) : 0;
+  const getAvgProblemsPctYr = (y?: typeof yrII) => y && y.total_students > 0 ? Math.min(100, Math.round((y.avg_problems / maxAvgProblemsYear) * 100)) : 0;
 
   const radarData = [
-    { metric: 'Avg Problems', 'II Year': getAvgProblemsPct(secA), 'III Year': getAvgProblemsPct(secB), 'IV Year': getAvgProblemsPct(secC) },
-    { metric: 'Active Rate', 'II Year': getActivePct(secA), 'III Year': getActivePct(secB), 'IV Year': getActivePct(secC) },
-    { metric: 'Contest Rating', 'II Year': getRatingPct(secA), 'III Year': getRatingPct(secB), 'IV Year': getRatingPct(secC) },
-    { metric: 'Engagement', 'II Year': getEngageScore(secA), 'III Year': getEngageScore(secB), 'IV Year': getEngageScore(secC) },
+    { metric: 'Avg Problems', 'II Year': getAvgProblemsPctYr(yrII), 'III Year': getAvgProblemsPctYr(yrIII), 'IV Year': getAvgProblemsPctYr(yrIV) },
+    { metric: 'Active Rate', 'II Year': getActivePctYr(yrII), 'III Year': getActivePctYr(yrIII), 'IV Year': getActivePctYr(yrIV) },
+    { metric: 'Contest Rating', 'II Year': getRatingPctYr(yrII), 'III Year': getRatingPctYr(yrIII), 'IV Year': getRatingPctYr(yrIV) },
+    { metric: 'Engagement', 'II Year': getEngageScoreYr(yrII), 'III Year': getEngageScoreYr(yrIII), 'IV Year': getEngageScoreYr(yrIV) },
   ];
 
   // Tier distribution (recalculated live from current students dataset)
@@ -617,14 +642,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
 
               <div className="space-y-4 pt-1">
-                {sectionStats.map((s, idx) => {
-                  const yearLabel = formatSectionName(s.section);
-                  const pct = maxAvgProblems > 0 ? Math.min(100, Math.round((s.avg_problems / maxAvgProblems) * 100)) : 0;
+                {yearCohortStats.map((y, idx) => {
+                  const pct = maxAvgProblemsYear > 0 ? Math.min(100, Math.round((y.avg_problems / maxAvgProblemsYear) * 100)) : 0;
                   const color = idx === 0 ? 'from-purple-600 to-indigo-600' : idx === 1 ? 'from-pink-500 to-rose-500' : 'from-cyan-500 to-blue-600';
                   return (
-                    <div key={s.section} className="space-y-1.5">
+                    <div key={y.year} className="space-y-1.5">
                       <div className="flex justify-between items-center text-xs">
-                        <span className="font-extrabold text-slate-800">{yearLabel} Cohort ({s.total_students} Students)</span>
+                        <span className="font-extrabold text-slate-800">{y.yearLabel} Cohort ({y.total_students} Students)</span>
                         <span className="font-mono font-black text-purple-700">{pct}% Relative Solved Rate</span>
                       </div>
                       <div className="h-3.5 bg-slate-100 rounded-full overflow-hidden p-0.5 border border-slate-200/80 relative">

@@ -1012,18 +1012,20 @@ app.post('/api/students/import', (req, res) => {
       let year: string | undefined = undefined;
       if (rawYear) {
         const cleanYr = rawYear.trim().toUpperCase();
-        if (cleanYr.includes('IV') || cleanYr.includes('4') || cleanYr.includes('FOURTH')) {
+        if (/\b(IV|4TH|4|FOURTH)\b/i.test(cleanYr)) {
           year = 'IV';
-        } else if (cleanYr.includes('III') || cleanYr.includes('3') || cleanYr.includes('THIRD')) {
+        } else if (/\b(III|3RD|3|THIRD)\b/i.test(cleanYr)) {
           year = 'III';
-        } else if (cleanYr.includes('II') || cleanYr.includes('2') || cleanYr.includes('SECOND')) {
+        } else if (/\b(II|2ND|2|SECOND)\b/i.test(cleanYr)) {
           year = 'II';
-        } else if (cleanYr.includes('I') || cleanYr.includes('1') || cleanYr.includes('FIRST')) {
+        } else if (/\b(I|1ST|1|FIRST)\b/i.test(cleanYr)) {
           year = 'I';
         } else {
           year = cleanYr;
         }
       }
+
+      if (!year) year = 'III';
 
       if (!regNo && !name && !email) {
         errors.push({ row: idx + 1, identifier: `Row ${idx + 1}`, error: 'Missing mandatory field (Register No or Student Name).' });

@@ -1,11 +1,9 @@
 export const formatSectionName = (sec?: string): string => {
-  if (!sec) return '';
+  if (!sec) return 'Section A';
   const s = sec.toString().trim().toUpperCase();
-  if (s === 'A' || s === 'SECTION A' || s === 'SEC A') return 'II Year';
-  if (s === 'B' || s === 'SECTION B' || s === 'SEC B') return 'III Year';
-  if (s === 'C' || s === 'SECTION C' || s === 'SEC C') return 'IV Year';
-  if (s.includes('A')) return 'II Year';
-  if (s.includes('B')) return 'III Year';
-  if (s.includes('C')) return 'IV Year';
+  if (s === 'A' || s === 'SEC A' || s === 'SECTION A') return 'Section A';
+  if (s === 'B' || s === 'SEC B' || s === 'SECTION B') return 'Section B';
+  if (s === 'C' || s === 'SEC C' || s === 'SECTION C') return 'Section C';
+  if (/^[A-Z]$/.test(s)) return `Section ${s}`;
   return sec;
 };
