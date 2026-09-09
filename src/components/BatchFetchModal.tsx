@@ -89,34 +89,34 @@ export const BatchFetchModal: React.FC<BatchFetchModalProps> = ({
   const pct = progress.total > 0 ? Math.round((progress.processed / progress.total) * 100) : 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-      <div className="bg-white border border-slate-200 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-2.5 sm:p-4">
+      <div className="bg-white border border-slate-200 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[92vh] my-auto">
         
         {/* Modal Header */}
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-          <div className="flex items-center space-x-2.5">
-            <div className="p-2 bg-blue-50 text-blue-700 rounded-lg border border-blue-200">
-              <RefreshCw className={`w-5 h-5 ${progress.is_running ? 'animate-spin' : ''}`} />
+        <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+          <div className="flex items-center space-x-2.5 min-w-0">
+            <div className="p-1.5 sm:p-2 bg-blue-50 text-blue-700 rounded-lg border border-blue-200 shrink-0">
+              <RefreshCw className={`w-4 h-4 sm:w-5 sm:h-5 ${progress.is_running ? 'animate-spin' : ''}`} />
             </div>
-            <div>
-              <h2 className="text-base font-bold text-slate-800">
+            <div className="min-w-0">
+              <h2 className="text-sm sm:text-base font-bold text-slate-800 truncate">
                 LeetCode Batch Data Synchronization
               </h2>
-              <p className="text-xs text-slate-500">
+              <p className="text-[11px] sm:text-xs text-slate-500 truncate">
                 Fetch public statistics, problem solved counts, and active streaks
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-700 p-1.5 rounded-md hover:bg-slate-100 cursor-pointer"
+            className="text-slate-400 hover:text-slate-700 p-1.5 rounded-md hover:bg-slate-100 cursor-pointer shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 space-y-5 overflow-y-auto flex-1 text-slate-800">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto flex-1 text-slate-800">
           
           {errorMsg && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs flex items-center space-x-2">

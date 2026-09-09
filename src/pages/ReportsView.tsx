@@ -121,14 +121,14 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       {/* PRINTABLE EXECUTIVE SUMMARY */}
       <div className="p-5 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-5 print:border-none print:shadow-none print:p-0">
         <div className="border-b border-slate-200 pb-3.5">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center space-x-3">
-              <GraduationCap className="w-8 h-8 text-amber-500" />
+              <GraduationCap className="w-8 h-8 text-amber-500 shrink-0" />
               <div>
                 <div className="text-[10px] uppercase font-bold tracking-wider text-amber-600">
                   KGiSL Institute of Technology
                 </div>
-                <h3 className="text-base font-bold text-slate-800">
+                <h3 className="text-sm sm:text-base font-bold text-slate-800">
                   Department of Computer Science and Business Systems (CSBS)
                 </h3>
                 <p className="text-xs text-slate-500">
@@ -136,7 +136,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 </p>
               </div>
             </div>
-            <div className="text-right text-xs text-slate-500 font-mono">
+            <div className="text-left sm:text-right text-xs text-slate-500 font-mono">
               <div>Date: {new Date().toLocaleDateString()}</div>
               <div>Academic Year: 2024-2025</div>
             </div>

@@ -734,7 +734,7 @@ export const LeetCodeContestLeaderboard: React.FC<LeetCodeContestLeaderboardProp
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             
             {/* Scope Pill Switcher */}
-            <div className="inline-flex items-center p-1 bg-slate-200/70 rounded-full border border-slate-300/60 shadow-2xs">
+            <div className="inline-flex items-center p-1 bg-slate-200/70 rounded-full border border-slate-300/60 shadow-2xs overflow-x-auto max-w-full">
               <button
                 onClick={() => setScope('GLOBAL')}
                 className={`px-3 py-1 text-xs font-extrabold rounded-full transition-all cursor-pointer ${

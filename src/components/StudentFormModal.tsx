@@ -92,16 +92,16 @@ export const StudentFormModal: React.FC<StudentFormModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-      <div className="bg-white border border-slate-200 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden text-slate-800">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-2.5 sm:p-4 overflow-y-auto">
+      <div className="bg-white border border-slate-200 rounded-xl shadow-2xl w-full max-w-lg max-h-[92vh] flex flex-col overflow-hidden text-slate-800 my-auto">
         
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+        <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <div className="p-2 bg-blue-50 text-blue-700 rounded-lg border border-blue-200">
-              <UserPlus className="w-5 h-5" />
+            <div className="p-1.5 sm:p-2 bg-blue-50 text-blue-700 rounded-lg border border-blue-200">
+              <UserPlus className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <h2 className="text-base font-bold text-slate-800">
+            <h2 className="text-sm sm:text-base font-bold text-slate-800">
               {studentToEdit ? 'Edit Student Record' : 'Add New Student'}
             </h2>
           </div>
@@ -114,7 +114,7 @@ export const StudentFormModal: React.FC<StudentFormModalProps> = ({
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
           {error && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs flex items-center space-x-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
@@ -122,7 +122,7 @@ export const StudentFormModal: React.FC<StudentFormModalProps> = ({
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Register Number <span className="text-rose-500">*</span>
@@ -152,7 +152,7 @@ export const StudentFormModal: React.FC<StudentFormModalProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Section

@@ -83,7 +83,7 @@ export const StudentSidebar: React.FC<StudentSidebarProps> = ({
       )}
 
       {/* Main Sidebar Container */}
-      <aside className={`w-64 bg-[#1e293b] text-slate-200 flex flex-col shrink-0 border-r border-slate-800 select-none z-20 sticky top-14 h-[calc(100vh-3.5rem)] transition-all duration-200 ${
+      <aside className={`w-64 bg-[#1e293b] text-slate-200 flex flex-col shrink-0 border-r border-slate-800 select-none z-50 fixed inset-y-0 left-0 md:sticky md:top-14 md:z-20 md:h-[calc(100vh-3.5rem)] transition-transform duration-200 ${
         isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
       }`}>
         
@@ -95,6 +95,15 @@ export const StudentSidebar: React.FC<StudentSidebarProps> = ({
               Student Navigation
             </span>
           </div>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="md:hidden text-slate-400 hover:text-white p-1 rounded-md cursor-pointer transition-colors"
+              title="Close Menu"
+            >
+              <span className="text-xs font-bold font-mono">✕</span>
+            </button>
+          )}
         </div>
 
         {/* Navigation Links */}

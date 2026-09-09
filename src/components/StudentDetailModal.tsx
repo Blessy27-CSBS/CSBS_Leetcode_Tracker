@@ -139,32 +139,32 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   const hardPct = total > 0 ? Math.round((hard / total) * 100) : 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-2 sm:p-4">
       <div className="bg-white border border-slate-200 rounded-xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden text-slate-800">
         
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-full bg-blue-100 border border-blue-200 flex items-center justify-center text-blue-700 font-bold text-base">
+        <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-200 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center space-x-3 min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-blue-100 border border-blue-200 flex items-center justify-center text-blue-700 font-bold text-sm sm:text-base shrink-0">
               {student?.student_name?.charAt(0) || 'S'}
             </div>
-            <div>
-              <div className="flex items-center space-x-2">
-                <h2 className="text-base font-bold text-slate-800">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <h2 className="text-sm sm:text-base font-bold text-slate-800 truncate">
                   {student?.student_name || 'Student Detail'}
                 </h2>
                 {student?.register_no && (
-                  <span className="bg-slate-100 text-slate-700 text-xs px-2 py-0.5 rounded font-mono border border-slate-200">
+                  <span className="bg-slate-100 text-slate-700 text-[11px] sm:text-xs px-2 py-0.5 rounded font-mono border border-slate-200">
                     {student.register_no}
                   </span>
                 )}
                 {student && (
-                  <span className="bg-purple-50 text-purple-700 border border-purple-200 text-xs px-2 py-0.5 rounded font-medium">
+                  <span className="bg-purple-50 text-purple-700 border border-purple-200 text-[11px] sm:text-xs px-2 py-0.5 rounded font-medium">
                     {formatSectionName(student.section)} • {student.year} Year
                   </span>
                 )}
               </div>
-              <div className="flex items-center space-x-3 text-xs text-slate-500 mt-0.5">
+              <div className="flex flex-wrap items-center gap-2 text-[11px] sm:text-xs text-slate-500 mt-0.5">
                 {student?.username && (
                   <a
                     href={`https://leetcode.com/${student.username}/`}
@@ -184,7 +184,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center justify-end space-x-2 shrink-0">
             <button
               onClick={handleRefresh}
               disabled={refreshing}
@@ -204,7 +204,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-5 overflow-y-auto flex-1">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto flex-1">
           {loading ? (
             <div className="text-center py-16 text-slate-500 text-sm">
               <RefreshCw className="w-8 h-8 animate-spin mx-auto text-blue-600 mb-3" />
@@ -213,7 +213,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
           ) : (
             <>
               {/* Top KPI row */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3">
                 
                 <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
                   <div className="text-[11px] text-slate-500 font-medium">Total Solved</div>

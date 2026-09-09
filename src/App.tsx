@@ -36,7 +36,12 @@ export function App() {
   const [authChecking, setAuthChecking] = useState(true);
 
   const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 768;
+    }
+    return true;
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -346,7 +351,7 @@ export function App() {
         />
 
         {/* Dynamic View Content Area */}
-        <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 overflow-y-auto bg-[#f8fafc]">
+        <main className="flex-1 min-w-0 p-3 sm:p-6 lg:p-8 overflow-y-auto bg-[#f8fafc]">
           <div className="max-w-7xl mx-auto w-full">
             {renderActiveView()}
           </div>
