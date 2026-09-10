@@ -43,6 +43,7 @@ import {
 import { LeetCodeContestLeaderboard } from '../components/LeetCodeContestLeaderboard';
 import { StudentSidebar, StudentNavTab } from '../components/StudentSidebar';
 import { StudentQuestView } from '../components/StudentQuestView';
+import { StudentLeetCode75View } from '../components/StudentLeetCode75View';
 
 interface StudentPortalViewProps {
   currentUser: AuthUser;
@@ -782,6 +783,11 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
       {/* TAB: DSA QUEST */}
       {activeSubTab === 'quest' && (
         <StudentQuestView currentUser={currentUser} />
+      )}
+
+      {/* TAB: LEETCODE 75 (IV YEAR) */}
+      {activeSubTab === 'leetcode75' && (
+        <StudentLeetCode75View studentId={student.id} />
       )}
 
       {/* TAB 2: LEETCODE CONTESTS */}

@@ -12,9 +12,9 @@ import {
   GraduationCap
 } from 'lucide-react';
 
-import { isEligibleForQuest } from '../types';
+import { isEligibleForQuest, isEligibleForLeetCode75 } from '../types';
 
-export type StudentNavTab = 'overview' | 'quest' | 'contests' | 'potd_tracks' | 'leaderboard' | 'submissions' | 'profile';
+export type StudentNavTab = 'overview' | 'quest' | 'leetcode75' | 'contests' | 'potd_tracks' | 'leaderboard' | 'submissions' | 'profile';
 
 interface StudentSidebarProps {
   activeTab: StudentNavTab;
@@ -39,15 +39,19 @@ export const StudentSidebar: React.FC<StudentSidebarProps> = ({
   recentCount = 0,
   contestCount = 0,
 }) => {
-  const isEligible = isEligibleForQuest(student?.year);
+  const isEligibleQuest = isEligibleForQuest(student?.year);
+  const isEligibleL75 = isEligibleForLeetCode75(student?.year);
 
   const mainItems: { id: StudentNavTab; label: string; badge: string | null; badgeColor?: string }[] = [
     { id: 'overview', label: 'My Dashboard', badge: null },
-    ...(isEligible ? [
+    ...(isEligibleQuest ? [
       { id: 'quest' as StudentNavTab, label: 'DSA Quest', badge: null, badgeColor: 'bg-emerald-600 text-white' }
     ] : []),
+    ...(isEligibleL75 ? [
+      { id: 'leetcode75' as StudentNavTab, label: 'LeetCode 75', badge: null, badgeColor: 'bg-blue-600 text-white' }
+    ] : []),
     { id: 'contests', label: 'LeetCode Contests', badge: contestCount > 0 ? `${contestCount}` : null, badgeColor: 'bg-purple-600 text-white' },
-    { id: 'potd_tracks', label: 'POTD & Practice Tracks', badge: potdCount > 0 ? `${potdCount}` : null, badgeColor: 'bg-orange-500 text-white' },
+    { id: 'potd_tracks', label: 'Daily POTD', badge: potdCount > 0 ? `${potdCount}` : null, badgeColor: 'bg-orange-500 text-white' },
     { id: 'leaderboard', label: 'Class Leaderboard', badge: null },
     { id: 'submissions', label: 'Recent Submissions', badge: recentCount > 0 ? `${recentCount}` : null, badgeColor: 'bg-slate-700 text-slate-200' },
   ];
@@ -128,8 +132,8 @@ export const StudentSidebar: React.FC<StudentSidebarProps> = ({
                     key={item.id}
                     onClick={() => handleSelectTab(item.id)}
                     className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap group ${isActive
-                        ? 'bg-purple-600 text-white shadow-sm font-bold'
-                        : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                      ? 'bg-purple-600 text-white shadow-sm font-bold'
+                      : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
                       }`}
                   >
                     <div className="flex items-center gap-3">
@@ -142,8 +146,8 @@ export const StudentSidebar: React.FC<StudentSidebarProps> = ({
                     </div>
                     {item.badge && (
                       <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded-full font-bold ${isActive
-                          ? 'bg-white/20 text-white'
-                          : (item.badgeColor || 'bg-slate-800 text-slate-300')
+                        ? 'bg-white/20 text-white'
+                        : (item.badgeColor || 'bg-slate-800 text-slate-300')
                         }`}>
                         {item.badge}
                       </span>
@@ -167,8 +171,8 @@ export const StudentSidebar: React.FC<StudentSidebarProps> = ({
                     key={item.id}
                     onClick={() => handleSelectTab(item.id)}
                     className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap group ${isActive
-                        ? 'bg-purple-600 text-white shadow-sm font-bold'
-                        : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                      ? 'bg-purple-600 text-white shadow-sm font-bold'
+                      : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
                       }`}
                   >
                     <div className="flex items-center gap-3">

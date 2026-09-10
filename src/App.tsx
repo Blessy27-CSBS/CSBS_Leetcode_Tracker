@@ -14,6 +14,7 @@ import { SettingsView } from './pages/SettingsView';
 import { LoginView } from './pages/LoginView';
 import { StudentPortalView } from './pages/StudentPortalView';
 import { QuestView } from './pages/QuestView';
+import { FacultyLeetCode75View } from './pages/FacultyLeetCode75View';
 
 import { StudentDetailModal } from './components/StudentDetailModal';
 import { StudentFormModal } from './components/StudentFormModal';
@@ -258,6 +259,14 @@ export function App() {
       case 'quest':
         return (
           <QuestView
+            students={students}
+            onSelectStudent={handleOpenStudentDetail}
+          />
+        );
+
+      case 'leetcode75':
+        return (
+          <FacultyLeetCode75View
             students={students}
             onSelectStudent={handleOpenStudentDetail}
           />

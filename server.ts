@@ -29,6 +29,11 @@ import {
   computeStudentQuestProgress,
   computeFacultyQuestSummary
 } from './server/questData.js';
+import {
+  LEETCODE_75_CATEGORIES,
+  computeStudentLeetCode75Progress,
+  computeFacultyLeetCode75Summary
+} from './server/leetcode75Data.js';
 import { 
   BatchFetchProgress, 
   StudentWithLatest, 
@@ -454,6 +459,57 @@ app.get('/api/quest/faculty-overview', (req, res) => {
     res.json(summary);
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Failed to fetch faculty quest summary.' });
+  }
+});
+
+// ================= LEETCODE 75 ROUTES =================
+
+app.get('/api/leetcode75/problems', (req, res) => {
+  res.json({ categories: LEETCODE_75_CATEGORIES });
+});
+
+app.get('/api/leetcode75/student', (req, res) => {
+  try {
+    const session = parseAuthHeader(req);
+    const studentIdQuery = req.query.studentId as string;
+    const studentId = session?.student_id || studentIdQuery;
+
+    if (!studentId) {
+      return res.status(400).json({ error: 'Student ID required.' });
+    }
+
+    const student = db.getStudentById(studentId);
+    if (!student) {
+      return res.status(404).json({ error: 'Student record not found.' });
+    }
+
+    const snapshots = db.getSnapshots(student.id);
+    const settings = db.getSettings();
+    const enriched = enrichStudentWithSnapshots(student, snapshots, settings);
+    const submissions = db.getSubmissions(student.id);
+
+    const leetcode75Progress = computeStudentLeetCode75Progress(enriched, enriched.latest_snapshot, submissions);
+    res.json({ leetcode75Progress, categories: LEETCODE_75_CATEGORIES });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to fetch student LeetCode 75 progress.' });
+  }
+});
+
+app.get('/api/leetcode75/faculty-overview', (req, res) => {
+  try {
+    const students = db.getStudents();
+    const settings = db.getSettings();
+    const studentsWithLatest = students.map(s => {
+      const snapshots = db.getSnapshots(s.id);
+      const subs = db.getSubmissions(s.id);
+      const enriched = enrichStudentWithSnapshots(s, snapshots, settings);
+      return { ...enriched, submissions: subs };
+    });
+
+    const summary = computeFacultyLeetCode75Summary(studentsWithLatest);
+    res.json(summary);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to fetch faculty LeetCode 75 summary.' });
   }
 });
 

@@ -16,7 +16,10 @@ import {
   StudentDashboardData,
   ContestItem,
   StudentQuestProgress,
-  FacultyQuestSummary
+  FacultyQuestSummary,
+  StudentLeetCode75Progress,
+  FacultyLeetCode75Summary,
+  LeetCode75Category
 } from '../types';
 
 const TOKEN_KEY = 'csbs_auth_token';
@@ -170,6 +173,26 @@ export const api = {
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || 'Failed to load faculty quest summary');
+    return json;
+  },
+
+  // LeetCode 75 API
+  async getLeetCode75StudentProgress(studentId?: string): Promise<{ leetcode75Progress: StudentLeetCode75Progress; categories: LeetCode75Category[] }> {
+    const url = studentId ? `/api/leetcode75/student?studentId=${studentId}` : '/api/leetcode75/student';
+    const res = await fetch(url, {
+      headers: { ...getAuthHeaders() },
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to load LeetCode 75 progress');
+    return json;
+  },
+
+  async getFacultyLeetCode75Summary(): Promise<FacultyLeetCode75Summary> {
+    const res = await fetch('/api/leetcode75/faculty-overview', {
+      headers: { ...getAuthHeaders() },
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to load faculty LeetCode 75 summary');
     return json;
   },
 

@@ -354,3 +354,55 @@ export function isEligibleForQuest(year?: string): boolean {
   const normalized = String(year).trim().toUpperCase();
   return ['II', 'III', '2', '3', '2ND', '3RD', 'YEAR 2', 'YEAR 3', '2ND YEAR', '3RD YEAR'].includes(normalized);
 }
+
+export function isEligibleForLeetCode75(year?: string): boolean {
+  if (!year) return false;
+  const normalized = String(year).trim().toUpperCase();
+  return ['IV', '4', '4TH', 'FINAL', 'FINAL YEAR', '4TH YEAR', 'YEAR 4', 'IV YEAR'].includes(normalized);
+}
+
+export interface LeetCode75Problem {
+  id: string;
+  title: string;
+  titleSlug: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  category: string;
+  leetcodeUrl: string;
+  solutionUrl?: string;
+  isSolved?: boolean;
+  solvedAt?: string;
+}
+
+export interface LeetCode75Category {
+  name: string;
+  problems: LeetCode75Problem[];
+}
+
+export interface StudentLeetCode75Progress {
+  studentId: string;
+  registerNo: string;
+  studentName: string;
+  year: string;
+  section: string;
+  username: string;
+  totalSolved: number;
+  completionPercentage: number;
+  easySolved: number;
+  mediumSolved: number;
+  hardSolved: number;
+  levelName: 'Explorer' | 'Achiever' | 'Master' | 'Ace';
+  levelNumber: 1 | 2 | 3 | 4;
+  solvedSlugs: string[];
+  categoryProgress: Record<string, { total: number; solved: number }>;
+  lastActive?: string;
+}
+
+export interface FacultyLeetCode75Summary {
+  eligibleStudentsCount: number; // IV year
+  activeParticipantsCount: number;
+  avgCompletionPercentage: number;
+  badgeEarnersCount: number; // solved >= 60 or 75
+  totalSolvedOverall: number;
+  studentsProgress: StudentLeetCode75Progress[];
+}
+

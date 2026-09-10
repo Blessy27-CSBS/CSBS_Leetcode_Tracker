@@ -7,6 +7,7 @@ import {
 export type NavTab =
   | 'dashboard'
   | 'quest'
+  | 'leetcode75'
   | 'contests'
   | 'tracks'
   | 'students'
@@ -37,8 +38,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const analyticsItems: { id: NavTab; label: string; badge: string | null; badgeColor?: string }[] = [
     { id: 'dashboard', label: 'Dashboard', badge: null },
     { id: 'quest', label: 'DSA Quest Tracker', badge: null, badgeColor: 'bg-emerald-600 text-white' },
+    { id: 'leetcode75', label: 'LeetCode 75 Tracker', badge: null, badgeColor: 'bg-blue-600 text-white' },
     { id: 'contests', label: 'LeetCode Contests', badge: null },
-    { id: 'tracks', label: 'Daily POTD & Tracks', badge: null },
+    { id: 'tracks', label: 'Daily POTD', badge: null },
     { id: 'leaderboard', label: 'Leaderboard', badge: null },
     { id: 'progress', label: 'Most Improved', badge: null },
     { id: 'sections', label: 'Academic Years', badge: null },
@@ -110,8 +112,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     key={item.id}
                     onClick={() => handleSelectTab(item.id as NavTab)}
                     className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap group ${isActive
-                        ? 'bg-purple-600 text-white shadow-sm font-bold'
-                        : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                      ? 'bg-purple-600 text-white shadow-sm font-bold'
+                      : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
                       }`}
                   >
                     <div className="flex items-center gap-3">
@@ -125,8 +127,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </div>
                     {item.badge && (
                       <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded-full font-bold ${isActive
-                          ? 'bg-white/20 text-white'
-                          : (item.badgeColor || 'bg-slate-800 text-slate-300')
+                        ? 'bg-white/20 text-white'
+                        : (item.badgeColor || 'bg-slate-800 text-slate-300')
                         }`}>
                         {item.badge}
                       </span>
@@ -150,8 +152,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     key={item.id}
                     onClick={() => handleSelectTab(item.id as NavTab)}
                     className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap group ${isActive
-                        ? 'bg-purple-600 text-white shadow-sm font-bold'
-                        : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                      ? 'bg-purple-600 text-white shadow-sm font-bold'
+                      : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
                       }`}
                   >
                     <div className="flex items-center gap-3">
@@ -165,8 +167,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </div>
                     {item.badge && (
                       <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded-full font-bold ${isActive
-                          ? 'bg-white/20 text-white'
-                          : (item.badgeColor || 'bg-slate-800 text-slate-300')
+                        ? 'bg-white/20 text-white'
+                        : (item.badgeColor || 'bg-slate-800 text-slate-300')
                         }`}>
                         {item.badge}
                       </span>
