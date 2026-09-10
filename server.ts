@@ -25,6 +25,11 @@ import {
   generateStudentsCSV 
 } from './server/reports.js';
 import { 
+  LEETCODE_DSA_QUEST_NODES,
+  computeStudentQuestProgress,
+  computeFacultyQuestSummary
+} from './server/questData.js';
+import { 
   BatchFetchProgress, 
   StudentWithLatest, 
   Student, 
@@ -401,6 +406,54 @@ app.post('/api/auth/change-password', (req, res) => {
     res.json({ success: true, message: 'Password updated successfully.' });
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Failed to change password.' });
+  }
+});
+
+// ================= DSA QUEST ROUTES =================
+
+app.get('/api/quest/nodes', (req, res) => {
+  res.json({ nodes: LEETCODE_DSA_QUEST_NODES });
+});
+
+app.get('/api/quest/student', (req, res) => {
+  try {
+    const session = parseAuthHeader(req);
+    const studentIdQuery = req.query.studentId as string;
+    const studentId = session?.student_id || studentIdQuery;
+
+    if (!studentId) {
+      return res.status(400).json({ error: 'Student ID required.' });
+    }
+
+    const student = db.getStudentById(studentId);
+    if (!student) {
+      return res.status(404).json({ error: 'Student record not found.' });
+    }
+
+    const snapshots = db.getSnapshots(student.id);
+    const settings = db.getSettings();
+    const enriched = enrichStudentWithSnapshots(student, snapshots, settings);
+
+    const questProgress = computeStudentQuestProgress(enriched, enriched.latest_snapshot);
+    res.json({ questProgress });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to fetch student quest progress.' });
+  }
+});
+
+app.get('/api/quest/faculty-overview', (req, res) => {
+  try {
+    const students = db.getStudents();
+    const settings = db.getSettings();
+    const studentsWithLatest = students.map(s => {
+      const snapshots = db.getSnapshots(s.id);
+      return enrichStudentWithSnapshots(s, snapshots, settings);
+    });
+
+    const summary = computeFacultyQuestSummary(studentsWithLatest);
+    res.json(summary);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to fetch faculty quest summary.' });
   }
 });
 

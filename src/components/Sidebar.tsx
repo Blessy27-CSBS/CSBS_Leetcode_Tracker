@@ -6,6 +6,7 @@ import {
 
 export type NavTab =
   | 'dashboard'
+  | 'quest'
   | 'contests'
   | 'tracks'
   | 'students'
@@ -35,6 +36,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const analyticsItems: { id: NavTab; label: string; badge: string | null; badgeColor?: string }[] = [
     { id: 'dashboard', label: 'Dashboard', badge: null },
+    { id: 'quest', label: 'DSA Quest Tracker', badge: null, badgeColor: 'bg-emerald-600 text-white' },
     { id: 'contests', label: 'LeetCode Contests', badge: null },
     { id: 'tracks', label: 'Daily POTD & Tracks', badge: null },
     { id: 'leaderboard', label: 'Leaderboard', badge: null },
@@ -63,17 +65,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
     <>
       {/* Mobile Backdrop Overlay */}
       {isOpen && (
-        <div 
+        <div
           onClick={onClose}
           className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-40 md:hidden animate-fade-in"
         />
       )}
 
       {/* Main Sidebar Container */}
-      <aside className={`w-64 bg-[#1e293b] text-slate-200 flex flex-col shrink-0 border-r border-slate-800 select-none z-50 fixed inset-y-0 left-0 md:sticky md:top-14 md:z-20 md:h-[calc(100vh-3.5rem)] transition-transform duration-200 ${
-        isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
-      }`}>
-        
+      <aside className={`w-64 bg-[#1e293b] text-slate-200 flex flex-col shrink-0 border-r border-slate-800 select-none z-50 fixed inset-y-0 left-0 md:sticky md:top-14 md:z-20 md:h-[calc(100vh-3.5rem)] transition-transform duration-200 ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        }`}>
+
         {/* Sidebar Header */}
         <div className="px-4 py-3.5 border-b border-slate-800 flex items-center justify-between bg-[#0f172a]">
           <div className="flex items-center gap-2">
@@ -108,11 +109,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <button
                     key={item.id}
                     onClick={() => handleSelectTab(item.id as NavTab)}
-                    className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap group ${
-                      isActive
+                    className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap group ${isActive
                         ? 'bg-purple-600 text-white shadow-sm font-bold'
                         : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center gap-3">
                       {/* Radio Circle Bullet */}
@@ -124,11 +124,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       <span>{item.label}</span>
                     </div>
                     {item.badge && (
-                      <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
-                        isActive 
-                          ? 'bg-white/20 text-white' 
+                      <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded-full font-bold ${isActive
+                          ? 'bg-white/20 text-white'
                           : (item.badgeColor || 'bg-slate-800 text-slate-300')
-                      }`}>
+                        }`}>
                         {item.badge}
                       </span>
                     )}
@@ -150,11 +149,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <button
                     key={item.id}
                     onClick={() => handleSelectTab(item.id as NavTab)}
-                    className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap group ${
-                      isActive
+                    className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap group ${isActive
                         ? 'bg-purple-600 text-white shadow-sm font-bold'
                         : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center gap-3">
                       {/* Radio Circle Bullet */}
@@ -166,11 +164,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       <span>{item.label}</span>
                     </div>
                     {item.badge && (
-                      <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
-                        isActive 
-                          ? 'bg-white/20 text-white' 
+                      <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded-full font-bold ${isActive
+                          ? 'bg-white/20 text-white'
                           : (item.badgeColor || 'bg-slate-800 text-slate-300')
-                      }`}>
+                        }`}>
                         {item.badge}
                       </span>
                     )}

@@ -301,6 +301,56 @@ export interface StudentDashboardData {
   totalStudentsDepartment: number;
   totalStudentsSection: number;
 }
+export type QuestNodeStatus = 'COMPLETED' | 'IN_PROGRESS' | 'LOCKED';
 
+export interface QuestSampleProblem {
+  title: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  leetcodeUrl: string;
+  titleSlug: string;
+}
 
+export interface QuestNode {
+  id: string;
+  title: string;
+  region: 'Linear Shoal' | 'Sequence Valley' | 'Tree Peak' | 'Graph Summit';
+  levelNumber: number;
+  requiredSolvedCount: number;
+  topics: string[];
+  description: string;
+  sampleProblems: QuestSampleProblem[];
+}
 
+export interface StudentQuestProgress {
+  studentId: string;
+  registerNo: string;
+  studentName: string;
+  year: string;
+  section: string;
+  username: string;
+  currentLevelNumber: number;
+  currentStageName: string;
+  completedNodeIds: string[];
+  unlockedNodeIds: string[];
+  totalSolvedInQuest: number;
+  totalQuestNodes: number;
+  completedNodesCount: number;
+  completionPercentage: number;
+  lastActive?: string;
+  nodes: (QuestNode & { status: QuestNodeStatus; userSolvedCount: number })[];
+}
+
+export interface FacultyQuestSummary {
+  eligibleStudentsCount: number; // II & III years
+  activeParticipantsCount: number;
+  avgCompletionPercentage: number;
+  highestStageReached: string;
+  stageDistribution: Record<string, number>;
+  studentsProgress: StudentQuestProgress[];
+}
+
+export function isEligibleForQuest(year?: string): boolean {
+  if (!year) return false;
+  const normalized = String(year).trim().toUpperCase();
+  return ['II', 'III', '2', '3', '2ND', '3RD', 'YEAR 2', 'YEAR 3', '2ND YEAR', '3RD YEAR'].includes(normalized);
+}

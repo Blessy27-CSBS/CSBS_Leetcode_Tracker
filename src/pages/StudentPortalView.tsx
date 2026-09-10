@@ -42,6 +42,7 @@ import {
 } from 'lucide-react';
 import { LeetCodeContestLeaderboard } from '../components/LeetCodeContestLeaderboard';
 import { StudentSidebar, StudentNavTab } from '../components/StudentSidebar';
+import { StudentQuestView } from '../components/StudentQuestView';
 
 interface StudentPortalViewProps {
   currentUser: AuthUser;
@@ -776,6 +777,11 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
           </div>
 
         </div>
+      )}
+
+      {/* TAB: DSA QUEST */}
+      {activeSubTab === 'quest' && (
+        <StudentQuestView currentUser={currentUser} />
       )}
 
       {/* TAB 2: LEETCODE CONTESTS */}

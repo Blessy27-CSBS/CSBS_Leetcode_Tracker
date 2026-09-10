@@ -13,6 +13,7 @@ import { ReportsView } from './pages/ReportsView';
 import { SettingsView } from './pages/SettingsView';
 import { LoginView } from './pages/LoginView';
 import { StudentPortalView } from './pages/StudentPortalView';
+import { QuestView } from './pages/QuestView';
 
 import { StudentDetailModal } from './components/StudentDetailModal';
 import { StudentFormModal } from './components/StudentFormModal';
@@ -251,6 +252,14 @@ export function App() {
             onOpenAddStudent={handleOpenAddStudent}
             onSelectStudent={handleOpenStudentDetail}
             onNavigateTab={setActiveTab}
+          />
+        );
+
+      case 'quest':
+        return (
+          <QuestView
+            students={students}
+            onSelectStudent={handleOpenStudentDetail}
           />
         );
 

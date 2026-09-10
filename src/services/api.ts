@@ -14,7 +14,9 @@ import {
   AuthUser,
   AuthSession,
   StudentDashboardData,
-  ContestItem
+  ContestItem,
+  StudentQuestProgress,
+  FacultyQuestSummary
 } from '../types';
 
 const TOKEN_KEY = 'csbs_auth_token';
@@ -148,6 +150,26 @@ export const api = {
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || 'Failed to sync LeetCode profile');
+    return json;
+  },
+
+  // Quest API
+  async getQuestStudentProgress(studentId?: string): Promise<{ questProgress: StudentQuestProgress }> {
+    const url = studentId ? `/api/quest/student?studentId=${studentId}` : '/api/quest/student';
+    const res = await fetch(url, {
+      headers: { ...getAuthHeaders() },
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to load quest progress');
+    return json;
+  },
+
+  async getFacultyQuestSummary(): Promise<FacultyQuestSummary> {
+    const res = await fetch('/api/quest/faculty-overview', {
+      headers: { ...getAuthHeaders() },
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to load faculty quest summary');
     return json;
   },
 
