@@ -20,7 +20,8 @@ import {
   Trophy,
   Share2,
   RotateCcw,
-  Target
+  Target,
+  RefreshCw
 } from 'lucide-react';
 
 interface StudentLeetCode75ViewProps {
@@ -31,6 +32,8 @@ export const StudentLeetCode75View: React.FC<StudentLeetCode75ViewProps> = ({ st
   const [progress, setProgress] = useState<StudentLeetCode75Progress | null>(null);
   const [categories, setCategories] = useState<LeetCode75Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState('');
   const [error, setError] = useState('');
 
   // Filters & State
@@ -39,21 +42,62 @@ export const StudentLeetCode75View: React.FC<StudentLeetCode75ViewProps> = ({ st
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    loadLeetCode75();
+    loadLeetCode75(true);
   }, [studentId]);
 
-  const loadLeetCode75 = async () => {
+  const loadLeetCode75 = async (autoSync = false) => {
     try {
-      setLoading(true);
+      if (!progress) setLoading(true);
       setError('');
       const res = await api.getLeetCode75StudentProgress(studentId);
       setProgress(res.leetcode75Progress);
       setCategories(res.categories);
+
+      // Auto-sync fresh LeetCode data if requested on mount
+      if (autoSync && !syncing) {
+        handleSyncSilently();
+      }
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'Failed to load LeetCode 75 Study Plan.');
+      if (!progress) {
+        setError(err.message || 'Failed to load LeetCode 75 Study Plan.');
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSyncSilently = async () => {
+    try {
+      setSyncing(true);
+      await api.syncMyLeetCode(studentId);
+      const res = await api.getLeetCode75StudentProgress(studentId);
+      setProgress(res.leetcode75Progress);
+      setCategories(res.categories);
+      setSyncMsg('Auto-synced with LeetCode live');
+      setTimeout(() => setSyncMsg(''), 4000);
+    } catch (e) {
+      // Ignore background sync errors if initial data is present
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleManualSync = async () => {
+    try {
+      setSyncing(true);
+      setSyncMsg('');
+      setError('');
+      await api.syncMyLeetCode(studentId);
+      const res = await api.getLeetCode75StudentProgress(studentId);
+      setProgress(res.leetcode75Progress);
+      setCategories(res.categories);
+      setSyncMsg('Successfully synchronized LeetCode 75 progress!');
+      setTimeout(() => setSyncMsg(''), 4000);
+    } catch (err: any) {
+      setError(err.message || 'Failed to sync LeetCode progress.');
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -151,8 +195,8 @@ export const StudentLeetCode75View: React.FC<StudentLeetCode75ViewProps> = ({ st
               LeetCode 75
             </h1>
 
-            {/* Start CTA Button */}
-            <div className="flex items-center gap-3 pt-2">
+            {/* Start CTA Button & Sync Button */}
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
               <a
                 href="https://leetcode.com/studyplan/leetcode-75/"
                 target="_blank"
@@ -162,7 +206,24 @@ export const StudentLeetCode75View: React.FC<StudentLeetCode75ViewProps> = ({ st
                 <Play className="w-4 h-4 fill-current" />
                 <span>{totalSolved > 0 ? 'Continue' : 'Start'}</span>
               </a>
+
+              <button
+                onClick={handleManualSync}
+                disabled={syncing}
+                className="inline-flex items-center gap-2 px-5 py-3 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 rounded-full font-bold text-xs shadow-xs transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Sync fresh progress from LeetCode"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
+                <span>{syncing ? 'Syncing...' : 'Sync LeetCode'}</span>
+              </button>
             </div>
+
+            {syncMsg && (
+              <div className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 animate-fade-in flex items-center gap-1.5 justify-center">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>{syncMsg}</span>
+              </div>
+            )}
 
             {/* Overall Progress Gauge */}
             <div className="w-full max-w-md pt-4 space-y-2">

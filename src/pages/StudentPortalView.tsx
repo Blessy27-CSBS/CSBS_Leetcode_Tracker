@@ -7,7 +7,8 @@ import {
   POTDItem, 
   RecentSubmission,
   ContestItem,
-  AuthUser
+  AuthUser,
+  isEligibleForLeetCode75
 } from '../types';
 import { api } from '../services/api';
 import { 
@@ -126,6 +127,8 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
     }
   }, [allStudents]);
 
+  const [autoSynced, setAutoSynced] = useState(false);
+
   // Load Dashboard Data
   useEffect(() => {
     loadDashboard();
@@ -139,6 +142,19 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
       setDashboardData(data);
       if (data.tracks && data.tracks.length > 0 && !selectedTrackId) {
         setSelectedTrackId(data.tracks[0].id);
+      }
+
+      // Auto sync LeetCode profile for IV Year students after sign in
+      if (data?.student && isEligibleForLeetCode75(data.student.year) && !autoSynced) {
+        setAutoSynced(true);
+        api.syncMyLeetCode(currentUser.student_id).then(res => {
+          if (res?.success) {
+            api.getStudentDashboard(currentUser.student_id).then(refreshed => {
+              setDashboardData(refreshed);
+              if (onStudentUpdated) onStudentUpdated();
+            }).catch(() => {});
+          }
+        }).catch(err => console.log('Auto sync in background:', err));
       }
     } catch (err: any) {
       console.error(err);
