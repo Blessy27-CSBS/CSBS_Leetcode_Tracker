@@ -32,26 +32,75 @@ import {
 import { RefreshCw, AlertCircle } from 'lucide-react';
 
 export function App() {
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
-  const [authChecking, setAuthChecking] = useState(true);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => api.getCachedUser());
+  const [authChecking, setAuthChecking] = useState<boolean>(() => {
+    const token = api.getToken();
+    const cached = api.getCachedUser();
+    return !!token && !cached;
+  });
 
-  const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
+  const [activeTab, setActiveTabState] = useState<NavTab>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('csbs_active_tab') as NavTab;
+      if (saved) return saved;
+    }
+    return 'dashboard';
+  });
+
+  const setActiveTab = (tab: NavTab) => {
+    setActiveTabState(tab);
+    try {
+      localStorage.setItem('csbs_active_tab', tab);
+    } catch (e) {}
+  };
+
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       return window.innerWidth >= 768;
     }
     return true;
   });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
-  // App Data
-  const [summary, setSummary] = useState<DashboardSummary | null>(null);
-  const [sectionStats, setSectionStats] = useState<SectionStat[]>([]);
-  const [batchStats, setBatchStats] = useState<BatchStat[]>([]);
-  const [timeline, setTimeline] = useState<{ date: string; total_problems: number; avg_problems: number; avg_rating: number }[]>([]);
-  const [students, setStudents] = useState<StudentWithLatest[]>([]);
-  const [settings, setSettings] = useState<SystemSettings | null>(null);
+  // Hydrate initial App Data from localStorage cache if available
+  const [summary, setSummary] = useState<DashboardSummary | null>(() => {
+    try {
+      const cached = localStorage.getItem('csbs_dashboard_cache');
+      return cached ? JSON.parse(cached).summary || null : null;
+    } catch (e) { return null; }
+  });
+  const [sectionStats, setSectionStats] = useState<SectionStat[]>(() => {
+    try {
+      const cached = localStorage.getItem('csbs_dashboard_cache');
+      return cached ? JSON.parse(cached).sectionStats || [] : [];
+    } catch (e) { return []; }
+  });
+  const [batchStats, setBatchStats] = useState<BatchStat[]>(() => {
+    try {
+      const cached = localStorage.getItem('csbs_dashboard_cache');
+      return cached ? JSON.parse(cached).batchStats || [] : [];
+    } catch (e) { return []; }
+  });
+  const [timeline, setTimeline] = useState<{ date: string; total_problems: number; avg_problems: number; avg_rating: number }[]>(() => {
+    try {
+      const cached = localStorage.getItem('csbs_dashboard_cache');
+      return cached ? JSON.parse(cached).timeline || [] : [];
+    } catch (e) { return []; }
+  });
+  const [students, setStudents] = useState<StudentWithLatest[]>(() => {
+    try {
+      const cached = localStorage.getItem('csbs_students_cache');
+      return cached ? JSON.parse(cached) || [] : [];
+    } catch (e) { return []; }
+  });
+  const [settings, setSettings] = useState<SystemSettings | null>(() => {
+    try {
+      const cached = localStorage.getItem('csbs_dashboard_cache');
+      return cached ? JSON.parse(cached).settings || null : null;
+    } catch (e) { return null; }
+  });
+
+  const [loading, setLoading] = useState<boolean>(() => !summary && !students.length);
+  const [error, setError] = useState('');
   const [batchProgress, setBatchProgress] = useState<BatchFetchProgress | undefined>(undefined);
 
   // Modal states
@@ -64,17 +113,18 @@ export function App() {
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
 
-  // Check auth session on startup
+  // Background verification of auth session on startup
   useEffect(() => {
     const verifySession = async () => {
       try {
-        setAuthChecking(true);
         const token = api.getToken();
         if (token) {
           const res = await api.getMe();
           if (res && res.user) {
             setCurrentUser(res.user);
           }
+        } else {
+          setCurrentUser(null);
         }
       } catch (e) {
         api.clearToken();
@@ -112,7 +162,7 @@ export function App() {
 
   const loadAllData = async () => {
     try {
-      setLoading(true);
+      if (!summary) setLoading(true);
       setError('');
 
       const studentList = await api.getStudents();
@@ -127,7 +177,9 @@ export function App() {
       setSettings(dashData.settings);
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'Failed to connect to backend service');
+      if (!summary) {
+        setError(err.message || 'Failed to connect to backend service');
+      }
     } finally {
       setLoading(false);
     }
@@ -137,6 +189,9 @@ export function App() {
     api.clearToken();
     setCurrentUser(null);
     setActiveTab('dashboard');
+    try {
+      localStorage.removeItem('csbs_active_tab');
+    } catch (e) {}
   };
 
   const handleOpenStudentDetail = (id: string) => {

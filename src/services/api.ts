@@ -18,6 +18,7 @@ import {
 } from '../types';
 
 const TOKEN_KEY = 'csbs_auth_token';
+const USER_KEY = 'csbs_auth_user';
 
 function getAuthHeaders(): HeadersInit {
   const token = localStorage.getItem(TOKEN_KEY);
@@ -34,8 +35,24 @@ export const api = {
     return localStorage.getItem(TOKEN_KEY);
   },
 
+  setCachedUser(user: AuthUser) {
+    try {
+      localStorage.setItem(USER_KEY, JSON.stringify(user));
+    } catch (e) {}
+  },
+
+  getCachedUser(): AuthUser | null {
+    try {
+      const raw = localStorage.getItem(USER_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  },
+
   clearToken() {
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
   },
 
   async login(credentials: {
@@ -54,6 +71,9 @@ export const api = {
     if (json.token) {
       this.setToken(json.token);
     }
+    if (json.user) {
+      this.setCachedUser(json.user);
+    }
     return json;
   },
 
@@ -63,6 +83,9 @@ export const api = {
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || 'Failed to fetch session');
+    if (json.user) {
+      this.setCachedUser(json.user);
+    }
     return json;
   },
 
@@ -82,13 +105,36 @@ export const api = {
 
   // Student Portal
   async getStudentDashboard(studentId?: string): Promise<StudentDashboardData> {
+    const cacheKey = `csbs_student_dash_${studentId || 'me'}`;
     const url = studentId ? `/api/student/dashboard?studentId=${studentId}` : '/api/student/dashboard';
-    const res = await fetch(url, {
-      headers: { ...getAuthHeaders() },
-    });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || 'Failed to load student dashboard');
-    return json;
+    try {
+      const res = await fetch(url, {
+        headers: { ...getAuthHeaders() },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json && json.student) {
+          try {
+            localStorage.setItem(cacheKey, JSON.stringify(json));
+          } catch (e) {}
+        }
+        return json;
+      }
+    } catch (err) {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        try {
+          return JSON.parse(cached);
+        } catch (e) {}
+      }
+    }
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch (e) {}
+    }
+    throw new Error('Failed to load student dashboard');
   },
 
   async syncMyLeetCode(studentId?: string): Promise<{ success: boolean; snapshot: Snapshot; student: StudentWithLatest }> {

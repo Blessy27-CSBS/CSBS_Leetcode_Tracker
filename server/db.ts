@@ -344,10 +344,32 @@ export class DatabaseService {
     }
     if (!isSupabaseConfigured || !supabase) return;
     try {
+      // Execute all 9 cloud database queries concurrently in parallel
+      const [
+        studentsRes,
+        snapRes,
+        subRes,
+        settingsRes,
+        potdRes,
+        tracksRes,
+        probsRes,
+        contestRes,
+        usersRes
+      ] = await Promise.all([
+        supabase.from('students').select('*').order('student_name', { ascending: true }),
+        supabase.from('snapshots').select('*').order('captured_at', { ascending: true }),
+        supabase.from('recent_submissions').select('*'),
+        supabase.from('settings').select('*').eq('id', 1).maybeSingle(),
+        supabase.from('potd_items').select('*').order('date', { ascending: false }),
+        supabase.from('curated_tracks').select('*'),
+        supabase.from('curated_problems').select('*').order('orderIndex', { ascending: true }),
+        supabase.from('contests').select('*').order('startTime', { ascending: true }),
+        supabase.from('users').select('*')
+      ]);
+
       // 1. Students
-      const { data: studentsData, error: studentErr } = await supabase.from('students').select('*').order('student_name', { ascending: true });
-      if (!studentErr && studentsData && studentsData.length > 0) {
-        this.memStore.students = studentsData.map((s: any) => ({
+      if (!studentsRes.error && studentsRes.data && studentsRes.data.length > 0) {
+        this.memStore.students = studentsRes.data.map((s: any) => ({
           id: s.id,
           register_no: s.register_no,
           student_name: s.student_name,
@@ -362,21 +384,20 @@ export class DatabaseService {
           created_at: s.created_at,
           notes: s.notes || undefined,
         }));
-        console.log(`[Supabase] Loaded ${studentsData.length} students from cloud database.`);
+        console.log(`[Supabase] Loaded ${studentsRes.data.length} students from cloud database.`);
       } else {
         // Fallback: Populate memory store from local database if Supabase query is empty or errored
         const localStudents = this.getStudents();
         console.log(`[Database] Using ${localStudents.length} local students dataset.`);
-        if (!studentErr && localStudents.length > 0) {
+        if (!studentsRes.error && localStudents.length > 0) {
           console.log(`[Supabase] Initial cloud database empty. Seeding ${localStudents.length} students to Supabase Cloud...`);
           this.syncAllToSupabase().catch(e => console.error('[Supabase] Initial seed error:', e));
         }
       }
 
       // 2. Snapshots
-      const { data: snapData } = await supabase.from('snapshots').select('*').order('captured_at', { ascending: true });
-      if (snapData && snapData.length > 0) {
-        this.memStore.snapshots = snapData.map((r: any) => ({
+      if (snapRes.data && snapRes.data.length > 0) {
+        this.memStore.snapshots = snapRes.data.map((r: any) => ({
           id: r.id,
           student_id: r.student_id,
           captured_at: r.captured_at,
@@ -404,13 +425,12 @@ export class DatabaseService {
           status: r.status || 'SUCCESS',
           error: r.error || undefined,
         }));
-        console.log(`[Supabase] Loaded ${snapData.length} snapshots from cloud database.`);
+        console.log(`[Supabase] Loaded ${snapRes.data.length} snapshots from cloud database.`);
       }
 
       // 3. Recent Submissions
-      const { data: subData } = await supabase.from('recent_submissions').select('*');
-      if (subData && subData.length > 0) {
-        this.memStore.recent_submissions = subData.map((s: any) => ({
+      if (subRes.data && subRes.data.length > 0) {
+        this.memStore.recent_submissions = subRes.data.map((s: any) => ({
           id: s.id,
           student_id: s.student_id,
           title: s.title,
@@ -419,12 +439,12 @@ export class DatabaseService {
           language: s.language,
           statusDisplay: s.statusDisplay,
         }));
-        console.log(`[Supabase] Loaded ${subData.length} recent submissions from cloud database.`);
+        console.log(`[Supabase] Loaded ${subRes.data.length} recent submissions from cloud database.`);
       }
 
       // 4. Settings
-      const { data: settingsData } = await supabase.from('settings').select('*').eq('id', 1).maybeSingle();
-      if (settingsData) {
+      if (settingsRes.data) {
+        const settingsData = settingsRes.data;
         this.memStore.settings = {
           inactivity_threshold_days: settingsData.inactivity_threshold_days ?? 14,
           academic_year: settingsData.academic_year || '2024-2025',
@@ -440,9 +460,8 @@ export class DatabaseService {
       }
 
       // 5. POTD Items
-      const { data: potdData } = await supabase.from('potd_items').select('*').order('date', { ascending: false });
-      if (potdData && potdData.length > 0) {
-        this.memStore.potd_items = potdData.map((p: any) => ({
+      if (potdRes.data && potdRes.data.length > 0) {
+        this.memStore.potd_items = potdRes.data.map((p: any) => ({
           id: p.id,
           date: p.date,
           title: p.title,
@@ -458,9 +477,8 @@ export class DatabaseService {
       }
 
       // 6. Curated Tracks
-      const { data: tracksData } = await supabase.from('curated_tracks').select('*');
-      if (tracksData && tracksData.length > 0) {
-        this.memStore.curated_tracks = tracksData.map((t: any) => ({
+      if (tracksRes.data && tracksRes.data.length > 0) {
+        this.memStore.curated_tracks = tracksRes.data.map((t: any) => ({
           id: t.id,
           title: t.title,
           description: t.description,
@@ -471,9 +489,8 @@ export class DatabaseService {
       }
 
       // 7. Curated Problems
-      const { data: probsData } = await supabase.from('curated_problems').select('*').order('orderIndex', { ascending: true });
-      if (probsData && probsData.length > 0) {
-        this.memStore.curated_problems = probsData.map((p: any) => ({
+      if (probsRes.data && probsRes.data.length > 0) {
+        this.memStore.curated_problems = probsRes.data.map((p: any) => ({
           id: p.id,
           trackId: p.trackId,
           title: p.title,
@@ -486,9 +503,8 @@ export class DatabaseService {
       }
 
       // 8. Contests
-      const { data: contestData } = await supabase.from('contests').select('*').order('startTime', { ascending: true });
-      if (contestData && contestData.length > 0) {
-        this.memStore.contests = contestData.map((c: any) => ({
+      if (contestRes.data && contestRes.data.length > 0) {
+        this.memStore.contests = contestRes.data.map((c: any) => ({
           id: c.id,
           title: c.title,
           titleSlug: c.titleSlug,
@@ -521,9 +537,8 @@ export class DatabaseService {
       }
 
       // 9. Users
-      const { data: usersData } = await supabase.from('users').select('*');
-      if (usersData && usersData.length > 0) {
-        this.memStore.users = usersData.map((u: any) => ({
+      if (usersRes.data && usersRes.data.length > 0) {
+        this.memStore.users = usersRes.data.map((u: any) => ({
           id: u.id,
           username: u.username,
           password_hash: u.password_hash,

@@ -58,9 +58,29 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
   sidebarOpen = true,
   setSidebarOpen
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<StudentNavTab>('overview');
-  const [dashboardData, setDashboardData] = useState<StudentDashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [activeSubTab, setActiveSubTabState] = useState<StudentNavTab>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('csbs_student_active_tab') as StudentNavTab;
+      if (saved) return saved;
+    }
+    return 'overview';
+  });
+
+  const setActiveSubTab = (tab: StudentNavTab) => {
+    setActiveSubTabState(tab);
+    try {
+      localStorage.setItem('csbs_student_active_tab', tab);
+    } catch (e) {}
+  };
+
+  const cacheKey = `csbs_student_dash_${currentUser.student_id || 'me'}`;
+  const [dashboardData, setDashboardData] = useState<StudentDashboardData | null>(() => {
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      return cached ? JSON.parse(cached) : null;
+    } catch (e) { return null; }
+  });
+  const [loading, setLoading] = useState<boolean>(() => !dashboardData);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState('');
   const [syncSuccessMsg, setSyncSuccessMsg] = useState('');
@@ -111,7 +131,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
 
   const loadDashboard = async () => {
     try {
-      setLoading(true);
+      if (!dashboardData) setLoading(true);
       setError('');
       const data = await api.getStudentDashboard(currentUser.student_id);
       setDashboardData(data);
@@ -120,7 +140,9 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
       }
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'Failed to load your student dashboard.');
+      if (!dashboardData) {
+        setError(err.message || 'Failed to load your student dashboard.');
+      }
     } finally {
       setLoading(false);
     }

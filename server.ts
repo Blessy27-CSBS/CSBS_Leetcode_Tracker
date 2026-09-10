@@ -43,18 +43,21 @@ const PORT = Number(process.env.PORT) || 3000;
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Middleware to ensure Supabase database state is populated on cold starts / page reloads
+// Middleware to ensure Supabase database state is populated on cold starts / page reloads with timeout guard
 let isSupabaseLoaded = false;
 let supabaseLoadPromise: Promise<void> | null = null;
 
 app.use(async (req, res, next) => {
   if (!isSupabaseLoaded) {
     if (!supabaseLoadPromise) {
-      supabaseLoadPromise = db.loadFromSupabase().then(() => {
+      const loadTask = db.loadFromSupabase().then(() => {
         isSupabaseLoaded = true;
       }).catch(err => {
         console.error('Supabase middleware load error:', err);
       });
+
+      const timeoutTask = new Promise<void>((resolve) => setTimeout(resolve, 2500));
+      supabaseLoadPromise = Promise.race([loadTask, timeoutTask]);
     }
     await supabaseLoadPromise;
   }
