@@ -178,34 +178,32 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                 </div>
               </div>
 
-              {/* Password - Only for Faculty Staff */}
-              {activeRole === 'staff' && (
-                <div className="space-y-1.5 animate-fade-in">
-                  <label className="block text-xs font-extrabold text-white drop-shadow-sm">
-                    Faculty Password
-                  </label>
-                  <div className="relative group">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-300 group-focus-within:text-purple-300 transition-colors">
-                      <Lock className="w-4 h-4" />
-                    </div>
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Enter your password"
-                      required={activeRole === 'staff'}
-                      className="w-full pl-10 pr-10 py-2.5 bg-black/45 backdrop-blur-md border border-white/30 rounded-xl text-sm text-white placeholder-slate-300 focus:bg-black/65 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400 font-semibold transition-all shadow-inner"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-300 hover:text-white cursor-pointer transition-colors"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
+              {/* Password Field */}
+              <div className="space-y-1.5 animate-fade-in">
+                <label className="block text-xs font-extrabold text-white drop-shadow-sm">
+                  {activeRole === 'student' ? 'Student Password' : 'Faculty Password'}
+                </label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-300 group-focus-within:text-purple-300 transition-colors">
+                    <Lock className="w-4 h-4" />
                   </div>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder={activeRole === 'student' ? 'Enter your password (e.g. Register No)' : 'Enter your password'}
+                    required
+                    className="w-full pl-10 pr-10 py-2.5 bg-black/45 backdrop-blur-md border border-white/30 rounded-xl text-sm text-white placeholder-slate-300 focus:bg-black/65 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400 font-semibold transition-all shadow-inner"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-300 hover:text-white cursor-pointer transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
-              )}
+              </div>
 
               {/* Submit Button */}
               <button

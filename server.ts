@@ -525,8 +525,8 @@ app.post('/api/auth/login', (req, res) => {
     if (!loginId) {
       return res.status(400).json({ error: 'Email ID / Register Number is required.' });
     }
-    if (role === 'staff' && !password) {
-      return res.status(400).json({ error: 'Password is required for staff login.' });
+    if (!password) {
+      return res.status(400).json({ error: 'Password is required to log in.' });
     }
 
     const authResult = db.authenticateUser(loginId, password, role);
@@ -534,7 +534,7 @@ app.post('/api/auth/login', (req, res) => {
       recordFailedLogin(clientIp);
       return res.status(401).json({ 
         error: role === 'student' 
-          ? 'Student record not found. Please verify your Email ID or Register Number.'
+          ? 'Invalid student credentials. Please check your Email ID / Register Number and password.'
           : 'Invalid staff credentials. Please check your username and password.'
       });
     }

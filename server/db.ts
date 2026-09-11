@@ -2216,7 +2216,7 @@ export class DatabaseService {
       if (role === 'staff') return null;
     }
 
-    // Student Authentication (Passwordless by Email / Register Number / Username)
+    // Student Authentication (Password verification by Email / Register Number / Username + Password)
     let foundStudent: Student | undefined;
     const allStudents = this.getStudents();
     const cleanIdPrefix = cleanId.includes('@') ? cleanId.split('@')[0].trim().toLowerCase() : cleanId.toLowerCase();
@@ -2242,8 +2242,19 @@ export class DatabaseService {
 
     if (foundStudent) {
       const studentUser = this.ensureStudentUser(foundStudent);
-      // Student login is passwordless by Email ID / Register No / Username
-      return { user: studentUser, student: foundStudent };
+      if (!cleanPwd) return null; // Student login requires password
+
+      const defaultRegNoHash = this.hashPassword(foundStudent.register_no.trim());
+      const defaultUnameHash = this.hashPassword(foundStudent.username.trim());
+
+      const isExactMatch = studentUser.password_hash === hashedPwd;
+      const isRegNoMatch = cleanPwd.toLowerCase() === foundStudent.register_no.toLowerCase().trim() || studentUser.password_hash === defaultRegNoHash;
+      const isUnameMatch = cleanPwd.toLowerCase() === foundStudent.username.toLowerCase().trim() || studentUser.password_hash === defaultUnameHash;
+
+      if (isExactMatch || isRegNoMatch || isUnameMatch) {
+        return { user: studentUser, student: foundStudent };
+      }
+      return null;
     }
 
     // Direct search in users table for student by username or email
@@ -2260,8 +2271,12 @@ export class DatabaseService {
     }
 
     if (userRow && userRow.role === 'student') {
-      const student = userRow.student_id ? this.getStudentById(userRow.student_id) : undefined;
-      return { user: userRow, student };
+      if (!cleanPwd) return null;
+      const isMatch = userRow.password_hash === hashedPwd;
+      if (isMatch) {
+        const student = userRow.student_id ? this.getStudentById(userRow.student_id) : undefined;
+        return { user: userRow, student };
+      }
     }
 
     return null;
