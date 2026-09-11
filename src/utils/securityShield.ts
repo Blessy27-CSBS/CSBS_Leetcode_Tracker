@@ -58,7 +58,33 @@ function isEditableElement(target: EventTarget | null): boolean {
 export function initSecurityShield(): () => void {
   if (typeof window === 'undefined') return () => {};
 
-  // 1. Console Warning Banner (Discord / Facebook Style)
+  // 0. Ensure Privacy Shield Overlay exists in DOM
+  let overlayEl = document.getElementById('privacy-shield-overlay');
+  if (!overlayEl) {
+    overlayEl = document.createElement('div');
+    overlayEl.id = 'privacy-shield-overlay';
+    overlayEl.innerHTML = `
+      <div class="privacy-shield-card">
+        <div class="privacy-icon">🔒</div>
+        <h3 class="privacy-title">Privacy Shield Active</h3>
+        <p class="privacy-desc">
+          Protected Academic Data • CSBS LeetCode Tracker<br/>
+          Student performance rankings and statistics are hidden during window blur or screen capture attempts.
+        </p>
+        <div class="privacy-action">
+          Click or return focus to resume
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlayEl);
+    overlayEl.addEventListener('click', () => {
+      document.body.classList.remove('privacy-shield-active');
+      const rootEl = document.getElementById('root');
+      if (rootEl) rootEl.classList.remove('window-blurred');
+    });
+  }
+
+  // 1. Console Warning Banner
   try {
     const bannerStyle = 'color: #ef4444; font-size: 28px; font-weight: 900; -webkit-text-stroke: 1px black;';
     const subStyle = 'color: #38bdf8; font-size: 13px; font-weight: 600; line-height: 1.6;';
@@ -75,7 +101,21 @@ export function initSecurityShield(): () => void {
     console.log('%cFrontend security shield active. Client-side actions are monitored.', textStyle);
   } catch (e) {}
 
-  // 2. Disable Context Menu (Right Click)
+  // 2. Intercept & Deter Browser Screen Capture APIs (getDisplayMedia)
+  try {
+    if (navigator.mediaDevices && typeof navigator.mediaDevices.getDisplayMedia === 'function') {
+      navigator.mediaDevices.getDisplayMedia = function (..._args: any[]) {
+        document.body.classList.add('privacy-shield-active');
+        emitAlert('screenshot', 'Screen recording and display capture is restricted on this platform.');
+        setTimeout(() => {
+          document.body.classList.remove('privacy-shield-active');
+        }, 5000);
+        return Promise.reject(new DOMException('Screen display capture is disabled on CSBS LeetCode Tracker.', 'NotAllowedError'));
+      };
+    }
+  } catch (e) {}
+
+  // 3. Disable Context Menu (Right Click)
   const handleContextMenu = (e: MouseEvent) => {
     if (isEditableElement(e.target)) return;
 
@@ -93,19 +133,20 @@ export function initSecurityShield(): () => void {
       }
     } catch (err) {}
 
-    // Add temporary flash veil overlay
+    // Add temporary privacy shield overlay
+    document.body.classList.add('privacy-shield-active');
     const rootEl = document.getElementById('root');
-    if (rootEl) {
-      rootEl.classList.add('screenshot-obscured');
-      setTimeout(() => {
-        rootEl.classList.remove('screenshot-obscured');
-      }, 1500);
-    }
+    if (rootEl) rootEl.classList.add('screenshot-obscured');
+
+    setTimeout(() => {
+      document.body.classList.remove('privacy-shield-active');
+      if (rootEl) rootEl.classList.remove('screenshot-obscured');
+    }, 2500);
 
     emitAlert('screenshot', reason);
   };
 
-  // 3. Keydown & Screenshot Shortcut Interception
+  // 4. Keydown & Screenshot Shortcut Interception
   const handleKeyDown = (e: KeyboardEvent) => {
     const key = e.key ? e.key.toLowerCase() : '';
     const keyCode = e.keyCode || e.which;
@@ -200,7 +241,7 @@ export function initSecurityShield(): () => void {
     }
   };
 
-  // 4. Prevent Dragging on Images & Media
+  // 5. Prevent Dragging on Images & Media
   const handleDragStart = (e: DragEvent) => {
     const target = e.target as HTMLElement | null;
     if (target && target.getAttribute('draggable') === 'true' && target.classList.contains('allow-drag')) {
@@ -210,7 +251,7 @@ export function initSecurityShield(): () => void {
     return false;
   };
 
-  // 5. Deter Copy & Cut outside form fields
+  // 6. Deter Copy & Cut outside form fields
   const handleCopy = (e: ClipboardEvent) => {
     if (isEditableElement(e.target)) return;
     const selection = window.getSelection();
@@ -233,14 +274,14 @@ export function initSecurityShield(): () => void {
     e.preventDefault();
   };
 
-  // 6. Print Capture Event Interception
+  // 7. Print Capture Event Interception
   const handleBeforePrint = () => {
     emitAlert('print', 'Printing is restricted to protect student confidentiality.');
   };
 
-  // 7. Privacy Veil on Blur / Window Visibility Loss
-  // Blurs page content when user opens Snipping Tool or switches windows so screen grabbers get blurred image
+  // 8. Full-Screen Privacy Shield on Blur / Window Visibility Loss
   const handleWindowBlur = () => {
+    document.body.classList.add('privacy-shield-active');
     const rootEl = document.getElementById('root');
     if (rootEl) {
       rootEl.classList.add('window-blurred');
@@ -248,6 +289,7 @@ export function initSecurityShield(): () => void {
   };
 
   const handleWindowFocus = () => {
+    document.body.classList.remove('privacy-shield-active');
     const rootEl = document.getElementById('root');
     if (rootEl) {
       rootEl.classList.remove('window-blurred');
@@ -256,15 +298,16 @@ export function initSecurityShield(): () => void {
 
   const handleVisibilityChange = () => {
     const rootEl = document.getElementById('root');
-    if (!rootEl) return;
     if (document.hidden) {
-      rootEl.classList.add('window-blurred');
+      document.body.classList.add('privacy-shield-active');
+      if (rootEl) rootEl.classList.add('window-blurred');
     } else {
-      rootEl.classList.remove('window-blurred');
+      document.body.classList.remove('privacy-shield-active');
+      if (rootEl) rootEl.classList.remove('window-blurred');
     }
   };
 
-  // 8. Non-blocking DevTools opening detection
+  // 9. Non-blocking DevTools opening detection
   let devToolsDetected = false;
   const checkDevTools = () => {
     const threshold = 160;
