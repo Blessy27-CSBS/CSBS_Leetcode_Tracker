@@ -17,7 +17,6 @@ import {
 } from 'lucide-react';
 import { StudentWithLatest } from '../types';
 import { api } from '../services/api';
-import { formatSectionName } from '../utils/formatters';
 
 interface StudentsViewProps {
   students: StudentWithLatest[];
@@ -39,7 +38,6 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   onDataRefresh,
 }) => {
   const [search, setSearch] = useState('');
-  const [selectedSection, setSelectedSection] = useState('ALL');
   const [selectedYear, setSelectedYear] = useState('ALL');
   const [selectedTier, setSelectedTier] = useState('ALL');
   const [selectedActivity, setSelectedActivity] = useState('ALL');
@@ -57,7 +55,6 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         (s.mentor && s.mentor.toLowerCase().includes(q));
       if (!match) return false;
     }
-    if (selectedSection !== 'ALL' && s.section !== selectedSection) return false;
     if (selectedYear !== 'ALL' && s.year !== selectedYear) return false;
     if (selectedTier !== 'ALL' && (s.latest_snapshot?.performance_tier || 'Beginner') !== selectedTier) return false;
     if (selectedActivity !== 'ALL' && (s.latest_snapshot?.activity_status || 'No Data') !== selectedActivity) return false;
@@ -167,17 +164,6 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             <span>Filters:</span>
           </div>
 
-          {/* Section Filter */}
-          <select
-            value={selectedSection}
-            onChange={e => setSelectedSection(e.target.value)}
-            className="bg-slate-50 border border-slate-200 rounded-md px-2.5 py-1 text-xs text-slate-700 focus:outline-hidden focus:border-blue-500"
-          >
-            <option value="ALL">All Sections</option>
-            <option value="A">Section A</option>
-            <option value="B">Section B</option>
-            <option value="C">Section C</option>
-          </select>
 
           {/* Year Filter */}
           <select
@@ -280,10 +266,10 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                         </div>
                       </td>
 
-                      {/* Section & Year */}
+                      {/* Year */}
                       <td className="py-3 px-3 whitespace-nowrap">
                         <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[11px] font-semibold border border-slate-200">
-                          Sec {s.section} • {s.year} Year
+                          {s.year} Year
                         </span>
                       </td>
 

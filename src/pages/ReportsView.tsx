@@ -191,7 +191,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                   <td className="py-2 px-3 font-mono">{s.total_problems}</td>
                   <td className="py-2 px-3 font-mono">{s.avg_problems}</td>
                   <td className="py-2 px-3 font-mono text-blue-600 font-semibold">{s.avg_engagement}/100</td>
-                  <td className="py-2 px-3">{s.top_performer?.name || 'N/A'}</td>
+                  <td className="py-2 px-3">{s.top_performer || 'N/A'}</td>
                 </tr>
               ))}
             </tbody>

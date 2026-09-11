@@ -167,6 +167,94 @@ export const ContestsView: React.FC<ContestsViewProps> = ({ isFaculty = true, st
   };
 
   const upcomingContests = contests.filter(c => new Date(c.startTime).getTime() + (c.durationMinutes * 60000) >= now);
+  const pastContests = isFaculty ? contests.filter(c => new Date(c.startTime).getTime() + (c.durationMinutes * 60000) < now) : [];
+
+  const ContestCard = ({ c, countdown, isLive, isPast = false }: { c: ContestItem; countdown: string; isLive: boolean; isPast?: boolean }) => (
+    <div className={`bg-white/90 backdrop-blur-md border rounded-2xl p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-4 ${isPast ? 'border-slate-200/60 opacity-80' : 'border-slate-200/80 hover:border-purple-300'}`}>
+      <div className="space-y-3">
+        {/* Type & Status Badge */}
+        <div className="flex items-center justify-between gap-2">
+          <span className={`inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-extrabold rounded-lg border ${
+            c.type === 'Department Contest'
+              ? 'bg-amber-50 border-amber-200 text-amber-700'
+              : 'bg-purple-50 border-purple-200 text-purple-700'
+          }`}>
+            <Trophy className="w-3.5 h-3.5" />
+            <span>{c.type}</span>
+          </span>
+
+          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border ${
+            isPast
+              ? 'bg-slate-50 text-slate-500 border-slate-200'
+              : isLive
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 animate-pulse'
+              : 'bg-amber-50 text-amber-800 border-amber-200'
+          }`}>
+            <Timer className="w-3.5 h-3.5" />
+            <span>{isPast ? 'Contest Ended' : isLive ? 'LIVE NOW' : countdown}</span>
+          </span>
+        </div>
+
+        {/* Title */}
+        <div>
+          <h3 className="text-base font-black text-slate-900">{c.title}</h3>
+          {c.description && (
+            <p className="text-xs text-slate-600 mt-1 line-clamp-2">{c.description}</p>
+          )}
+        </div>
+
+        {/* Meta */}
+        <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100 font-medium">
+          <div className="flex items-center gap-1.5">
+            <Calendar className="w-3.5 h-3.5 text-slate-400" />
+            <span>{new Date(c.startTime).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5 text-slate-400" />
+            <span>{new Date(c.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ({c.durationMinutes}m)</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+        <a
+          href={c.contestUrl}
+          target="_blank"
+          rel="noreferrer"
+          className={`flex-1 py-2.5 px-4 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition-all ${
+            isPast
+              ? 'bg-slate-500 hover:bg-slate-600'
+              : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700'
+          }`}
+        >
+          <span>{isPast ? 'View on LeetCode' : 'Enter Contest on LeetCode'}</span>
+          <ExternalLink className="w-3.5 h-3.5" />
+        </a>
+
+        {isFaculty && (
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => handleOpenEdit(c)}
+              className="p-2 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors cursor-pointer"
+              title="Edit Contest"
+            >
+              <Edit className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => handleDelete(c.id, c.title)}
+              className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+              title="Delete Contest"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
@@ -218,29 +306,23 @@ export const ContestsView: React.FC<ContestsViewProps> = ({ isFaculty = true, st
         </div>
       )}
 
-      {/* 2. CONTESTS GRID */}
+      {/* 2. ACTIVE & UPCOMING CONTESTS */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-            <Trophy className="w-4 h-4 text-purple-600" />
-            <span>Active & Upcoming Contests ({upcomingContests.length})</span>
-          </h2>
-        </div>
+        <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+          <Trophy className="w-4 h-4 text-purple-600" />
+          Active & Upcoming Contests ({upcomingContests.length})
+        </h2>
 
         {upcomingContests.length === 0 ? (
           <div className="p-10 bg-white/80 backdrop-blur-md border border-dashed border-slate-300 rounded-2xl text-center space-y-3 shadow-xs">
             <Trophy className="w-8 h-8 text-slate-300 mx-auto" />
             <h3 className="text-sm font-bold text-slate-800">No Scheduled Contests Currently</h3>
             <p className="text-xs text-slate-500 max-w-md mx-auto">
-              Faculty can post upcoming weekly or biweekly contest links. Click the button above to add a contest.
+              Faculty can post upcoming weekly or department contest links here.
             </p>
             {isFaculty && (
-              <button
-                onClick={handleOpenAdd}
-                className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Schedule a Contest</span>
+              <button onClick={handleOpenAdd} className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl cursor-pointer">
+                <Plus className="w-4 h-4" /><span>Schedule a Contest</span>
               </button>
             )}
           </div>
@@ -250,42 +332,35 @@ export const ContestsView: React.FC<ContestsViewProps> = ({ isFaculty = true, st
               const { text: countdown, isLive } = formatCountdown(c.startTime);
 
               return (
-                <div
-                  key={c.id}
-                  className="bg-white/90 backdrop-blur-md border border-slate-200/80 hover:border-purple-300 rounded-2xl p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-4"
-                >
+                <div key={c.id} className="bg-white/90 backdrop-blur-md border border-slate-200/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4">
                   <div className="space-y-3">
-                    
-                    {/* Top Type & Countdown Badge */}
                     <div className="flex items-center justify-between gap-2">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-50 border border-purple-200 text-purple-700 text-[11px] font-extrabold rounded-lg">
-                        <Trophy className="w-3.5 h-3.5 text-purple-600" />
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-extrabold rounded-lg border ${
+                        c.type === 'Department Contest'
+                          ? 'bg-amber-50 border-amber-200 text-amber-700'
+                          : 'bg-purple-50 border-purple-200 text-purple-700'
+                      }`}>
+                        <Trophy className="w-3.5 h-3.5" />
                         <span>{c.type}</span>
                       </span>
 
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold ${
-                        isLive 
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 animate-pulse'
-                          : 'bg-amber-50 text-amber-800 border border-amber-200'
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border ${
+                        isLive
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 animate-pulse'
+                          : 'bg-amber-50 text-amber-800 border-amber-200'
                       }`}>
-                        <Timer className="w-3.5 h-3.5 text-amber-600" />
+                        <Timer className="w-3.5 h-3.5" />
                         <span>{countdown}</span>
                       </span>
                     </div>
 
-                    {/* Title */}
                     <div>
-                      <h3 className="text-base font-black text-slate-900">
-                        {c.title}
-                      </h3>
+                      <h3 className="text-base font-black text-slate-900">{c.title}</h3>
                       {c.description && (
-                        <p className="text-xs text-slate-600 mt-1 line-clamp-2">
-                          {c.description}
-                        </p>
+                        <p className="text-xs text-slate-600 mt-1 line-clamp-2">{c.description}</p>
                       )}
                     </div>
 
-                    {/* Contest Meta Info */}
                     <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100 font-medium">
                       <div className="flex items-center gap-1.5">
                         <Calendar className="w-3.5 h-3.5 text-slate-400" />
@@ -296,10 +371,8 @@ export const ContestsView: React.FC<ContestsViewProps> = ({ isFaculty = true, st
                         <span>{new Date(c.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ({c.durationMinutes}m)</span>
                       </div>
                     </div>
-
                   </div>
 
-                  {/* Single Action Button: Enter Contest Link */}
                   <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
                     <a
                       href={c.contestUrl}

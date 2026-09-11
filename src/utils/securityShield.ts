@@ -1,9 +1,9 @@
 /**
  * CSBS LeetCode Tracker - Frontend Security Deterrence Shield
- * 
- * NOTE: Client-side restrictions are defense-in-depth deterrence to prevent
- * casual inspection, right-click copying, accidental dumps, screenshots, and DevTools inspection.
- * True security is enforced on the backend via token auth, RBAC, and rate limiting.
+ *
+ * Client-side controls are defense-in-depth only. They cannot prevent OS-level
+ * screenshot tools from capturing the screen, but they do hide sensitive data
+ * whenever the page loses focus or visibility and make casual extraction much harder.
  */
 
 export type SecurityAlert = {
@@ -16,6 +16,17 @@ export type SecurityAlert = {
 type AlertListener = (alert: SecurityAlert) => void;
 const listeners: Set<AlertListener> = new Set();
 
+type SecurityUser = {
+  id?: string;
+  username?: string;
+  email?: string;
+  name?: string;
+  student_name?: string;
+  role?: string;
+};
+
+let privacyOverlay: HTMLDivElement | null = null;
+
 export function onSecurityAlert(listener: AlertListener): () => void {
   listeners.add(listener);
   return () => {
@@ -26,7 +37,6 @@ export function onSecurityAlert(listener: AlertListener): () => void {
 let lastAlertTime = 0;
 function emitAlert(type: SecurityAlert['type'], message: string) {
   const now = Date.now();
-  // Throttle alerts to avoid spamming the UI
   if (now - lastAlertTime < 800) return;
   lastAlertTime = now;
 
@@ -55,36 +65,48 @@ function isEditableElement(target: EventTarget | null): boolean {
   return false;
 }
 
-export function initSecurityShield(): () => void {
-  if (typeof window === 'undefined') return () => {};
-
-  // 0. Ensure Privacy Shield Overlay exists in DOM
-  let overlayEl = document.getElementById('privacy-shield-overlay');
-  if (!overlayEl) {
-    overlayEl = document.createElement('div');
-    overlayEl.id = 'privacy-shield-overlay';
-    overlayEl.innerHTML = `
-      <div class="privacy-shield-card">
-        <div class="privacy-icon">🔒</div>
-        <h3 class="privacy-title">Privacy Shield Active</h3>
-        <p class="privacy-desc">
-          Protected Academic Data • CSBS LeetCode Tracker<br/>
-          Student performance rankings and statistics are hidden during window blur or screen capture attempts.
-        </p>
-        <div class="privacy-action">
-          Click or return focus to resume
-        </div>
-      </div>
-    `;
-    document.body.appendChild(overlayEl);
-    overlayEl.addEventListener('click', () => {
-      document.body.classList.remove('privacy-shield-active');
-      const rootEl = document.getElementById('root');
-      if (rootEl) rootEl.classList.remove('window-blurred');
-    });
+function ensurePrivacyOverlay(): HTMLDivElement {
+  if (privacyOverlay && document.body.contains(privacyOverlay)) {
+    return privacyOverlay;
   }
 
-  // 1. Console Warning Banner
+  const overlay = document.createElement('div');
+  overlay.setAttribute('data-security-privacy-overlay', 'true');
+  overlay.setAttribute('aria-hidden', 'true');
+  Object.assign(overlay.style, {
+    position: 'fixed',
+    inset: '0',
+    display: 'none',
+    background: 'transparent',
+    zIndex: '2147483647',
+    pointerEvents: 'all',
+    userSelect: 'none',
+    opacity: '0',
+  });
+
+  document.body.appendChild(overlay);
+  privacyOverlay = overlay;
+  return overlay;
+}
+
+function setPrivacyMode(active: boolean) {
+  const overlay = ensurePrivacyOverlay();
+  overlay.style.display = active ? 'block' : 'none';
+
+  const appRoot = document.getElementById('root');
+  if (appRoot) {
+    appRoot.style.visibility = active ? 'hidden' : 'visible';
+    appRoot.style.opacity = active ? '0' : '1';
+    appRoot.style.pointerEvents = active ? 'none' : 'auto';
+  }
+
+  document.body.classList.toggle('privacy-locked', active);
+  document.documentElement.classList.toggle('privacy-locked', active);
+}
+
+export function initSecurityShield(user?: SecurityUser | null): () => void {
+  if (typeof window === 'undefined') return () => {};
+
   try {
     const bannerStyle = 'color: #ef4444; font-size: 28px; font-weight: 900; -webkit-text-stroke: 1px black;';
     const subStyle = 'color: #38bdf8; font-size: 13px; font-weight: 600; line-height: 1.6;';
@@ -95,58 +117,33 @@ export function initSecurityShield(): () => void {
     console.log(
       '%cCSBS LeetCode Tracker & Performance Hub — KGiSL Institute of Technology\n' +
       'Unauthorized copying, scraping, screenshots, reverse-engineering, or tampering with academic data is strictly prohibited.\n' +
-      'All API activities and session events are cryptographically authenticated and monitored.',
+      'Sensitive content is automatically hidden whenever the browser loses focus or is hidden.',
       subStyle
     );
     console.log('%cFrontend security shield active. Client-side actions are monitored.', textStyle);
   } catch (e) {}
 
-  // 2. Intercept & Deter Browser Screen Capture APIs (getDisplayMedia)
   try {
     if (navigator.mediaDevices && typeof navigator.mediaDevices.getDisplayMedia === 'function') {
       navigator.mediaDevices.getDisplayMedia = function (..._args: any[]) {
-        document.body.classList.add('privacy-shield-active');
         emitAlert('screenshot', 'Screen recording and display capture is restricted on this platform.');
-        setTimeout(() => {
-          document.body.classList.remove('privacy-shield-active');
-        }, 5000);
         return Promise.reject(new DOMException('Screen display capture is disabled on CSBS LeetCode Tracker.', 'NotAllowedError'));
       };
     }
   } catch (e) {}
 
-  // 3. Disable Context Menu (Right Click)
   const handleContextMenu = (e: MouseEvent) => {
     if (isEditableElement(e.target)) return;
-
     e.preventDefault();
     e.stopPropagation();
     emitAlert('contextmenu', 'Right-click is disabled to protect platform data.');
     return false;
   };
 
-  // Helper to trigger screenshot protection veil flash & clipboard wipe
   const triggerScreenshotDeterrence = (reason: string) => {
-    try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText('');
-      }
-    } catch (err) {}
-
-    // Add temporary privacy shield overlay
-    document.body.classList.add('privacy-shield-active');
-    const rootEl = document.getElementById('root');
-    if (rootEl) rootEl.classList.add('screenshot-obscured');
-
-    setTimeout(() => {
-      document.body.classList.remove('privacy-shield-active');
-      if (rootEl) rootEl.classList.remove('screenshot-obscured');
-    }, 2500);
-
     emitAlert('screenshot', reason);
   };
 
-  // 4. Keydown & Screenshot Shortcut Interception
   const handleKeyDown = (e: KeyboardEvent) => {
     const key = e.key ? e.key.toLowerCase() : '';
     const keyCode = e.keyCode || e.which;
@@ -154,10 +151,9 @@ export function initSecurityShield(): () => void {
     const isShift = e.shiftKey;
     const isAlt = e.altKey;
 
-    // Inside editable inputs: do NOT block normal typing or navigation shortcuts
     if (isEditableElement(e.target)) {
       if (
-        keyCode === 123 || // F12
+        keyCode === 123 ||
         (isCtrlOrMeta && isShift && ['i', 'j', 'c', 'k', 'e'].includes(key)) ||
         (isCtrlOrMeta && key === 'u')
       ) {
@@ -169,26 +165,18 @@ export function initSecurityShield(): () => void {
       return;
     }
 
-    // Windows Snipping Tool (Win+Shift+S) or Mac Screenshot (Cmd+Shift+3 / 4 / 5)
     if (
       (isCtrlOrMeta && isShift && ['s', '3', '4', '5'].includes(key)) ||
-      (e.key === 'Meta' && isShift && key === 's')
+      (e.key === 'Meta' && isShift && key === 's') ||
+      key === 'printscreen' || keyCode === 44
     ) {
       e.preventDefault();
       e.stopPropagation();
-      triggerScreenshotDeterrence('Screenshot shortcut detected. Screen data hidden.');
+      triggerScreenshotDeterrence('Screenshot or capture shortcut detected. Protected data is hidden.');
+      setPrivacyMode(true);
       return false;
     }
 
-    // PrintScreen / SysReq Key detection
-    if (key === 'printscreen' || keyCode === 44) {
-      e.preventDefault();
-      e.stopPropagation();
-      triggerScreenshotDeterrence('PrintScreen captured blocked. Clipboard cleared.');
-      return false;
-    }
-
-    // F12 (DevTools)
     if (keyCode === 123 || key === 'f12') {
       e.preventDefault();
       e.stopPropagation();
@@ -196,8 +184,6 @@ export function initSecurityShield(): () => void {
       return false;
     }
 
-    // Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C, Ctrl+Shift+K, Ctrl+Shift+E
-    // Mac: Cmd+Alt+I, Cmd+Alt+J, Cmd+Alt+C
     if (
       (isCtrlOrMeta && isShift && ['i', 'j', 'c', 'k', 'e'].includes(key)) ||
       (isCtrlOrMeta && isAlt && ['i', 'j', 'c'].includes(key))
@@ -208,7 +194,6 @@ export function initSecurityShield(): () => void {
       return false;
     }
 
-    // Ctrl+U (View Source)
     if (isCtrlOrMeta && key === 'u') {
       e.preventDefault();
       e.stopPropagation();
@@ -216,7 +201,6 @@ export function initSecurityShield(): () => void {
       return false;
     }
 
-    // Ctrl+S (Save Page)
     if (isCtrlOrMeta && key === 's') {
       e.preventDefault();
       e.stopPropagation();
@@ -224,24 +208,31 @@ export function initSecurityShield(): () => void {
       return false;
     }
 
-    // Ctrl+P (Print Page)
     if (isCtrlOrMeta && key === 'p') {
       e.preventDefault();
       e.stopPropagation();
       emitAlert('print', 'Printing this confidential page is restricted.');
+      setPrivacyMode(true);
+      return false;
+    }
+
+    if (isCtrlOrMeta && isShift && key === 'd') {
+      e.preventDefault();
+      e.stopPropagation();
+      emitAlert('shortcut', 'Inspector shortcut is disabled.');
+      setPrivacyMode(true);
       return false;
     }
   };
 
-  // Keyup listener for PrintScreen release
   const handleKeyUp = (e: KeyboardEvent) => {
     const key = e.key ? e.key.toLowerCase() : '';
     if (key === 'printscreen' || e.keyCode === 44) {
       triggerScreenshotDeterrence('Screen capture attempt deterred.');
+      setPrivacyMode(true);
     }
   };
 
-  // 5. Prevent Dragging on Images & Media
   const handleDragStart = (e: DragEvent) => {
     const target = e.target as HTMLElement | null;
     if (target && target.getAttribute('draggable') === 'true' && target.classList.contains('allow-drag')) {
@@ -251,7 +242,6 @@ export function initSecurityShield(): () => void {
     return false;
   };
 
-  // 6. Deter Copy & Cut outside form fields
   const handleCopy = (e: ClipboardEvent) => {
     if (isEditableElement(e.target)) return;
     const selection = window.getSelection();
@@ -274,40 +264,30 @@ export function initSecurityShield(): () => void {
     e.preventDefault();
   };
 
-  // 7. Print Capture Event Interception
   const handleBeforePrint = () => {
     emitAlert('print', 'Printing is restricted to protect student confidentiality.');
+    setPrivacyMode(true);
   };
 
-  // 8. Full-Screen Privacy Shield on Blur / Window Visibility Loss
-  const handleWindowBlur = () => {
-    document.body.classList.add('privacy-shield-active');
-    const rootEl = document.getElementById('root');
-    if (rootEl) {
-      rootEl.classList.add('window-blurred');
-    }
-  };
-
-  const handleWindowFocus = () => {
-    document.body.classList.remove('privacy-shield-active');
-    const rootEl = document.getElementById('root');
-    if (rootEl) {
-      rootEl.classList.remove('window-blurred');
+  const handleAfterPrint = () => {
+    if (!document.hidden && document.hasFocus()) {
+      setPrivacyMode(false);
     }
   };
 
   const handleVisibilityChange = () => {
-    const rootEl = document.getElementById('root');
-    if (document.hidden) {
-      document.body.classList.add('privacy-shield-active');
-      if (rootEl) rootEl.classList.add('window-blurred');
-    } else {
-      document.body.classList.remove('privacy-shield-active');
-      if (rootEl) rootEl.classList.remove('window-blurred');
+    if (document.hidden || !document.hasFocus()) {
+      setPrivacyMode(true);
+      return;
     }
+    setPrivacyMode(false);
   };
 
-  // 9. Non-blocking DevTools opening detection
+  const handleWindowBlur = () => setPrivacyMode(true);
+  const handleWindowFocus = () => {
+    if (!document.hidden) setPrivacyMode(false);
+  };
+
   let devToolsDetected = false;
   const checkDevTools = () => {
     const threshold = 160;
@@ -345,29 +325,64 @@ export function initSecurityShield(): () => void {
     } catch (e) {}
   }, 3000);
 
-  // Attach event listeners with capture phase
+  const handlePrintOverride = () => {
+    emitAlert('print', 'Printing is restricted to protect student confidentiality.');
+    setPrivacyMode(true);
+    return undefined;
+  };
+
+  try {
+    const printFn = window.print.bind(window);
+    Object.defineProperty(window, 'print', {
+      value: handlePrintOverride,
+      configurable: true,
+      writable: true,
+    });
+    (window as any).__csbs_original_print__ = printFn;
+  } catch (e) {}
+
   window.addEventListener('contextmenu', handleContextMenu, true);
   window.addEventListener('keydown', handleKeyDown, true);
   window.addEventListener('keyup', handleKeyUp, true);
   window.addEventListener('dragstart', handleDragStart, true);
+  window.addEventListener('blur', handleWindowBlur, true);
+  window.addEventListener('focus', handleWindowFocus, true);
+  window.addEventListener('beforeprint', handleBeforePrint, true);
+  window.addEventListener('afterprint', handleAfterPrint, true);
+  document.addEventListener('visibilitychange', handleVisibilityChange, true);
   document.addEventListener('copy', handleCopy, true);
   document.addEventListener('cut', handleCut, true);
-  window.addEventListener('beforeprint', handleBeforePrint);
-  window.addEventListener('blur', handleWindowBlur);
-  window.addEventListener('focus', handleWindowFocus);
-  document.addEventListener('visibilitychange', handleVisibilityChange);
+
+  setPrivacyMode(false);
 
   return () => {
     window.removeEventListener('contextmenu', handleContextMenu, true);
     window.removeEventListener('keydown', handleKeyDown, true);
     window.removeEventListener('keyup', handleKeyUp, true);
     window.removeEventListener('dragstart', handleDragStart, true);
+    window.removeEventListener('blur', handleWindowBlur, true);
+    window.removeEventListener('focus', handleWindowFocus, true);
+    window.removeEventListener('beforeprint', handleBeforePrint, true);
+    window.removeEventListener('afterprint', handleAfterPrint, true);
+    document.removeEventListener('visibilitychange', handleVisibilityChange, true);
     document.removeEventListener('copy', handleCopy, true);
     document.removeEventListener('cut', handleCut, true);
-    window.removeEventListener('beforeprint', handleBeforePrint);
-    window.removeEventListener('blur', handleWindowBlur);
-    window.removeEventListener('focus', handleWindowFocus);
-    document.removeEventListener('visibilitychange', handleVisibilityChange);
     clearInterval(devToolsInterval);
+
+    if (privacyOverlay && privacyOverlay.parentNode) {
+      privacyOverlay.parentNode.removeChild(privacyOverlay);
+    }
+    privacyOverlay = null;
+
+    try {
+      const originalPrint = (window as any).__csbs_original_print__;
+      if (typeof originalPrint === 'function') {
+        Object.defineProperty(window, 'print', {
+          value: originalPrint,
+          configurable: true,
+          writable: true,
+        });
+      }
+    } catch (e) {}
   };
 }

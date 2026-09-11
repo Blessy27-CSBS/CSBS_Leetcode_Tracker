@@ -32,6 +32,7 @@ export const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{
     insertedCount: number;
+    updatedCount?: number;
     errorsCount: number;
     errors: { row: number; identifier: string; error: string }[];
   } | null>(null);

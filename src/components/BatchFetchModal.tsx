@@ -31,7 +31,6 @@ export const BatchFetchModal: React.FC<BatchFetchModalProps> = ({
     failed: 0,
     logs: [],
   });
-  const [selectedSection, setSelectedSection] = useState('ALL');
   const [selectedYear, setSelectedYear] = useState('ALL');
   const [isStarting, setIsStarting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -64,7 +63,6 @@ export const BatchFetchModal: React.FC<BatchFetchModalProps> = ({
       setErrorMsg('');
       setIsStarting(true);
       await api.startBatchFetch({
-        section: selectedSection,
         year: selectedYear,
       });
       const p = await api.getBatchProgress();
@@ -127,23 +125,7 @@ export const BatchFetchModal: React.FC<BatchFetchModalProps> = ({
 
           {/* Filter options if not running */}
           {!progress.is_running && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-lg bg-slate-50 border border-slate-200">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  Section
-                </label>
-                <select
-                  value={selectedSection}
-                  onChange={e => setSelectedSection(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-md px-3 py-1.5 text-xs text-slate-800 focus:outline-hidden focus:border-blue-500"
-                >
-                  <option value="ALL">All Sections (A, B, C)</option>
-                  <option value="A">Section A</option>
-                  <option value="B">Section B</option>
-                  <option value="C">Section C</option>
-                </select>
-              </div>
-
+            <div className="p-4 rounded-lg bg-slate-50 border border-slate-200">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                   Target Year

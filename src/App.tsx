@@ -117,11 +117,12 @@ export function App() {
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
 
-  // Initialize client security shield (right-click block, shortcuts, DevTools detector, print deterrence)
+  // Privacy protection for protected pages: hide sensitive data on blur/visibility loss,
+  // enforce a strict overlay, print restrictions, and a persistent watermark.
   useEffect(() => {
-    const teardown = initSecurityShield();
+    const teardown = initSecurityShield(currentUser);
     return teardown;
-  }, []);
+  }, [currentUser?.id, currentUser?.role, currentUser?.username, currentUser?.student_name, currentUser?.name, currentUser?.email]);
 
   // Background verification of auth session on startup
   useEffect(() => {

@@ -419,7 +419,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
             <div className="space-y-2">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
-                  CSBS Year {student.year} • Section {student.section}
+                  CSBS • {student.year} Year
                 </span>
                 <span className="px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
                   Reg No: {student.register_no}
@@ -516,7 +516,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
               <div>
                 <div className="text-3xl font-black text-slate-900 tracking-tight">
                   #{liveSecRank}
-                  <span className="text-xs font-normal text-slate-500 ml-1">of {liveTotalSec} (Sec {student.section})</span>
+                  <span className="text-xs font-normal text-slate-500 ml-1">of {liveTotalSec}</span>
                 </div>
                 <div className="text-xs text-slate-500 mt-1">
                   Dept Rank: <strong className="text-slate-700">#{liveDeptRank}</strong> of {liveTotalDept}
@@ -1138,7 +1138,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
           <LeetCodeContestLeaderboard
             students={studentListState.length > 0 ? studentListState : (allStudents && allStudents.length > 0 ? allStudents : (dashboardData ? [{
               ...student,
-              latest_snapshot: dashboardData.summary as any
+              latest_snapshot: student.latest_snapshot as any
             }] : []))}
             currentStudentId={student.id}
             isFaculty={false}
@@ -1200,7 +1200,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                         <td className="p-3">
                           <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full font-extrabold text-[10px] inline-flex items-center gap-1">
                             <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                            <span>{sub.statusDisplay || sub.status || 'Accepted'}</span>
+                            <span>{sub.statusDisplay || 'Accepted'}</span>
                           </span>
                         </td>
                         <td className="p-3">

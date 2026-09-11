@@ -139,7 +139,7 @@ export const StudentLeetCode75View: React.FC<StudentLeetCode75ViewProps> = ({ st
       <div className="p-8 text-center bg-slate-900 border border-slate-800 rounded-xl max-w-xl mx-auto my-12">
         <p className="text-rose-400 font-semibold mb-4">{error}</p>
         <button 
-          onClick={loadLeetCode75} 
+          onClick={() => { void loadLeetCode75(); }} 
           className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition-all cursor-pointer"
         >
           Try Again
@@ -208,7 +208,7 @@ export const StudentLeetCode75View: React.FC<StudentLeetCode75ViewProps> = ({ st
               </a>
 
               <button
-                onClick={handleManualSync}
+                onClick={() => { void handleManualSync(); }}
                 disabled={syncing}
                 className="inline-flex items-center gap-2 px-5 py-3 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 rounded-full font-bold text-xs shadow-xs transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Sync fresh progress from LeetCode"

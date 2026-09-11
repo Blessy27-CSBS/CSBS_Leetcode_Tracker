@@ -77,124 +77,36 @@ img, svg {
 }
 
 /* Print capture deterrence */
-/* Full-screen Privacy Shield Overlay when focus is lost or capture is detected */
-#privacy-shield-overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  z-index: 999999;
-  background: rgba(15, 23, 42, 0.96);
-  backdrop-filter: blur(28px);
-  -webkit-backdrop-filter: blur(28px);
-  color: #ffffff;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  text-align: center;
-  padding: 1.5rem;
-  box-shadow: inset 0 0 120px rgba(0, 0, 0, 0.95);
-  transition: opacity 0.2s ease-in-out;
-  cursor: pointer;
-}
-
-#privacy-shield-overlay .privacy-shield-card {
-  max-width: 460px;
-  width: 90%;
-  background: rgba(30, 41, 59, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 1.5rem;
-  padding: 2rem 1.5rem;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-}
-
-#privacy-shield-overlay .privacy-icon {
-  font-size: 3rem;
-  line-height: 1;
-  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3));
-}
-
-#privacy-shield-overlay .privacy-title {
-  font-size: 1.25rem;
-  font-weight: 800;
-  color: #f8fafc;
-  margin: 0;
-  letter-spacing: -0.02em;
-}
-
-#privacy-shield-overlay .privacy-desc {
-  font-size: 0.825rem;
-  color: #94a3b8;
-  line-height: 1.6;
-  margin: 0;
-}
-
-#privacy-shield-overlay .privacy-action {
-  margin-top: 0.5rem;
-  padding: 0.5rem 1.25rem;
-  background: rgba(168, 85, 247, 0.2);
-  border: 1px solid rgba(168, 85, 247, 0.4);
-  color: #c084fc;
-  border-radius: 0.75rem;
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-body.privacy-shield-active #privacy-shield-overlay {
-  display: flex !important;
-}
-
-body.privacy-shield-active #root {
-  filter: blur(40px) brightness(0.15);
-  pointer-events: none;
-  user-select: none;
-}
-
-/* Print capture deterrence */
 @media print {
-  body {
-    background: #0f172a !important;
-    color: #ffffff !important;
+  html, body {
+    background: #000000 !important;
+    color: transparent !important;
+    visibility: hidden !important;
+    height: 100% !important;
   }
 
-  /* Hide active application content and overlays */
-  #root, #privacy-shield-overlay, .security-notice-toast {
+  body *, #root, .security-notice-toast, .app-shell, main, section, div, table, span, p, h1, h2, h3, h4, h5, h6 {
+    visibility: hidden !important;
+    color: transparent !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  body::before,
+  body::after {
+    content: "" !important;
     display: none !important;
   }
-
-  /* Show confidential print barrier watermark */
-  body::after {
-    content: "🔒 RESTRICTED ACADEMIC DATA \A CSBS LeetCode Tracker & Performance Hub \A Printing, exporting to PDF, or unauthorized duplication of student performance rankings, profiles, and statistics is strictly restricted for data confidentiality.";
-    white-space: pre-wrap;
-    display: flex !important;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    margin-top: 250px;
-    font-size: 22px;
-    font-weight: 800;
-    color: #0f172a;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
-    line-height: 1.8;
-  }
 }
 
-/* Blur page content when window loses focus */
-#root.window-blurred {
-  filter: blur(25px) grayscale(90%);
-  transition: filter 0.2s ease-in-out;
-  pointer-events: none;
+body.privacy-locked {
+  overflow: hidden !important;
 }
 
-/* Flash veil when screenshot shortcut is pressed */
-#root.screenshot-obscured {
-  filter: blur(45px) brightness(0.15);
-  transition: filter 0.1s ease-in-out;
+body.privacy-locked * {
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  user-select: none !important;
 }
 
 

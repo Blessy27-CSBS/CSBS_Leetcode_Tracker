@@ -273,6 +273,7 @@ export type UserRole = 'staff' | 'student';
 export interface AuthUser {
   id: string;
   username: string;
+  student_name?: string;
   role: UserRole;
   name: string;
   email?: string;

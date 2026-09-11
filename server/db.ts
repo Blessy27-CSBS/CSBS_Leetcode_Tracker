@@ -2042,11 +2042,67 @@ export class DatabaseService {
         );
       }
 
-      // 2. Sync all student users
+      // 2. Build all student user records in memory + SQLite (no individual Supabase calls)
       const allStudents = this.getStudents();
+      const newStudentPayloads: any[] = [];
+
       for (const student of allStudents) {
-        this.ensureStudentUser(student);
+        const studentEmail = (student.email && student.email.trim())
+          ? student.email.trim().toLowerCase()
+          : `${student.register_no.toLowerCase()}@kgkite.ac.in`;
+        const defaultPasswordHash = this.hashPassword(student.register_no.trim());
+        const userId = `usr_${student.id}`;
+
+        // Only collect students NOT already in memStore (to avoid overwriting changed passwords)
+        const alreadyInMem = this.memStore.users.find(u =>
+          u.id === userId || u.student_id === student.id
+        );
+        if (!alreadyInMem) {
+          const newUser: DBUser = {
+            id: userId,
+            username: studentEmail,
+            password_hash: defaultPasswordHash,
+            role: 'student',
+            student_id: student.id,
+            name: student.student_name,
+            email: studentEmail,
+            created_at: new Date().toISOString()
+          };
+          this.memStore.users.push(newUser);
+
+          if (this.sqliteDb) {
+            try {
+              this.sqliteDb.prepare(`
+                INSERT OR IGNORE INTO users (id, username, password_hash, role, student_id, name, email, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+              `).run(newUser.id, newUser.username, newUser.password_hash, newUser.role, newUser.student_id, newUser.name, newUser.email, newUser.created_at);
+            } catch (e) {}
+          }
+
+          newStudentPayloads.push({
+            id: newUser.id,
+            username: newUser.username,
+            password_hash: newUser.password_hash,
+            role: newUser.role,
+            student_id: newUser.student_id || null,
+            name: newUser.name,
+            email: newUser.email || null,
+            created_at: newUser.created_at,
+          });
+        }
       }
+
+      // 3. Batch-upsert new student users to Supabase in one request
+      if (isSupabaseConfigured && supabase && newStudentPayloads.length > 0) {
+        supabase.from('users').upsert(newStudentPayloads, { onConflict: 'id' }).then(({ error }) => {
+          if (error) {
+            console.error('[Supabase] Batch student user sync error:', error.message);
+          } else {
+            console.log(`[Supabase] Batch synced ${newStudentPayloads.length} student users to cloud.`);
+          }
+        });
+      }
+
     } catch (e) {
       console.error('Failed to seed initial users:', e);
     }
@@ -2090,6 +2146,7 @@ export class DatabaseService {
     // 1. Check if user already exists in memStore
     let existingMem = this.memStore.users.find(u => u.id === userId || u.student_id === student.id || u.username.toLowerCase() === studentEmail);
     if (existingMem) {
+      // Update profile info but KEEP existing password_hash (respects custom password changes)
       existingMem.student_id = student.id;
       existingMem.name = student.student_name;
       existingMem.email = studentEmail;
@@ -2097,7 +2154,10 @@ export class DatabaseService {
       return existingMem;
     }
 
-    // 2. Check if user exists in SQLite
+    // 2. Check if user exists in Supabase users table first (cloud-primary lookup)
+    //    This is done async during seedInitialUsers. Fall through to SQLite next.
+
+    // 3. Check if user exists in SQLite
     if (this.sqliteDb) {
       const existingDb = this.sqliteDb.prepare(`
         SELECT * FROM users WHERE id = ? OR student_id = ? OR LOWER(username) = LOWER(?)
@@ -2117,11 +2177,26 @@ export class DatabaseService {
         } else {
           this.memStore.users.push(updatedUser);
         }
+        // Sync to Supabase to keep cloud users table in sync
+        if (isSupabaseConfigured && supabase) {
+          supabase.from('users').upsert({
+            id: updatedUser.id,
+            username: updatedUser.username,
+            password_hash: updatedUser.password_hash,
+            role: updatedUser.role,
+            student_id: updatedUser.student_id || null,
+            name: updatedUser.name,
+            email: updatedUser.email || null,
+            created_at: updatedUser.created_at,
+          }, { onConflict: 'id' }).then(({ error }) => {
+            if (error) console.error('[Supabase] Failed to sync student user (existing):', error.message);
+          });
+        }
         return updatedUser;
       }
     }
 
-    // 3. Otherwise create new student user with default password
+    // 4. Create new student user — default password is the register number from Supabase students table
     const newUser: DBUser = {
       id: userId,
       username: studentEmail,
@@ -2147,6 +2222,23 @@ export class DatabaseService {
           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `).run(newUser.id, newUser.username, newUser.password_hash, newUser.role, newUser.student_id, newUser.name, newUser.email, newUser.created_at);
       } catch (e) {}
+    }
+
+    // Persist new student user to Supabase so authentication works across restarts
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('users').upsert({
+        id: newUser.id,
+        username: newUser.username,
+        password_hash: newUser.password_hash,
+        role: newUser.role,
+        student_id: newUser.student_id || null,
+        name: newUser.name,
+        email: newUser.email || null,
+        created_at: newUser.created_at,
+      }, { onConflict: 'id' }).then(({ error }) => {
+        if (error) console.error('[Supabase] Failed to sync new student user:', error.message);
+        else console.log(`[Supabase] Student user synced: ${newUser.email}`);
+      });
     }
 
     this.persistMemoryStore();
@@ -2219,39 +2311,55 @@ export class DatabaseService {
     // Student Authentication (Password verification by Email / Register Number / Username + Password)
     let foundStudent: Student | undefined;
     const allStudents = this.getStudents();
-    const cleanIdPrefix = cleanId.includes('@') ? cleanId.split('@')[0].trim().toLowerCase() : cleanId.toLowerCase();
 
     foundStudent = allStudents.find(s => {
-      const regNo = (s.register_no || '').toLowerCase().trim();
-      const uname = (s.username || '').toLowerCase().trim();
       const email = (s.email || '').toLowerCase().trim();
       const targetId = cleanId.toLowerCase();
-
-      return (
-        (email && email === targetId) ||
-        regNo === targetId ||
-        uname === targetId ||
-        regNo === cleanIdPrefix ||
-        uname === cleanIdPrefix ||
-        `${regNo}@kgkite.ac.in` === targetId ||
-        `${uname}@kgkite.ac.in` === targetId ||
-        targetId.includes(regNo) ||
-        targetId.includes(uname)
-      );
+      // Only allow login by email address — register number and username are not accepted
+      return email !== '' && email === targetId;
     });
 
     if (foundStudent) {
-      const studentUser = this.ensureStudentUser(foundStudent);
-      if (!cleanPwd) return null; // Student login requires password
+      if (!cleanPwd) return null; // Password is required
+
+      const userId = `usr_${foundStudent.id}`;
+      const studentEmail = (foundStudent.email && foundStudent.email.trim())
+        ? foundStudent.email.trim().toLowerCase()
+        : `${foundStudent.register_no.toLowerCase()}@kgkite.ac.in`;
+
+      // Always read fresh from SQLite (source of truth) — avoids stale Supabase-loaded memStore data
+      let studentUser: DBUser | null = null;
+
+      if (this.sqliteDb) {
+        studentUser = this.sqliteDb.prepare(`
+          SELECT * FROM users WHERE id = ? OR student_id = ? OR LOWER(username) = LOWER(?)
+        `).get(userId, foundStudent.id, studentEmail) as DBUser | null;
+      }
+
+      // Fall back to memStore if SQLite doesn't have the record yet
+      if (!studentUser) {
+        studentUser = this.memStore.users.find(u =>
+          u.id === userId || u.student_id === foundStudent!.id || u.username.toLowerCase() === studentEmail
+        ) || null;
+      }
+
+      // If still no record, create it now with the default password
+      if (!studentUser) {
+        studentUser = this.ensureStudentUser(foundStudent);
+      }
 
       const defaultRegNoHash = this.hashPassword(foundStudent.register_no.trim());
-      const defaultUnameHash = this.hashPassword(foundStudent.username.trim());
 
+      // Check password: exact hash match (covers both default and custom passwords)
       const isExactMatch = studentUser.password_hash === hashedPwd;
-      const isRegNoMatch = cleanPwd.toLowerCase() === foundStudent.register_no.toLowerCase().trim() || studentUser.password_hash === defaultRegNoHash;
-      const isUnameMatch = cleanPwd.toLowerCase() === foundStudent.username.toLowerCase().trim() || studentUser.password_hash === defaultUnameHash;
+      // Fallback: if no custom password has been set, allow register_no as default
+      const isDefaultFallback = studentUser.password_hash === defaultRegNoHash && hashedPwd === defaultRegNoHash;
 
-      if (isExactMatch || isRegNoMatch || isUnameMatch) {
+      if (isExactMatch || isDefaultFallback) {
+        // Ensure memStore is up to date
+        const idx = this.memStore.users.findIndex(u => u.id === studentUser!.id);
+        if (idx >= 0) this.memStore.users[idx] = studentUser;
+        else this.memStore.users.push(studentUser);
         return { user: studentUser, student: foundStudent };
       }
       return null;

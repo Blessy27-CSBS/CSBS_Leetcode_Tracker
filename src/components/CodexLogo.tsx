@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion } from 'motion/react';
+import { motion, type Variants } from 'motion/react';
 
 interface CodexLogoProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
@@ -21,7 +21,7 @@ export const CodexLogo: React.FC<CodexLogoProps> = ({
   layout = 'vertical',
 }) => {
   // Animation variants
-  const containerVariants = {
+  const containerVariants: Variants = {
     hidden: { opacity: 0, scale: 0.85 },
     visible: {
       opacity: 1,
@@ -30,12 +30,11 @@ export const CodexLogo: React.FC<CodexLogoProps> = ({
         staggerChildren: 0.12,
         delayChildren: 0.1,
         duration: 0.6,
-        ease: [0.16, 1, 0.3, 1],
       },
     },
   };
 
-  const blockVariants = (xDir: number, yDir: number) => ({
+  const blockVariants = (xDir: number, yDir: number): Variants => ({
     hidden: { opacity: 0, x: xDir * 25, y: yDir * 25, scale: 0.7 },
     visible: {
       opacity: 1,
@@ -50,7 +49,7 @@ export const CodexLogo: React.FC<CodexLogoProps> = ({
     },
   });
 
-  const centerCodeVariants = {
+  const centerCodeVariants: Variants = {
     hidden: { opacity: 0, scale: 0, rotate: -20 },
     visible: {
       opacity: 1,
@@ -65,7 +64,7 @@ export const CodexLogo: React.FC<CodexLogoProps> = ({
     },
   };
 
-  const letterVariants = {
+  const letterVariants: Variants = {
     hidden: { opacity: 0, y: 8, filter: 'blur(4px)' },
     visible: {
       opacity: 1,
@@ -73,12 +72,11 @@ export const CodexLogo: React.FC<CodexLogoProps> = ({
       filter: 'blur(0px)',
       transition: {
         duration: 0.4,
-        ease: 'easeOut',
       },
     },
   };
 
-  const eBarVariants = (index: number) => ({
+  const eBarVariants = (index: number): Variants => ({
     hidden: { opacity: 0, scaleX: 0 },
     visible: {
       opacity: 1,
@@ -86,7 +84,6 @@ export const CodexLogo: React.FC<CodexLogoProps> = ({
       transition: {
         duration: 0.3,
         delay: 0.45 + index * 0.08,
-        ease: 'easeOut',
       },
     },
   });
@@ -128,7 +125,7 @@ export const CodexLogo: React.FC<CodexLogoProps> = ({
           transition={{
             duration: 3.5,
             repeat: Infinity,
-            ease: 'easeInOut',
+            ease: [0.4, 0, 0.2, 1],
           }}
           className="absolute inset-0 bg-gradient-to-tr from-purple-600/30 via-indigo-500/20 to-transparent rounded-full blur-xl pointer-events-none"
         />

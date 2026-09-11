@@ -29,12 +29,12 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
     e.preventDefault();
 
     if (!identifier.trim()) {
-      setError(activeRole === 'student' ? 'Please enter your Mail ID or Register Number.' : 'Please enter your faculty username.');
+      setError(activeRole === 'student' ? 'Please enter your Mail ID' : 'Please enter your faculty username.');
       return;
     }
 
-    if (activeRole === 'staff' && !password.trim()) {
-      setError('Please enter your faculty password.');
+    if (!password.trim()) {
+      setError(activeRole === 'student' ? 'Please enter your password.' : 'Please enter your faculty password.');
       return;
     }
 
@@ -43,7 +43,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
       setError('');
       const session = await api.login({
         identifier: identifier.trim(),
-        password: activeRole === 'staff' ? password.trim() : undefined,
+        password: password.trim(),
         role: activeRole,
       });
 
@@ -161,7 +161,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
               {/* Username / Email */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-extrabold text-white drop-shadow-sm">
-                  {activeRole === 'student' ? 'Student Mail ID or Register Number' : 'Faculty Username'}
+                  {activeRole === 'student' ? 'Student Mail ID' : 'Faculty Username'}
                 </label>
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-300 group-focus-within:text-purple-300 transition-colors">
@@ -171,7 +171,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                     type="text"
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
-                    placeholder={activeRole === 'student' ? 'Enter mail ID (e.g. name@kgkite.ac.in)' : 'Enter your username'}
+                    placeholder={activeRole === 'student' ? 'Enter your Mail Id' : 'Enter your username'}
                     required
                     className="w-full pl-10 pr-3.5 py-2.5 bg-black/45 backdrop-blur-md border border-white/30 rounded-xl text-sm text-white placeholder-slate-300 focus:bg-black/65 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400 font-semibold transition-all shadow-inner"
                   />
@@ -191,7 +191,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder={activeRole === 'student' ? 'Enter your password (e.g. Register No)' : 'Enter your password'}
+                    placeholder="Enter your password"
                     required
                     className="w-full pl-10 pr-10 py-2.5 bg-black/45 backdrop-blur-md border border-white/30 rounded-xl text-sm text-white placeholder-slate-300 focus:bg-black/65 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400 font-semibold transition-all shadow-inner"
                   />
