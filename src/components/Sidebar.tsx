@@ -78,23 +78,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
         }`}>
 
         {/* Sidebar Header */}
-        <div className="px-4 py-3.5 border-b border-slate-800 flex items-center justify-between bg-[#0f172a]">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-[11px] font-black uppercase tracking-wider text-slate-200">
-              CSBS Navigation
-            </span>
-          </div>
-          {onClose && (
+        {onClose && (
+          <div className="px-4 py-2 border-b border-slate-800 flex items-center justify-end bg-[#0f172a] md:hidden">
             <button
               onClick={onClose}
-              className="md:hidden text-slate-400 hover:text-white p-1 rounded-md cursor-pointer transition-colors"
+              className="text-slate-400 hover:text-white p-1 rounded-md cursor-pointer transition-colors"
               title="Close Menu"
             >
               <span className="text-xs font-bold font-mono">✕</span>
             </button>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Navigation Links with Radio Bullet Style */}
         <nav className="flex-1 p-3 overflow-y-auto flex flex-col gap-4 scrollbar-thin">

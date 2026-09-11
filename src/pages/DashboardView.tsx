@@ -250,7 +250,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div>
           <div className="flex items-center space-x-2">
             <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-              Faculty Dashboard
+              CSBS Faculty Dashboard
             </h1>
           </div>
           <p className="text-xs text-slate-500 font-medium mt-1">

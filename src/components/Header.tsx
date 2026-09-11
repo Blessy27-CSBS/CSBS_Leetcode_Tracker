@@ -1,8 +1,7 @@
 import React from 'react';
-import { 
-  GraduationCap, 
-  RefreshCw, 
-  Download, 
+import {
+  RefreshCw,
+  Download,
   Activity,
   LogOut,
   User,
@@ -36,7 +35,7 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="h-14 bg-white border-b border-slate-200/90 text-slate-800 sticky top-0 z-30 flex items-center px-3 sm:px-6 shadow-2xs">
       <div className="w-full flex items-center justify-between min-w-0">
-        
+
         {/* Portal Title */}
         <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
           {onToggleSidebar && (
@@ -49,14 +48,11 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
           <div className="flex items-center space-x-2 min-w-0">
-            <div className="w-7 h-7 bg-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-xs shadow-xs shrink-0">
-              <GraduationCap className="w-4 h-4" />
-            </div>
             <h1 className="text-xs sm:text-sm font-extrabold text-slate-900 tracking-tight leading-tight truncate">
-              {isStaff ? 'Faculty Dashboard' : 'Student Portal'}
+              {isStaff ? 'CSBS Faculty Dashboard' : 'Student Portal'}
             </h1>
             <span className="hidden sm:inline text-xs text-slate-400 font-semibold truncate">
-              • KGiSL Institute of Technology (CSBS)
+              • KGiSL Institute of Technology
             </span>
           </div>
         </div>
