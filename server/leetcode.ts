@@ -40,6 +40,14 @@ export interface LeetCodeFetchResult {
 
 const LEETCODE_GRAPHQL_URL = 'https://leetcode.com/graphql';
 
+const LEETCODE_BROWSER_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+  'Accept': 'application/json, text/plain, */*',
+  'Accept-Language': 'en-US,en;q=0.9',
+  'Content-Type': 'application/json',
+  'Origin': 'https://leetcode.com',
+};
+
 const USER_PROFILE_QUERY = `
 query getUserProfile($username: String!) {
   matchedUser(username: $username) {
@@ -118,7 +126,7 @@ query getUserProfile($username: String!) {
 
 export async function fetchLeetCodeProfile(
   username: string, 
-  timeoutMs: number = 8000,
+  timeoutMs: number = 10000,
   maxRetries: number = 1
 ): Promise<LeetCodeFetchResult> {
   const cleanUsername = username.trim().replace(/\s+/g, '');
@@ -140,8 +148,7 @@ export async function fetchLeetCodeProfile(
       const response = await fetch(LEETCODE_GRAPHQL_URL, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          ...LEETCODE_BROWSER_HEADERS,
           'Referer': `https://leetcode.com/${cleanUsername}/`,
         },
         body: JSON.stringify({

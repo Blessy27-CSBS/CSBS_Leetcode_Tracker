@@ -52,6 +52,16 @@ const DEFAULT_SETTINGS: SystemSettings = {
   },
 };
 
+function safeJsonParse<T>(val: any, fallback: T): T {
+  if (val === null || val === undefined) return fallback;
+  if (typeof val !== 'string') return val as T;
+  try {
+    return JSON.parse(val);
+  } catch (e) {
+    return fallback;
+  }
+}
+
 interface MemoryStore {
   students: Student[];
   snapshots: Snapshot[];
@@ -1141,7 +1151,8 @@ export class DatabaseService {
     };
 
     if (isSupabaseConfigured && supabase) {
-      supabase.from('snapshots').insert({
+      // Use upsert instead of insert to handle concurrent batch fetches gracefully
+      supabase.from('snapshots').upsert({
         id: newSnap.id,
         student_id: newSnap.student_id,
         captured_at: newSnap.captured_at,
@@ -1178,10 +1189,15 @@ export class DatabaseService {
 
     if (this.sqliteDb) {
       try {
-        const studentInDb = this.sqliteDb.prepare('SELECT id FROM students WHERE id = ?').get(snapshot.student_id);
+        let studentInDb = this.sqliteDb.prepare('SELECT id FROM students WHERE id = ?').get(snapshot.student_id);
         if (!studentInDb) {
+          // Student not in SQLite yet — try to insert it from memStore before saving snapshot
           const studentObj = this.getStudentById(snapshot.student_id);
-          if (studentObj) {
+          if (!studentObj) {
+            // Cannot resolve student — skip SQLite write to avoid FK constraint violation.
+            // The snapshot is safely persisted in memStore and Supabase.
+            console.warn(`[DB] addSnapshot: student ${snapshot.student_id} not found, skipping SQLite write.`);
+          } else {
             this.sqliteDb.prepare(`
               INSERT OR REPLACE INTO students (
                 id, register_no, student_name, section, year, batch, username, email, mentor, academic_year, active, created_at, notes
@@ -1201,45 +1217,50 @@ export class DatabaseService {
               studentObj.created_at || new Date().toISOString(),
               studentObj.notes || null
             );
+            studentInDb = { id: studentObj.id };
           }
         }
 
-        this.sqliteDb.prepare(`
-          INSERT INTO snapshots (
-            id, student_id, captured_at, total_solved, easy, medium, hard, acceptance_rate,
-            ranking, reputation, contest_rating, contest_rank, contests_attended, top_percentage,
-            streak, active_days, last_active, languages, skills, badges, submission_calendar,
-            engagement_score, performance_tier, activity_status, status, error
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(
-          id,
-          snapshot.student_id,
-          snapshot.captured_at,
-          snapshot.total_solved || 0,
-          snapshot.easy || 0,
-          snapshot.medium || 0,
-          snapshot.hard || 0,
-          snapshot.acceptance_rate || 0,
-          snapshot.ranking || 0,
-          snapshot.reputation || 0,
-          snapshot.contest_rating || 0,
-          snapshot.contest_rank || 0,
-          snapshot.contests_attended || 0,
-          snapshot.top_percentage || 0,
-          snapshot.streak || 0,
-          snapshot.active_days || 0,
-          snapshot.last_active || null,
-          JSON.stringify(snapshot.languages || []),
-          JSON.stringify(snapshot.skills || []),
-          JSON.stringify(snapshot.badges || []),
-          JSON.stringify(snapshot.submission_calendar || {}),
-          snapshot.engagement_score || 0,
-          snapshot.performance_tier || 'Beginner',
-          snapshot.activity_status || 'No Data',
-          snapshot.status || 'SUCCESS',
-          snapshot.error || null
-        );
-      } catch (e) {}
+        if (studentInDb) {
+          this.sqliteDb.prepare(`
+            INSERT OR REPLACE INTO snapshots (
+              id, student_id, captured_at, total_solved, easy, medium, hard, acceptance_rate,
+              ranking, reputation, contest_rating, contest_rank, contests_attended, top_percentage,
+              streak, active_days, last_active, languages, skills, badges, submission_calendar,
+              engagement_score, performance_tier, activity_status, status, error
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(
+            id,
+            snapshot.student_id,
+            snapshot.captured_at,
+            snapshot.total_solved || 0,
+            snapshot.easy || 0,
+            snapshot.medium || 0,
+            snapshot.hard || 0,
+            snapshot.acceptance_rate || 0,
+            snapshot.ranking || 0,
+            snapshot.reputation || 0,
+            snapshot.contest_rating || 0,
+            snapshot.contest_rank || 0,
+            snapshot.contests_attended || 0,
+            snapshot.top_percentage || 0,
+            snapshot.streak || 0,
+            snapshot.active_days || 0,
+            snapshot.last_active || null,
+            JSON.stringify(snapshot.languages || []),
+            JSON.stringify(snapshot.skills || []),
+            JSON.stringify(snapshot.badges || []),
+            JSON.stringify(snapshot.submission_calendar || {}),
+            snapshot.engagement_score || 0,
+            snapshot.performance_tier || 'Beginner',
+            snapshot.activity_status || 'No Data',
+            snapshot.status || 'SUCCESS',
+            snapshot.error || null
+          );
+        }
+      } catch (e) {
+        console.error('[DB] addSnapshot SQLite error:', e);
+      }
     }
 
     return newSnap;
@@ -1302,31 +1323,41 @@ export class DatabaseService {
       return;
     }
 
-    const studentInDb = this.sqliteDb.prepare('SELECT id FROM students WHERE id = ?').get(studentId);
-    if (!studentInDb) {
+    let resolvedStudentInDb = this.sqliteDb.prepare('SELECT id FROM students WHERE id = ?').get(studentId);
+    if (!resolvedStudentInDb) {
       const studentObj = this.getStudentById(studentId);
-      if (studentObj) {
-        try {
-          this.sqliteDb.prepare(`
-            INSERT OR REPLACE INTO students (
-              id, register_no, student_name, section, year, batch, username, email, mentor, academic_year, active, created_at, notes
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          `).run(
-            studentObj.id,
-            studentObj.register_no,
-            studentObj.student_name,
-            studentObj.section || 'A',
-            studentObj.year || 'II',
-            studentObj.batch || '2023-2027',
-            studentObj.username,
-            studentObj.email || null,
-            studentObj.mentor || null,
-            studentObj.academic_year || DEFAULT_SETTINGS.academic_year,
-            studentObj.active ? 1 : 0,
-            studentObj.created_at || new Date().toISOString(),
-            studentObj.notes || null
-          );
-        } catch (e) {}
+      if (!studentObj) {
+        // Cannot resolve student in SQLite — skip SQLite write to avoid FK constraint violation.
+        // Submissions are already saved in memStore.
+        console.warn(`[DB] setSubmissions: student ${studentId} not found, skipping SQLite write.`);
+        this.persistMemoryStore();
+        return;
+      }
+      try {
+        this.sqliteDb.prepare(`
+          INSERT OR REPLACE INTO students (
+            id, register_no, student_name, section, year, batch, username, email, mentor, academic_year, active, created_at, notes
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          studentObj.id,
+          studentObj.register_no,
+          studentObj.student_name,
+          studentObj.section || 'A',
+          studentObj.year || 'II',
+          studentObj.batch || '2023-2027',
+          studentObj.username,
+          studentObj.email || null,
+          studentObj.mentor || null,
+          studentObj.academic_year || DEFAULT_SETTINGS.academic_year,
+          studentObj.active ? 1 : 0,
+          studentObj.created_at || new Date().toISOString(),
+          studentObj.notes || null
+        );
+        resolvedStudentInDb = { id: studentObj.id };
+      } catch (e) {
+        console.warn(`[DB] setSubmissions: could not insert student ${studentId} into SQLite, skipping.`);
+        this.persistMemoryStore();
+        return;
       }
     }
 
@@ -2011,35 +2042,37 @@ export class DatabaseService {
       const facultyPasswordHash = this.hashPassword('Kite@123');
 
       if (this.isFallbackMode || !this.sqliteDb) {
-        this.memStore.users = this.memStore.users.filter(u => u.role !== 'staff');
-        this.memStore.users.push({
-          id: 'u_faculty_csbs',
-          username: 'Faculty_CSBS',
-          password_hash: facultyPasswordHash,
-          role: 'staff',
-          name: 'Faculty Coordinator (CSBS)',
-          email: 'faculty.csbs@kgkite.ac.in',
-          created_at: new Date().toISOString()
-        });
+        const existingStaff = this.memStore.users.find(u => u.role === 'staff' && (u.username === 'Faculty_CSBS' || u.id === 'u_faculty_csbs'));
+        if (!existingStaff) {
+          this.memStore.users.push({
+            id: 'u_faculty_csbs',
+            username: 'Faculty_CSBS',
+            password_hash: facultyPasswordHash,
+            role: 'staff',
+            name: 'Faculty Coordinator (CSBS)',
+            email: 'faculty.csbs@kgkite.ac.in',
+            created_at: new Date().toISOString()
+          });
+        }
       } else {
-        // Clear old staff accounts to ensure Faculty_CSBS is the unified staff account
-        this.sqliteDb.prepare("DELETE FROM users WHERE role = 'staff'").run();
+        const existingStaff = this.sqliteDb.prepare("SELECT * FROM users WHERE role = 'staff' AND (username = 'Faculty_CSBS' OR id = 'u_faculty_csbs')").get() as DBUser | undefined;
+        if (!existingStaff) {
+          const insertUser = this.sqliteDb.prepare(`
+            INSERT INTO users (id, username, password_hash, role, student_id, name, email, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          `);
 
-        const insertUser = this.sqliteDb.prepare(`
-          INSERT OR REPLACE INTO users (id, username, password_hash, role, student_id, name, email, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `);
-
-        insertUser.run(
-          'u_faculty_csbs',
-          'Faculty_CSBS',
-          facultyPasswordHash,
-          'staff',
-          null,
-          'Faculty Coordinator (CSBS)',
-          'faculty.csbs@kgkite.ac.in',
-          new Date().toISOString()
-        );
+          insertUser.run(
+            'u_faculty_csbs',
+            'Faculty_CSBS',
+            facultyPasswordHash,
+            'staff',
+            null,
+            'Faculty Coordinator (CSBS)',
+            'faculty.csbs@kgkite.ac.in',
+            new Date().toISOString()
+          );
+        }
       }
 
       // 2. Build all student user records in memory + SQLite (no individual Supabase calls)
@@ -2151,6 +2184,13 @@ export class DatabaseService {
       existingMem.name = student.student_name;
       existingMem.email = studentEmail;
       existingMem.username = studentEmail;
+      if (this.sqliteDb) {
+        try {
+          this.sqliteDb.prepare(`
+            UPDATE users SET student_id = ?, name = ?, email = ?, username = ? WHERE id = ?
+          `).run(student.id, student.student_name, studentEmail, studentEmail, existingMem.id);
+        } catch (e) {}
+      }
       return existingMem;
     }
 
@@ -2308,15 +2348,15 @@ export class DatabaseService {
       if (role === 'staff') return null;
     }
 
-    // Student Authentication (Password verification by Email / Register Number / Username + Password)
+    // Student Authentication (Password verification by Email / Register Number + Password)
     let foundStudent: Student | undefined;
     const allStudents = this.getStudents();
 
     foundStudent = allStudents.find(s => {
       const email = (s.email || '').toLowerCase().trim();
-      const targetId = cleanId.toLowerCase();
-      // Only allow login by email address — register number and username are not accepted
-      return email !== '' && email === targetId;
+      const regNo = (s.register_no || '').toLowerCase().trim();
+      const targetId = cleanId.toLowerCase().trim();
+      return (email !== '' && email === targetId) || (regNo !== '' && regNo === targetId);
     });
 
     if (foundStudent) {

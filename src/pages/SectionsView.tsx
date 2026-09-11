@@ -27,13 +27,22 @@ export const SectionsView: React.FC<SectionsViewProps> = ({
   // Aggregate Cohort Stats by Academic Year (II Year, III Year, IV Year)
   const academicYears = ['II', 'III', 'IV'];
 
+  const normalizeYear = (yr?: string): string => {
+    const clean = (yr || '').toUpperCase().trim();
+    if (clean === '1' || clean === '1ST' || clean === 'I' || clean === 'I YEAR') return 'I';
+    if (clean === '2' || clean === '2ND' || clean === 'II' || clean === 'II YEAR') return 'II';
+    if (clean === '3' || clean === '3RD' || clean === 'III' || clean === 'III YEAR') return 'III';
+    if (clean === '4' || clean === '4TH' || clean === 'IV' || clean === 'IV YEAR') return 'IV';
+    return clean;
+  };
+
   const yearCohortStats = academicYears.map(yr => {
-    const yrStudents = students.filter(s => (s.year || '').toUpperCase().trim() === yr);
-    const batchInfo = batchStats.find(b => b.year === yr);
+    const yrStudents = students.filter(s => normalizeYear(s.year) === yr);
+    const batchInfo = batchStats.find(b => normalizeYear(b.year) === yr);
 
     const totalStudents = yrStudents.length || batchInfo?.total_students || 0;
     const activeStudents = yrStudents.length > 0 
-      ? yrStudents.filter(s => (s.latest_snapshot?.total_solved || 0) > 0 || (s.days_inactive !== undefined && s.days_inactive <= 14)).length
+      ? yrStudents.filter(s => s.days_inactive !== undefined ? s.days_inactive <= 14 : (s.latest_snapshot?.activity_status === 'Active')).length
       : batchInfo?.active_students || 0;
 
     const totalSolved = yrStudents.reduce((acc, s) => acc + (s.latest_snapshot?.total_solved || 0), 0);
@@ -49,6 +58,7 @@ export const SectionsView: React.FC<SectionsViewProps> = ({
       : (batchInfo?.avg_rating || 0);
 
     const topStudent = [...yrStudents].sort((a, b) => (b.latest_snapshot?.total_solved || 0) - (a.latest_snapshot?.total_solved || 0))[0];
+    const hasTopSolver = topStudent && (topStudent.latest_snapshot?.total_solved || 0) > 0;
 
     return {
       year: yr,
@@ -60,7 +70,7 @@ export const SectionsView: React.FC<SectionsViewProps> = ({
       avgEngagement,
       totalSolved,
       avgRating,
-      topPerformer: topStudent ? {
+      topPerformer: hasTopSolver ? {
         id: topStudent.id,
         name: topStudent.student_name,
         total_solved: topStudent.latest_snapshot?.total_solved || 0

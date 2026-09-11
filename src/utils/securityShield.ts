@@ -84,6 +84,10 @@ function ensurePrivacyOverlay(): HTMLDivElement {
     opacity: '0',
   });
 
+  overlay.addEventListener('click', () => {
+    setPrivacyMode(false);
+  });
+
   document.body.appendChild(overlay);
   privacyOverlay = overlay;
   return overlay;
@@ -212,6 +216,9 @@ export function initSecurityShield(user?: SecurityUser | null): () => void {
     }
 
     if (isCtrlOrMeta && key === 'p') {
+      if (user?.role === 'staff') {
+        return; // Allow faculty staff to print reports
+      }
       e.preventDefault();
       e.stopPropagation();
       emitAlert('print', 'Printing this confidential page is restricted.');
@@ -268,6 +275,7 @@ export function initSecurityShield(user?: SecurityUser | null): () => void {
   };
 
   const handleBeforePrint = () => {
+    if (user?.role === 'staff') return;
     emitAlert('print', 'Printing is restricted to protect student confidentiality.');
     setPrivacyMode(true);
   };
@@ -328,21 +336,23 @@ export function initSecurityShield(user?: SecurityUser | null): () => void {
     } catch (e) {}
   }, 3000);
 
-  const handlePrintOverride = () => {
-    emitAlert('print', 'Printing is restricted to protect student confidentiality.');
-    setPrivacyMode(true);
-    return undefined;
-  };
+  if (user?.role !== 'staff') {
+    const handlePrintOverride = () => {
+      emitAlert('print', 'Printing is restricted to protect student confidentiality.');
+      setPrivacyMode(true);
+      return undefined;
+    };
 
-  try {
-    const printFn = window.print.bind(window);
-    Object.defineProperty(window, 'print', {
-      value: handlePrintOverride,
-      configurable: true,
-      writable: true,
-    });
-    (window as any).__csbs_original_print__ = printFn;
-  } catch (e) {}
+    try {
+      const printFn = window.print.bind(window);
+      Object.defineProperty(window, 'print', {
+        value: handlePrintOverride,
+        configurable: true,
+        writable: true,
+      });
+      (window as any).__csbs_original_print__ = printFn;
+    } catch (e) {}
+  }
 
   window.addEventListener('contextmenu', handleContextMenu, true);
   window.addEventListener('keydown', handleKeyDown, true);

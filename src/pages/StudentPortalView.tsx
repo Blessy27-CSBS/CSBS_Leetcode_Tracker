@@ -327,8 +327,13 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
     return { name: lang || 'Python 3', color: 'bg-purple-50 text-purple-700 border-purple-200' };
   };
 
+  // Effective student list for computing live standings & leaderboard (resolves empty allStudents in student session)
+  const effectiveStudents = (studentListState && studentListState.length > 0)
+    ? studentListState
+    : (allStudents && allStudents.length > 0 ? allStudents : (student ? [student] : []));
+
   // Filter leaderboard
-  const studentList = allStudents.length > 0 ? allStudents : [student];
+  const studentList = effectiveStudents.length > 0 ? effectiveStudents : [student];
   const filteredLeaderboard = studentList
     .filter(s => {
       if (leaderboardScope === 'SECTION') {
@@ -357,7 +362,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
       .join(' ');
   };
 
-  // Dynamic Rank Calculation from allStudents (matching Leaderboard tie-breaker logic)
+  // Dynamic Rank Calculation from effectiveStudents (matching Leaderboard tie-breaker logic)
   const compareStudents = (a: any, b: any) => {
     const snapA = a.latest_snapshot;
     const snapB = b.latest_snapshot;
@@ -382,12 +387,12 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
     return rateB - rateA;
   };
 
-  const sortedDeptList = [...allStudents].sort(compareStudents);
+  const sortedDeptList = [...effectiveStudents].sort(compareStudents);
   const deptIdx = sortedDeptList.findIndex(s => s.id === student.id || s.register_no === student.register_no);
   const liveDeptRank = deptIdx >= 0 ? deptIdx + 1 : (rankInDepartment || 1);
-  const liveTotalDept = allStudents.length || (totalStudentsDepartment || 1);
+  const liveTotalDept = effectiveStudents.length || (totalStudentsDepartment || 1);
 
-  const sectionList = allStudents.filter(s => s.section === student.section);
+  const sectionList = effectiveStudents.filter(s => s.section === student.section);
   const sortedSecList = [...sectionList].sort(compareStudents);
   const secIdx = sortedSecList.findIndex(s => s.id === student.id || s.register_no === student.register_no);
   const liveSecRank = secIdx >= 0 ? secIdx + 1 : (rankInSection || 1);

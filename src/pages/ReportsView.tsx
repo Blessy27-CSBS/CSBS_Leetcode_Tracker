@@ -8,24 +8,34 @@ import {
   Calendar,
   Sparkles,
   Building,
-  GraduationCap
+  GraduationCap,
+  RefreshCw
 } from 'lucide-react';
 import { DashboardSummary, SectionStat, StudentWithLatest } from '../types';
 
 interface ReportsViewProps {
-  summary: DashboardSummary;
-  sectionStats: SectionStat[];
-  students: StudentWithLatest[];
+  summary?: DashboardSummary | null;
+  sectionStats?: SectionStat[];
+  students?: StudentWithLatest[];
 }
 
 export const ReportsView: React.FC<ReportsViewProps> = ({
   summary,
-  sectionStats,
-  students,
+  sectionStats = [],
+  students = [],
 }) => {
   const handlePrint = () => {
     window.print();
   };
+
+  if (!summary) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 text-slate-400 space-y-3 bg-white rounded-xl border border-slate-200">
+        <RefreshCw className="w-8 h-8 animate-spin text-purple-600" />
+        <p className="text-xs font-semibold text-slate-500">Loading department reports and analytics...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
