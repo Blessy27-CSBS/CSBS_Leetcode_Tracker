@@ -144,9 +144,10 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
         setSelectedTrackId(data.tracks[0].id);
       }
 
-      // Auto sync LeetCode profile for IV Year students after sign in
-      if (data?.student && isEligibleForLeetCode75(data.student.year) && !autoSynced) {
+      // Auto sync LeetCode profile for ALL students after sign in
+      if (data?.student && !autoSynced) {
         setAutoSynced(true);
+        setSyncing(true);
         api.syncMyLeetCode(currentUser.student_id).then(res => {
           if (res?.success) {
             api.getStudentDashboard(currentUser.student_id).then(refreshed => {
@@ -154,7 +155,8 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
               if (onStudentUpdated) onStudentUpdated();
             }).catch(() => {});
           }
-        }).catch(err => console.log('Auto sync in background:', err));
+        }).catch(err => console.log('Auto sync in background:', err))
+        .finally(() => setSyncing(false));
       }
     } catch (err: any) {
       console.error(err);

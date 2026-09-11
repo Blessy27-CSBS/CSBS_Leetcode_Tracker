@@ -318,6 +318,74 @@ app.post('/api/auth/login', (req, res) => {
         const snapshots = db.getSnapshots(s.id);
         const settings = db.getSettings();
         enrichedStudent = enrichStudentWithSnapshots(s, snapshots, settings);
+
+        // Async background sync for logged in student
+        fetchLeetCodeProfile(s.username, settings.api_timeout_seconds * 1000).then(fetchResult => {
+          if (fetchResult.status === 'SUCCESS' && fetchResult.data) {
+            const prevSnap = db.getLatestSnapshot(s.id);
+            const daysInactive = getDaysInactive(fetchResult.data.last_active);
+            const activityStatus = getActivityStatus(daysInactive, settings.inactivity_threshold_days);
+            const tier = getPerformanceTier(fetchResult.data.total_solved, settings);
+            const impRate = prevSnap ? Math.max(0, fetchResult.data.total_solved - prevSnap.total_solved) : 0;
+            const engagement = calculateEngagementScore({
+              total_solved: fetchResult.data.total_solved,
+              medium: fetchResult.data.medium,
+              hard: fetchResult.data.hard,
+              streak: fetchResult.data.streak,
+              contest_rating: fetchResult.data.contest_rating,
+              contests_attended: fetchResult.data.contests_attended,
+              days_inactive: daysInactive,
+              improvement_rate: impRate,
+            }, settings);
+
+            db.addSnapshot({
+              student_id: s.id,
+              captured_at: new Date().toISOString(),
+              total_solved: fetchResult.data.total_solved,
+              easy: fetchResult.data.easy,
+              medium: fetchResult.data.medium,
+              hard: fetchResult.data.hard,
+              acceptance_rate: fetchResult.data.acceptance_rate,
+              ranking: fetchResult.data.ranking,
+              reputation: fetchResult.data.reputation,
+              contest_rating: fetchResult.data.contest_rating,
+              contest_rank: fetchResult.data.contest_rank,
+              contests_attended: fetchResult.data.contests_attended,
+              top_percentage: fetchResult.data.top_percentage,
+              streak: fetchResult.data.streak,
+              active_days: fetchResult.data.active_days,
+              last_active: fetchResult.data.last_active,
+              languages: fetchResult.data.languages,
+              skills: fetchResult.data.skills,
+              badges: fetchResult.data.badges,
+              submission_calendar: fetchResult.data.submission_calendar,
+              engagement_score: engagement,
+              performance_tier: tier,
+              activity_status: activityStatus,
+              status: 'SUCCESS'
+            });
+
+            if (fetchResult.data.recent_submissions && fetchResult.data.recent_submissions.length > 0) {
+              db.setSubmissions(s.id, fetchResult.data.recent_submissions.map((sub, idx) => ({
+                id: `sub_${s.id}_${Date.now()}_${idx}`,
+                student_id: s.id,
+                title: sub.title,
+                titleSlug: sub.titleSlug,
+                timestamp: sub.timestamp,
+                language: sub.language || sub.lang || (fetchResult.data.languages && fetchResult.data.languages.length > 0 ? fetchResult.data.languages[0].languageName : 'Python3'),
+                statusDisplay: sub.statusDisplay || 'Accepted',
+              })));
+            }
+          }
+        }).catch(err => console.log('Auto login student sync background error:', err));
+      }
+    } else if (user.role === 'staff') {
+      // Async background batch sync for all active students when faculty logs in
+      if (!batchProgress.is_running) {
+        const activeStudents = db.getStudents().filter(s => s.active);
+        if (activeStudents.length > 0) {
+          runBatchFetchWorker(activeStudents, 'Auto Faculty Login Sync');
+        }
       }
     }
 

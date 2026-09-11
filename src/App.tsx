@@ -138,10 +138,18 @@ export function App() {
     verifySession();
   }, []);
 
+  const [autoBatchSynced, setAutoBatchSynced] = useState(false);
+
   // Initial Load of application data when authenticated
   useEffect(() => {
     if (currentUser) {
       loadAllData();
+      if (currentUser.role === 'staff' && !autoBatchSynced) {
+        setAutoBatchSynced(true);
+        api.startBatchFetch().then(() => {
+          console.log('Automatic background batch sync started on faculty login.');
+        }).catch(err => console.log('Auto batch fetch already running or ignored:', err));
+      }
     }
   }, [currentUser]);
 
@@ -149,10 +157,15 @@ export function App() {
   useEffect(() => {
     if (currentUser?.role !== 'staff') return;
 
+    let wasRunning = false;
     const checkProgress = async () => {
       try {
         const p = await api.getBatchProgress();
         setBatchProgress(p);
+        if (wasRunning && !p.is_running) {
+          loadAllData();
+        }
+        wasRunning = p.is_running;
       } catch (e) {
         // ignore
       }
@@ -322,6 +335,7 @@ export function App() {
           <SectionsView
             sectionStats={sectionStats}
             batchStats={batchStats}
+            students={students}
             onSelectStudent={handleOpenStudentDetail}
           />
         );

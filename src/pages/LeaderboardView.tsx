@@ -28,11 +28,9 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
 }) => {
   const [viewMode, setViewMode] = useState<'arena' | 'table'>('arena');
   const [sortBy, setSortBy] = useState<'engagement_score' | 'total_solved' | 'medium' | 'hard' | 'contest_rating' | 'improvement' | 'streak'>('engagement_score');
-  const [selectedSection, setSelectedSection] = useState('ALL');
   const [selectedYear, setSelectedYear] = useState('ALL');
 
   const filtered = students.filter(s => {
-    if (selectedSection !== 'ALL' && s.section !== selectedSection) return false;
     if (selectedYear !== 'ALL' && s.year !== selectedYear) return false;
     return true;
   });
@@ -151,24 +149,14 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
             <div className="flex items-center space-x-3 text-xs">
               <div className="flex items-center space-x-1 text-slate-500 font-bold">
                 <Filter className="w-3.5 h-3.5" />
-                <span>Filters:</span>
+                <span>Academic Year Filter:</span>
               </div>
-              <select
-                value={selectedSection}
-                onChange={e => setSelectedSection(e.target.value)}
-                className="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-700 font-bold focus:outline-none focus:ring-2 focus:ring-purple-500"
-              >
-                <option value="ALL">All Sections</option>
-                <option value="A">Section A</option>
-                <option value="B">Section B</option>
-                <option value="C">Section C</option>
-              </select>
               <select
                 value={selectedYear}
                 onChange={e => setSelectedYear(e.target.value)}
                 className="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-700 font-bold focus:outline-none focus:ring-2 focus:ring-purple-500"
               >
-                <option value="ALL">All Years</option>
+                <option value="ALL">All Academic Years</option>
                 <option value="I">I Year</option>
                 <option value="II">II Year</option>
                 <option value="III">III Year</option>
@@ -229,7 +217,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                   <tr>
                     <th className="py-3 px-4 w-16 text-center">Rank</th>
                     <th className="py-3 px-4">Student Name</th>
-                    <th className="py-3 px-3">Class</th>
+                    <th className="py-3 px-3">Department & Year</th>
                     <th className="py-3 px-3">LeetCode Handle</th>
                     <th className="py-3 px-4 text-right font-bold text-purple-700">{getMetricLabel()}</th>
                     <th className="py-3 px-4">Total Solved</th>
@@ -258,7 +246,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
 
                         <td className="py-3 px-3 whitespace-nowrap">
                           <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-lg text-[11px] font-bold border border-slate-200">
-                            Sec {s.section} • {s.year} Year
+                            CSBS • {s.year} Year
                           </span>
                         </td>
 

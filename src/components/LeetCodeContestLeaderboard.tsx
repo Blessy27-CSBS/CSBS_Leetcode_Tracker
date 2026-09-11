@@ -41,7 +41,7 @@ export const LeetCodeContestLeaderboard: React.FC<LeetCodeContestLeaderboardProp
   const [loadingContests, setLoadingContests] = useState(false);
 
   // State for Scope & Metrics (default to solved so leaderboard updates dynamically when students solve)
-  const [scope, setScope] = useState<'GLOBAL' | 'CSBS' | 'SECA' | 'SECB' | 'SECC'>('GLOBAL');
+  const [scope, setScope] = useState<'GLOBAL' | 'CSBS' | 'YEAR_II' | 'YEAR_III' | 'YEAR_IV'>('GLOBAL');
   const [metric, setMetric] = useState<'solved' | 'rating' | 'score' | 'streak'>('solved');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeContestTab, setActiveContestTab] = useState<'past' | 'my'>('past');
@@ -72,9 +72,9 @@ export const LeetCodeContestLeaderboard: React.FC<LeetCodeContestLeaderboardProp
 
   // Filter and sort students
   const filteredStudents = students.filter(s => {
-    if (scope === 'SECA' && s.section !== 'A') return false;
-    if (scope === 'SECB' && s.section !== 'B') return false;
-    if (scope === 'SECC' && s.section !== 'C') return false;
+    if (scope === 'YEAR_II' && s.year !== 'II') return false;
+    if (scope === 'YEAR_III' && s.year !== 'III') return false;
+    if (scope === 'YEAR_IV' && s.year !== 'IV') return false;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       const matchName = s.student_name.toLowerCase().includes(q);
@@ -756,34 +756,34 @@ export const LeetCodeContestLeaderboard: React.FC<LeetCodeContestLeaderboardProp
                 CSBS
               </button>
               <button
-                onClick={() => setScope('SECA')}
+                onClick={() => setScope('YEAR_II')}
                 className={`px-2.5 py-1 text-xs font-extrabold rounded-full transition-all cursor-pointer ${
-                  scope === 'SECA'
+                  scope === 'YEAR_II'
                     ? 'bg-white text-slate-900 shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Sec A
+                II Year
               </button>
               <button
-                onClick={() => setScope('SECB')}
+                onClick={() => setScope('YEAR_III')}
                 className={`px-2.5 py-1 text-xs font-extrabold rounded-full transition-all cursor-pointer ${
-                  scope === 'SECB'
+                  scope === 'YEAR_III'
                     ? 'bg-white text-slate-900 shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Sec B
+                III Year
               </button>
               <button
-                onClick={() => setScope('SECC')}
+                onClick={() => setScope('YEAR_IV')}
                 className={`px-2.5 py-1 text-xs font-extrabold rounded-full transition-all cursor-pointer ${
-                  scope === 'SECC'
+                  scope === 'YEAR_IV'
                     ? 'bg-white text-slate-900 shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Sec C
+                IV Year
               </button>
             </div>
 
@@ -939,7 +939,7 @@ export const LeetCodeContestLeaderboard: React.FC<LeetCodeContestLeaderboardProp
                         )}
                       </div>
                       <div className="text-[10px] text-slate-500 font-mono truncate">
-                        @{s.username} • {formatSectionName(s.section)}
+                        @{s.username} • CSBS Dept ({s.year} Year)
                       </div>
                     </div>
                   </div>
