@@ -93,15 +93,18 @@ function setPrivacyMode(active: boolean) {
   const overlay = ensurePrivacyOverlay();
   overlay.style.display = active ? 'block' : 'none';
 
-  const appRoot = document.getElementById('root');
-  if (appRoot) {
-    appRoot.style.visibility = active ? 'hidden' : 'visible';
-    appRoot.style.opacity = active ? '0' : '1';
-    appRoot.style.pointerEvents = active ? 'none' : 'auto';
-  }
-
   document.body.classList.toggle('privacy-locked', active);
   document.documentElement.classList.toggle('privacy-locked', active);
+
+  if (active) {
+    document.body.style.pointerEvents = 'none';
+    document.body.style.filter = 'brightness(0.7) saturate(0.8)';
+    document.body.style.opacity = '0.7';
+  } else {
+    document.body.style.pointerEvents = '';
+    document.body.style.filter = '';
+    document.body.style.opacity = '';
+  }
 }
 
 export function initSecurityShield(user?: SecurityUser | null): () => void {
