@@ -7,14 +7,7 @@ import {
   Eye,
   EyeOff,
   ArrowRight,
-  ShieldAlert,
-  Flame,
-  Zap,
-  Trophy,
-  Sparkles,
-  Code2,
-  Cpu,
-  Target
+  ShieldAlert
 } from 'lucide-react';
 import { api } from '../services/api';
 import { AuthUser, UserRole } from '../types';
@@ -34,8 +27,14 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!identifier.trim() || !password.trim()) {
-      setError(activeRole === 'student' ? 'Please enter your mail id and password.' : 'Please enter your faculty username and password.');
+
+    if (!identifier.trim()) {
+      setError(activeRole === 'student' ? 'Please enter your Mail ID or Register Number.' : 'Please enter your faculty username.');
+      return;
+    }
+
+    if (activeRole === 'staff' && !password.trim()) {
+      setError('Please enter your faculty password.');
       return;
     }
 
@@ -44,7 +43,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
       setError('');
       const session = await api.login({
         identifier: identifier.trim(),
-        password: password.trim(),
+        password: activeRole === 'staff' ? password.trim() : undefined,
         role: activeRole,
       });
 
@@ -63,32 +62,25 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
       className="min-h-screen flex flex-col justify-center items-center md:items-end p-4 sm:p-6 lg:p-8 lg:pr-6 xl:pr-10 font-sans antialiased text-slate-100 relative overflow-hidden selection:bg-purple-600 selection:text-white bg-cover bg-center bg-no-repeat"
       style={{ backgroundImage: `url('/login-bg-kgisl.jpg')` }}
     >
-      {/* Subtle Overlay for perfect contrast while keeping full background photo visible */}
+      {/* Subtle Overlay */}
       <div className="absolute inset-0 bg-slate-950/20 backdrop-blur-[1px] pointer-events-none -z-10" />
 
       {/* Background Ambient Glows */}
       <div className="absolute top-0 right-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl pointer-events-none -z-10 animate-pulse" />
       <div className="absolute bottom-0 right-10 w-96 h-96 bg-amber-500/20 rounded-full blur-3xl pointer-events-none -z-10 animate-pulse" style={{ animationDuration: '4s' }} />
 
-      {/* ========================================================= */}
-      {/* TWO-COLUMN LAYOUT: LEFT SIDE HERO & RIGHT SIDE LOGIN CARD */}
-      {/* ========================================================= */}
       <div className="w-full max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8 lg:gap-12 z-10 my-auto">
 
-        {/* LEFT SIDE BRANDING PRESENTATION (SENIOR UI/UX PERFECT ARCHITECTURAL ALIGNMENT) */}
+        {/* LEFT SIDE BRANDING PRESENTATION */}
         <div className="hidden md:flex flex-col items-center text-center space-y-1.5 z-10 max-w-md my-auto pt-16 md:pt-20 lg:pt-24 xl:pt-28">
-
-          {/* Department of CSBS */}
           <h2 className="text-xs lg:text-sm font-bold text-white/95 drop-shadow-md tracking-wider">
             Department of CSBS
           </h2>
 
-          {/* Nexora Association */}
           <h1 className="text-sm lg:text-base font-black text-purple-300 drop-shadow-md tracking-widest uppercase">
             Nexora Association
           </h1>
 
-          {/* ─── Presents ─── Divider */}
           <div className="flex items-center justify-center gap-2 w-full py-0.5 opacity-90">
             <div className="h-[1px] w-6 lg:w-10 bg-gradient-to-r from-transparent to-purple-300/70"></div>
             <span className="text-[10px] lg:text-[11px] font-semibold text-slate-200 tracking-[0.2em] uppercase drop-shadow-xs">
@@ -97,7 +89,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             <div className="h-[1px] w-6 lg:w-10 bg-gradient-to-l from-transparent to-purple-300/70"></div>
           </div>
 
-          {/* Horizontal CODEX Logo (Subtitle removed per request) */}
           <div className="pt-0.5">
             <CodexLogo
               size="sm"
@@ -107,12 +98,10 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
               textColor="#ffffff"
             />
           </div>
-
         </div>
 
         {/* RIGHT SIDE LOGIN CARD */}
         <div className="w-full max-w-[440px] shrink-0 md:ml-auto">
-          {/* UNIFIED SINGLE CARD: Logo, Subtitle, Role Switcher & Login Form */}
           <div className="bg-slate-900/20 backdrop-blur-md border border-white/30 rounded-3xl p-6 sm:p-7 shadow-2xl space-y-6 text-white transition-all hover:bg-slate-900/30">
 
             {/* Logo & Subtitle Section */}
@@ -172,7 +161,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
               {/* Username / Email */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-extrabold text-white drop-shadow-sm">
-                  {activeRole === 'student' ? 'Student Mail ID (Username)' : 'Faculty Username'}
+                  {activeRole === 'student' ? 'Student Mail ID or Register Number' : 'Faculty Username'}
                 </label>
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-300 group-focus-within:text-purple-300 transition-colors">
@@ -182,39 +171,41 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                     type="text"
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
-                    placeholder={activeRole === 'student' ? 'Enter your mail id' : 'Enter your username'}
+                    placeholder={activeRole === 'student' ? 'Enter mail ID (e.g. name@kgkite.ac.in)' : 'Enter your username'}
                     required
                     className="w-full pl-10 pr-3.5 py-2.5 bg-black/45 backdrop-blur-md border border-white/30 rounded-xl text-sm text-white placeholder-slate-300 focus:bg-black/65 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400 font-semibold transition-all shadow-inner"
                   />
                 </div>
               </div>
 
-              {/* Password */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-extrabold text-white drop-shadow-sm">
-                  Password
-                </label>
-                <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-300 group-focus-within:text-purple-300 transition-colors">
-                    <Lock className="w-4 h-4" />
+              {/* Password - Only for Faculty Staff */}
+              {activeRole === 'staff' && (
+                <div className="space-y-1.5 animate-fade-in">
+                  <label className="block text-xs font-extrabold text-white drop-shadow-sm">
+                    Faculty Password
+                  </label>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-300 group-focus-within:text-purple-300 transition-colors">
+                      <Lock className="w-4 h-4" />
+                    </div>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Enter your password"
+                      required={activeRole === 'staff'}
+                      className="w-full pl-10 pr-10 py-2.5 bg-black/45 backdrop-blur-md border border-white/30 rounded-xl text-sm text-white placeholder-slate-300 focus:bg-black/65 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400 font-semibold transition-all shadow-inner"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-300 hover:text-white cursor-pointer transition-colors"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your password"
-                    required
-                    className="w-full pl-10 pr-10 py-2.5 bg-black/45 backdrop-blur-md border border-white/30 rounded-xl text-sm text-white placeholder-slate-300 focus:bg-black/65 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400 font-semibold transition-all shadow-inner"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-300 hover:text-white cursor-pointer transition-colors"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
                 </div>
-              </div>
+              )}
 
               {/* Submit Button */}
               <button
@@ -226,7 +217,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
                   <>
-                    <span>Sign In as {activeRole === 'student' ? 'Student' : 'Faculty'}</span>
+                    <span>{activeRole === 'student' ? 'Access Student Portal' : 'Sign In as Faculty'}</span>
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </>
                 )}
@@ -234,7 +225,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             </form>
 
           </div>
-
         </div>
       </div>
     </div>

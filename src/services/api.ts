@@ -63,7 +63,7 @@ export const api = {
   async login(credentials: {
     identifier?: string;
     username?: string;
-    password: string;
+    password?: string;
     role?: 'staff' | 'student';
   }): Promise<AuthSession> {
     const res = await fetch('/api/auth/login', {
@@ -78,6 +78,21 @@ export const api = {
     }
     if (json.user) {
       this.setCachedUser(json.user);
+    }
+    if (json.studentDashboard && json.user?.student_id) {
+      try {
+        localStorage.setItem(`csbs_student_dash_${json.user.student_id}`, JSON.stringify(json.studentDashboard));
+      } catch (e) {}
+    }
+    if (json.facultyDashboard) {
+      try {
+        if (json.facultyDashboard.dashData) {
+          localStorage.setItem('csbs_dashboard_cache', JSON.stringify(json.facultyDashboard.dashData));
+        }
+        if (json.facultyDashboard.students) {
+          localStorage.setItem('csbs_students_cache', JSON.stringify(json.facultyDashboard.students));
+        }
+      } catch (e) {}
     }
     return json;
   },
@@ -381,7 +396,10 @@ export const api = {
   async createStudent(data: Partial<Student>): Promise<Student> {
     const res = await fetch('/api/students', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
       body: JSON.stringify(data),
     });
     const json = await res.json();
@@ -392,7 +410,10 @@ export const api = {
   async updateStudent(id: string, data: Partial<Student>): Promise<Student> {
     const res = await fetch(`/api/students/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
       body: JSON.stringify(data),
     });
     const json = await res.json();
@@ -401,7 +422,10 @@ export const api = {
   },
 
   async deleteStudent(id: string): Promise<void> {
-    const res = await fetch(`/api/students/${id}`, { method: 'DELETE' });
+    const res = await fetch(`/api/students/${id}`, {
+      method: 'DELETE',
+      headers: { ...getAuthHeaders() },
+    });
     if (!res.ok) {
       const json = await res.json();
       throw new Error(json.error || 'Failed to delete student');
@@ -421,7 +445,10 @@ export const api = {
   }> {
     const res = await fetch('/api/students/import', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
       body: JSON.stringify({ rows }),
     });
     const json = await res.json();
@@ -436,7 +463,10 @@ export const api = {
     error?: string;
     snapshot: Snapshot;
   }> {
-    const res = await fetch(`/api/fetch/student/${id}`, { method: 'POST' });
+    const res = await fetch(`/api/fetch/student/${id}`, {
+      method: 'POST',
+      headers: { ...getAuthHeaders() },
+    });
     const json = await res.json();
     if (!res.ok && !json.snapshot) throw new Error(json.error || 'Failed to fetch student data');
     return json;
@@ -445,7 +475,10 @@ export const api = {
   async startBatchFetch(filters?: { section?: string; year?: string }): Promise<{ message: string; total: number }> {
     const res = await fetch('/api/fetch/all', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
       body: JSON.stringify(filters || {}),
     });
     const json = await res.json();
@@ -453,13 +486,16 @@ export const api = {
     return json;
   },
 
+  async cancelBatchFetch(): Promise<void> {
+    await fetch('/api/fetch/cancel', {
+      method: 'POST',
+      headers: { ...getAuthHeaders() },
+    });
+  },
+
   async getBatchProgress(): Promise<BatchFetchProgress> {
     const res = await fetch('/api/fetch/progress');
     return res.json();
-  },
-
-  async cancelBatchFetch(): Promise<void> {
-    await fetch('/api/fetch/cancel', { method: 'POST' });
   },
 
   // Leaderboard
@@ -500,7 +536,10 @@ export const api = {
   async updateSettings(settings: Partial<SystemSettings>): Promise<SystemSettings> {
     const res = await fetch('/api/settings', {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
       body: JSON.stringify(settings),
     });
     const json = await res.json();
@@ -509,14 +548,20 @@ export const api = {
   },
 
   async resetToDemo(): Promise<void> {
-    const res = await fetch('/api/settings/reset-demo', { method: 'POST' });
+    const res = await fetch('/api/settings/reset-demo', {
+      method: 'POST',
+      headers: { ...getAuthHeaders() },
+    });
     if (!res.ok) throw new Error('Failed to reset demo dataset');
   },
 
   async clearHistory(studentId?: string): Promise<void> {
     const res = await fetch('/api/settings/clear-history', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
       body: JSON.stringify({ studentId }),
     });
     if (!res.ok) throw new Error('Failed to clear snapshots');
@@ -538,7 +583,10 @@ export const api = {
   async setPOTD(data: Partial<POTDItem>): Promise<{ success: boolean; potd: POTDItem }> {
     const res = await fetch('/api/potd', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
       body: JSON.stringify(data),
     });
     const json = await res.json();
@@ -549,7 +597,10 @@ export const api = {
   async updatePOTD(id: string, data: Partial<POTDItem>): Promise<{ success: boolean; potd: POTDItem }> {
     const res = await fetch(`/api/potd/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
       body: JSON.stringify(data),
     });
     const json = await res.json();
@@ -560,6 +611,7 @@ export const api = {
   async deletePOTD(id: string): Promise<{ success: boolean; message: string }> {
     const res = await fetch(`/api/potd/${id}`, {
       method: 'DELETE',
+      headers: { ...getAuthHeaders() },
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || 'Failed to delete POTD');
@@ -583,7 +635,10 @@ export const api = {
   async createTrack(data: Partial<CuratedTrack>): Promise<{ success: boolean; track: CuratedTrack }> {
     const res = await fetch('/api/tracks', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
       body: JSON.stringify(data),
     });
     const json = await res.json();
@@ -592,14 +647,20 @@ export const api = {
   },
 
   async deleteTrack(id: string): Promise<{ success: boolean }> {
-    const res = await fetch(`/api/tracks/${id}`, { method: 'DELETE' });
+    const res = await fetch(`/api/tracks/${id}`, {
+      method: 'DELETE',
+      headers: { ...getAuthHeaders() },
+    });
     return res.json();
   },
 
   async addProblemToTrack(trackId: string, data: Partial<CuratedProblem>): Promise<{ success: boolean; problem: CuratedProblem }> {
     const res = await fetch(`/api/tracks/${trackId}/problems`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
       body: JSON.stringify(data),
     });
     const json = await res.json();
@@ -608,7 +669,10 @@ export const api = {
   },
 
   async deleteProblemFromTrack(problemId: string): Promise<{ success: boolean }> {
-    const res = await fetch(`/api/tracks/problems/${problemId}`, { method: 'DELETE' });
+    const res = await fetch(`/api/tracks/problems/${problemId}`, {
+      method: 'DELETE',
+      headers: { ...getAuthHeaders() },
+    });
     return res.json();
   },
 
@@ -622,7 +686,10 @@ export const api = {
   async updateSchedulerConfig(enabled: boolean, intervalHours: number): Promise<{ success: boolean; scheduler: SchedulerStatus }> {
     const res = await fetch('/api/scheduler/config', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
       body: JSON.stringify({ enabled, intervalHours }),
     });
     const json = await res.json();

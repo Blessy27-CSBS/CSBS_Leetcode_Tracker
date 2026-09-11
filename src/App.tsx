@@ -20,6 +20,8 @@ import { StudentDetailModal } from './components/StudentDetailModal';
 import { StudentFormModal } from './components/StudentFormModal';
 import { ImportStudentsModal } from './components/ImportStudentsModal';
 import { BatchFetchModal } from './components/BatchFetchModal';
+import { SecurityNoticeToast } from './components/SecurityNoticeToast';
+import { initSecurityShield } from './utils/securityShield';
 
 import { api } from './services/api';
 import { 
@@ -115,6 +117,12 @@ export function App() {
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
 
+  // Initialize client security shield (right-click block, shortcuts, DevTools detector, print deterrence)
+  useEffect(() => {
+    const teardown = initSecurityShield();
+    return teardown;
+  }, []);
+
   // Background verification of auth session on startup
   useEffect(() => {
     const verifySession = async () => {
@@ -177,14 +185,15 @@ export function App() {
 
   const loadAllData = async () => {
     try {
-      if (!summary) setLoading(true);
+      if (!summary && students.length === 0) setLoading(true);
       setError('');
 
-      const studentList = await api.getStudents();
+      const [studentList, dashData] = await Promise.all([
+        api.getStudents(),
+        api.getDashboard()
+      ]);
+
       setStudents(studentList);
-
-      const dashData = await api.getDashboard();
-
       setSummary(dashData.summary);
       setSectionStats(dashData.sectionStats);
       setBatchStats(dashData.batchStats);
@@ -404,6 +413,7 @@ export function App() {
           onStudentUpdated={loadAllData}
           sidebarOpen={sidebarOpen}
           setSidebarOpen={setSidebarOpen}
+          onLogout={handleLogout}
         />
       </div>
     );
@@ -477,6 +487,8 @@ export function App() {
         onClose={() => setIsBatchModalOpen(false)}
         onCompleted={loadAllData}
       />
+
+      <SecurityNoticeToast />
     </div>
   );
 }

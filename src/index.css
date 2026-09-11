@@ -50,3 +50,70 @@
 .animate-pulse-glow {
   animation: pulse-glow 6s ease-in-out infinite;
 }
+
+/* ====================================================================
+   SECURITY DETERRENCE & COPY/PRINT PROTECTION
+   ==================================================================== */
+
+/* Disable casual text selection across the application */
+body, table, tr, th, td, h1, h2, h3, h4, h5, h6, p, span:not(.allow-select), div:not(.allow-select) {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Ensure inputs, textareas, search boxes, and designated code areas are fully selectable */
+input, textarea, [contenteditable="true"], .allow-select, code, pre, .selectable-code {
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  user-select: text !important;
+}
+
+/* Prevent image dragging to desktop or browser tabs */
+img, svg {
+  -webkit-user-drag: none;
+}
+
+/* Print capture deterrence */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  /* Hide active content and tables */
+  #root {
+    display: none !important;
+  }
+
+  /* Show confidential print barrier watermark */
+  body::after {
+    content: "RESTRICTED ACADEMIC DATA \A CSBS LeetCode Tracker & Performance Hub \A Printing, exporting to PDF, or unauthorized duplication of this performance data is restricted.";
+    white-space: pre-wrap;
+    display: block !important;
+    text-align: center;
+    margin-top: 200px;
+    font-size: 22px;
+    font-weight: 700;
+    color: #0f172a;
+    font-family: sans-serif !important;
+    line-height: 1.8;
+  }
+}
+
+/* Blur page content when window loses focus (e.g. Snipping Tool or Alt+Tab) */
+#root.window-blurred {
+  filter: blur(20px) grayscale(80%);
+  transition: filter 0.2s ease-in-out;
+  pointer-events: none;
+}
+
+/* Flash veil when screenshot shortcut (Win+Shift+S / PrintScreen) is pressed */
+#root.screenshot-obscured {
+  filter: blur(40px) brightness(0.2);
+  transition: filter 0.1s ease-in-out;
+}
+
+

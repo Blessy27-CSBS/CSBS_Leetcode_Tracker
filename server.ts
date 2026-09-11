@@ -50,6 +50,60 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
+app.disable('x-powered-by');
+
+// Security Headers Middleware
+app.use((req, res, next) => {
+  // Content Security Policy
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https:; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';"
+  );
+  // Anti-clickjacking
+  res.setHeader('X-Frame-Options', 'DENY');
+  // Anti-MIME sniffing
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  // Strict Transport Security (HSTS)
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  // Referrer policy
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  // Permissions policy (blocks camera, mic, screen display-capture)
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), display-capture=()');
+  // XSS Protection
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+
+  // Prevent caching for API data
+  if (req.path.startsWith('/api/')) {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+  }
+
+  next();
+});
+
+// Campus-Safe Rate Limiter for Login Brute Force Protection (tracks failed attempts only)
+const failedLoginAttempts = new Map<string, { count: number; resetAt: number }>();
+function checkLoginRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const record = failedLoginAttempts.get(ip);
+  if (!record) return true;
+  if (now > record.resetAt) {
+    failedLoginAttempts.delete(ip);
+    return true;
+  }
+  return record.count < 15; // Max 15 failed logins per minute per IP
+}
+function recordFailedLogin(ip: string) {
+  const now = Date.now();
+  const record = failedLoginAttempts.get(ip) || { count: 0, resetAt: now + 60 * 1000 };
+  record.count++;
+  failedLoginAttempts.set(ip, record);
+}
+function clearFailedLogin(ip: string) {
+  failedLoginAttempts.delete(ip);
+}
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -287,106 +341,292 @@ function parseAuthHeader(req: express.Request): any | null {
   }
 }
 
+// Authentication guard middleware
+function requireAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const session = parseAuthHeader(req);
+  if (!session || !session.id) {
+    return res.status(401).json({ error: 'Authentication required. Please log in.' });
+  }
+  const user = db.getUserById(session.id);
+  if (!user) {
+    return res.status(401).json({ error: 'User session invalid or expired.' });
+  }
+  (req as any).user = user;
+  (req as any).session = session;
+  next();
+}
+
+// Faculty/Staff role authorization middleware
+function requireStaff(req: express.Request, res: express.Response, next: express.NextFunction) {
+  requireAuth(req, res, () => {
+    const user = (req as any).user;
+    if (!user || user.role !== 'staff') {
+      return res.status(403).json({ error: 'Access denied. Faculty/Staff privilege required.' });
+    }
+    next();
+  });
+}
+
+// Helper to build student dashboard data
+function buildStudentDashboardPayload(studentId: string) {
+  const student = db.getStudentById(studentId);
+  if (!student) return null;
+
+  const snapshots = db.getSnapshots(student.id);
+  const settings = db.getSettings();
+  const enrichedStudent = enrichStudentWithSnapshots(student, snapshots, settings);
+  const recentSubmissions = db.getSubmissions(student.id);
+
+  const rawPotdList = db.getTodayPOTDList();
+  const potdListWithSolved = rawPotdList.map(p => {
+    const isSolved = recentSubmissions.some(s => 
+      (s.titleSlug && s.titleSlug.toLowerCase() === p.titleSlug.toLowerCase()) ||
+      (s.title && s.title.toLowerCase().trim() === p.title.toLowerCase().trim())
+    );
+    return {
+      ...p,
+      isSolvedByMe: isSolved
+    };
+  });
+
+  const contests = db.getContests();
+
+  const tracks = db.getTracks();
+  const studentTracks = tracks.map(t => {
+    const fullTrack = db.getTrackById(t.id);
+    const problems = fullTrack?.problems || [];
+    let solvedCount = 0;
+    const problemsWithSolved = problems.map(p => {
+      const isSolved = recentSubmissions.some(sub => 
+        (sub.titleSlug && sub.titleSlug.toLowerCase() === p.titleSlug.toLowerCase()) ||
+        (sub.title && sub.title.toLowerCase().trim() === p.title.toLowerCase().trim())
+      );
+      if (isSolved) solvedCount++;
+      return {
+        ...p,
+        isSolvedBySelectedStudent: isSolved
+      };
+    });
+
+    const userRate = problems.length > 0 ? Math.round((solvedCount / problems.length) * 100) : 0;
+
+    return {
+      ...t,
+      totalProblems: problems.length,
+      userSolvedCount: solvedCount,
+      userCompletionRate: userRate,
+      problems: problemsWithSolved
+    };
+  });
+
+  const compareStudents = (a: any, b: any) => {
+    const snapA = a.latest_snapshot;
+    const snapB = b.latest_snapshot;
+    const solvedA = snapA?.total_solved || 0;
+    const solvedB = snapB?.total_solved || 0;
+    if (solvedB !== solvedA) return solvedB - solvedA;
+
+    const medA = snapA?.medium || 0;
+    const medB = snapB?.medium || 0;
+    if (medB !== medA) return medB - medA;
+
+    const hardA = snapA?.hard || 0;
+    const hardB = snapB?.hard || 0;
+    if (hardB !== hardA) return hardB - hardA;
+
+    const scoreA = snapA?.engagement_score || 0;
+    const scoreB = snapB?.engagement_score || 0;
+    if (scoreB !== scoreA) return scoreB - scoreA;
+
+    const rateA = snapA?.contest_rating || 0;
+    const rateB = snapB?.contest_rating || 0;
+    return rateB - rateA;
+  };
+
+  const allStudents = getAllEnrichedStudents();
+  const deptSorted = [...allStudents].sort(compareStudents);
+  const rankInDept = deptSorted.findIndex(s => s.id === student.id) + 1 || 1;
+
+  const sectionStudents = allStudents.filter(s => s.section === student.section);
+  const sectionSorted = [...sectionStudents].sort(compareStudents);
+  const rankInSec = sectionSorted.findIndex(s => s.id === student.id) + 1 || 1;
+
+  return {
+    student: enrichedStudent,
+    potd: potdListWithSolved[0] || null,
+    potdList: potdListWithSolved,
+    contests,
+    tracks: studentTracks,
+    recentSubmissions,
+    rankInSection: rankInSec,
+    rankInDepartment: rankInDept,
+    totalStudentsDepartment: allStudents.length,
+    totalStudentsSection: sectionStudents.length
+  };
+}
+
+function buildFacultyDashboardPayload() {
+  const students = getAllEnrichedStudents();
+  const settings = db.getSettings();
+  const summary = computeDashboardSummary(students, settings);
+  const sectionStats = computeSectionStats(students, settings);
+  const batchStats = computeBatchStats(students, settings);
+
+  const allSnaps = db.getSnapshots();
+  const dateMap = new Map<string, { date: string; totalSolved: number; count: number; avgRating: number; ratingCount: number }>();
+  allSnaps.forEach(snap => {
+    const d = snap.captured_at.split('T')[0];
+    if (!dateMap.has(d)) {
+      dateMap.set(d, { date: d, totalSolved: 0, count: 0, avgRating: 0, ratingCount: 0 });
+    }
+    const item = dateMap.get(d)!;
+    item.totalSolved += snap.total_solved;
+    item.count++;
+    if (snap.contest_rating > 0) {
+      item.avgRating += snap.contest_rating;
+      item.ratingCount++;
+    }
+  });
+
+  const timeline = Array.from(dateMap.values())
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map(item => ({
+      date: item.date,
+      total_problems: item.totalSolved,
+      avg_problems: item.count > 0 ? Math.round(item.totalSolved / item.count) : 0,
+      avg_rating: item.ratingCount > 0 ? Math.round(item.avgRating / item.ratingCount) : 0,
+    }));
+
+  return {
+    dashData: {
+      summary,
+      sectionStats,
+      batchStats,
+      timeline,
+      settings
+    },
+    students
+  };
+}
+
 // ================= AUTH ROUTES =================
 
 // 0. Login (Staff or Student)
 app.post('/api/auth/login', (req, res) => {
   try {
+    const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+    if (!checkLoginRateLimit(clientIp)) {
+      return res.status(429).json({ error: 'Too many failed login attempts. Please wait 1 minute before trying again.' });
+    }
+
     const { identifier, username, password, role } = req.body;
     const loginId = identifier || username;
 
-    if (!loginId || !password) {
-      return res.status(400).json({ error: 'Username/Email and Password are required.' });
+    if (!loginId) {
+      return res.status(400).json({ error: 'Email ID / Register Number is required.' });
+    }
+    if (role === 'staff' && !password) {
+      return res.status(400).json({ error: 'Password is required for staff login.' });
     }
 
     const authResult = db.authenticateUser(loginId, password, role);
     if (!authResult) {
+      recordFailedLogin(clientIp);
       return res.status(401).json({ 
         error: role === 'student' 
-          ? 'Invalid student credentials. Please verify your Email ID / Username and Password.'
+          ? 'Student record not found. Please verify your Email ID or Register Number.'
           : 'Invalid staff credentials. Please check your username and password.'
       });
     }
 
+    clearFailedLogin(clientIp);
     const { user, student } = authResult;
     const token = createAuthToken(user);
 
     let enrichedStudent: StudentWithLatest | undefined;
+    let studentDashboard: any = null;
+    let facultyDashboard: any = null;
+
     if (user.role === 'student' && user.student_id) {
       const s = student || db.getStudentById(user.student_id);
       if (s) {
-        const snapshots = db.getSnapshots(s.id);
-        const settings = db.getSettings();
-        enrichedStudent = enrichStudentWithSnapshots(s, snapshots, settings);
+        studentDashboard = buildStudentDashboardPayload(s.id);
+        enrichedStudent = studentDashboard?.student;
 
         // Async background sync for logged in student
-        fetchLeetCodeProfile(s.username, settings.api_timeout_seconds * 1000).then(fetchResult => {
-          if (fetchResult.status === 'SUCCESS' && fetchResult.data) {
-            const prevSnap = db.getLatestSnapshot(s.id);
-            const daysInactive = getDaysInactive(fetchResult.data.last_active);
-            const activityStatus = getActivityStatus(daysInactive, settings.inactivity_threshold_days);
-            const tier = getPerformanceTier(fetchResult.data.total_solved, settings);
-            const impRate = prevSnap ? Math.max(0, fetchResult.data.total_solved - prevSnap.total_solved) : 0;
-            const engagement = calculateEngagementScore({
-              total_solved: fetchResult.data.total_solved,
-              medium: fetchResult.data.medium,
-              hard: fetchResult.data.hard,
-              streak: fetchResult.data.streak,
-              contest_rating: fetchResult.data.contest_rating,
-              contests_attended: fetchResult.data.contests_attended,
-              days_inactive: daysInactive,
-              improvement_rate: impRate,
-            }, settings);
+        setTimeout(() => {
+          const settings = db.getSettings();
+          fetchLeetCodeProfile(s.username, settings.api_timeout_seconds * 1000).then(fetchResult => {
+            if (fetchResult.status === 'SUCCESS' && fetchResult.data) {
+              const prevSnap = db.getLatestSnapshot(s.id);
+              const daysInactive = getDaysInactive(fetchResult.data.last_active);
+              const activityStatus = getActivityStatus(daysInactive, settings.inactivity_threshold_days);
+              const tier = getPerformanceTier(fetchResult.data.total_solved, settings);
+              const impRate = prevSnap ? Math.max(0, fetchResult.data.total_solved - prevSnap.total_solved) : 0;
+              const engagement = calculateEngagementScore({
+                total_solved: fetchResult.data.total_solved,
+                medium: fetchResult.data.medium,
+                hard: fetchResult.data.hard,
+                streak: fetchResult.data.streak,
+                contest_rating: fetchResult.data.contest_rating,
+                contests_attended: fetchResult.data.contests_attended,
+                days_inactive: daysInactive,
+                improvement_rate: impRate,
+              }, settings);
 
-            db.addSnapshot({
-              student_id: s.id,
-              captured_at: new Date().toISOString(),
-              total_solved: fetchResult.data.total_solved,
-              easy: fetchResult.data.easy,
-              medium: fetchResult.data.medium,
-              hard: fetchResult.data.hard,
-              acceptance_rate: fetchResult.data.acceptance_rate,
-              ranking: fetchResult.data.ranking,
-              reputation: fetchResult.data.reputation,
-              contest_rating: fetchResult.data.contest_rating,
-              contest_rank: fetchResult.data.contest_rank,
-              contests_attended: fetchResult.data.contests_attended,
-              top_percentage: fetchResult.data.top_percentage,
-              streak: fetchResult.data.streak,
-              active_days: fetchResult.data.active_days,
-              last_active: fetchResult.data.last_active,
-              languages: fetchResult.data.languages,
-              skills: fetchResult.data.skills,
-              badges: fetchResult.data.badges,
-              submission_calendar: fetchResult.data.submission_calendar,
-              engagement_score: engagement,
-              performance_tier: tier,
-              activity_status: activityStatus,
-              status: 'SUCCESS'
-            });
-
-            if (fetchResult.data.recent_submissions && fetchResult.data.recent_submissions.length > 0) {
-              db.setSubmissions(s.id, fetchResult.data.recent_submissions.map((sub, idx) => ({
-                id: `sub_${s.id}_${Date.now()}_${idx}`,
+              db.addSnapshot({
                 student_id: s.id,
-                title: sub.title,
-                titleSlug: sub.titleSlug,
-                timestamp: sub.timestamp,
-                language: sub.language || sub.lang || (fetchResult.data.languages && fetchResult.data.languages.length > 0 ? fetchResult.data.languages[0].languageName : 'Python3'),
-                statusDisplay: sub.statusDisplay || 'Accepted',
-              })));
+                captured_at: new Date().toISOString(),
+                total_solved: fetchResult.data.total_solved,
+                easy: fetchResult.data.easy,
+                medium: fetchResult.data.medium,
+                hard: fetchResult.data.hard,
+                acceptance_rate: fetchResult.data.acceptance_rate,
+                ranking: fetchResult.data.ranking,
+                reputation: fetchResult.data.reputation,
+                contest_rating: fetchResult.data.contest_rating,
+                contest_rank: fetchResult.data.contest_rank,
+                contests_attended: fetchResult.data.contests_attended,
+                top_percentage: fetchResult.data.top_percentage,
+                streak: fetchResult.data.streak,
+                active_days: fetchResult.data.active_days,
+                last_active: fetchResult.data.last_active,
+                languages: fetchResult.data.languages,
+                skills: fetchResult.data.skills,
+                badges: fetchResult.data.badges,
+                submission_calendar: fetchResult.data.submission_calendar,
+                engagement_score: engagement,
+                performance_tier: tier,
+                activity_status: activityStatus,
+                status: 'SUCCESS'
+              });
+
+              if (fetchResult.data.recent_submissions && fetchResult.data.recent_submissions.length > 0) {
+                db.setSubmissions(s.id, fetchResult.data.recent_submissions.map((sub, idx) => ({
+                  id: `sub_${s.id}_${Date.now()}_${idx}`,
+                  student_id: s.id,
+                  title: sub.title,
+                  titleSlug: sub.titleSlug,
+                  timestamp: sub.timestamp,
+                  language: sub.language || sub.lang || (fetchResult.data.languages && fetchResult.data.languages.length > 0 ? fetchResult.data.languages[0].languageName : 'Python3'),
+                  statusDisplay: sub.statusDisplay || 'Accepted',
+                })));
+              }
             }
-          }
-        }).catch(err => console.log('Auto login student sync background error:', err));
+          }).catch(err => console.log('Auto login student sync background error:', err));
+        }, 500);
       }
     } else if (user.role === 'staff') {
-      // Async background batch sync for all active students when faculty logs in
-      if (!batchProgress.is_running) {
-        const activeStudents = db.getStudents().filter(s => s.active);
-        if (activeStudents.length > 0) {
-          runBatchFetchWorker(activeStudents, 'Auto Faculty Login Sync');
+      facultyDashboard = buildFacultyDashboardPayload();
+      // Delay batch fetch worker by 5 seconds to avoid network & DB contention on initial faculty load
+      setTimeout(() => {
+        if (!batchProgress.is_running) {
+          const activeStudents = db.getStudents().filter(s => s.active);
+          if (activeStudents.length > 0) {
+            runBatchFetchWorker(activeStudents, 'Auto Faculty Login Sync');
+          }
         }
-      }
+      }, 5000);
     }
 
     res.json({
@@ -400,7 +640,9 @@ app.post('/api/auth/login', (req, res) => {
         student_id: user.student_id,
         student: enrichedStudent,
         created_at: user.created_at
-      }
+      },
+      studentDashboard,
+      facultyDashboard
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Login failed.' });
@@ -594,107 +836,17 @@ app.get('/api/student/dashboard', (req, res) => {
       return res.status(400).json({ error: 'Student ID required.' });
     }
 
-    const student = db.getStudentById(studentId);
-    if (!student) {
+    // Authorization: logged-in students can only view their own dashboard
+    if (session && session.role === 'student' && session.student_id && studentIdQuery && studentIdQuery !== session.student_id) {
+      return res.status(403).json({ error: 'Access denied. You can only view your own student dashboard.' });
+    }
+
+    const payload = buildStudentDashboardPayload(studentId);
+    if (!payload) {
       return res.status(404).json({ error: 'Student record not found.' });
     }
 
-    const snapshots = db.getSnapshots(student.id);
-    const settings = db.getSettings();
-    const enrichedStudent = enrichStudentWithSnapshots(student, snapshots, settings);
-    const recentSubmissions = db.getSubmissions(student.id);
-
-    // Problem of the Day (Multiple links / challenges)
-    const rawPotdList = db.getTodayPOTDList();
-    const potdListWithSolved = rawPotdList.map(p => {
-      const isSolved = recentSubmissions.some(s => 
-        (s.titleSlug && s.titleSlug.toLowerCase() === p.titleSlug.toLowerCase()) ||
-        (s.title && s.title.toLowerCase().trim() === p.title.toLowerCase().trim())
-      );
-      return {
-        ...p,
-        isSolvedByMe: isSolved
-      };
-    });
-
-    // Contests
-    const contests = db.getContests();
-
-    // Curated Tracks with personalized progress
-    const tracks = db.getTracks();
-    const studentTracks = tracks.map(t => {
-      const fullTrack = db.getTrackById(t.id);
-      const problems = fullTrack?.problems || [];
-      
-      let solvedCount = 0;
-      const problemsWithSolved = problems.map(p => {
-        const isSolved = recentSubmissions.some(sub => 
-          (sub.titleSlug && sub.titleSlug.toLowerCase() === p.titleSlug.toLowerCase()) ||
-          (sub.title && sub.title.toLowerCase().trim() === p.title.toLowerCase().trim())
-        );
-        if (isSolved) solvedCount++;
-        return {
-          ...p,
-          isSolvedBySelectedStudent: isSolved
-        };
-      });
-
-      const userRate = problems.length > 0 ? Math.round((solvedCount / problems.length) * 100) : 0;
-
-      return {
-        ...t,
-        totalProblems: problems.length,
-        userSolvedCount: solvedCount,
-        userCompletionRate: userRate,
-        problems: problemsWithSolved
-      };
-    });
-
-    // Rank calculations (Primary: total_solved, Tie-breakers: medium, hard, engagement_score, contest_rating)
-    const compareStudents = (a: any, b: any) => {
-      const snapA = a.latest_snapshot;
-      const snapB = b.latest_snapshot;
-      const solvedA = snapA?.total_solved || 0;
-      const solvedB = snapB?.total_solved || 0;
-      if (solvedB !== solvedA) return solvedB - solvedA;
-
-      const medA = snapA?.medium || 0;
-      const medB = snapB?.medium || 0;
-      if (medB !== medA) return medB - medA;
-
-      const hardA = snapA?.hard || 0;
-      const hardB = snapB?.hard || 0;
-      if (hardB !== hardA) return hardB - hardA;
-
-      const scoreA = snapA?.engagement_score || 0;
-      const scoreB = snapB?.engagement_score || 0;
-      if (scoreB !== scoreA) return scoreB - scoreA;
-
-      const rateA = snapA?.contest_rating || 0;
-      const rateB = snapB?.contest_rating || 0;
-      return rateB - rateA;
-    };
-
-    const allStudents = getAllEnrichedStudents();
-    const deptSorted = [...allStudents].sort(compareStudents);
-    const rankInDept = deptSorted.findIndex(s => s.id === student.id) + 1 || 1;
-
-    const sectionStudents = allStudents.filter(s => s.section === student.section);
-    const sectionSorted = [...sectionStudents].sort(compareStudents);
-    const rankInSec = sectionSorted.findIndex(s => s.id === student.id) + 1 || 1;
-
-    res.json({
-      student: enrichedStudent,
-      potd: potdListWithSolved[0] || null,
-      potdList: potdListWithSolved,
-      contests,
-      tracks: studentTracks,
-      recentSubmissions,
-      rankInSection: rankInSec,
-      rankInDepartment: rankInDept,
-      totalStudentsDepartment: allStudents.length,
-      totalStudentsSection: sectionStudents.length
-    });
+    res.json(payload);
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Failed to generate student dashboard.' });
   }
@@ -708,6 +860,11 @@ app.post('/api/student/sync', async (req, res) => {
 
     if (!studentId) {
       return res.status(400).json({ error: 'Student ID required.' });
+    }
+
+    // Authorization: students can only synchronize their own profile
+    if (session && session.role === 'student' && session.student_id && req.body.studentId && req.body.studentId !== session.student_id) {
+      return res.status(403).json({ error: 'Access denied. You can only synchronize your own LeetCode account.' });
     }
 
     const student = db.getStudentById(studentId);
@@ -923,7 +1080,7 @@ app.get('/api/students/:id', (req, res) => {
 });
 
 // 5. Student - Create
-app.post('/api/students', async (req, res) => {
+app.post('/api/students', requireStaff, async (req, res) => {
   try {
     const { register_no, student_name, section, year, batch, username, email, mentor, academic_year, notes } = req.body;
 
@@ -1035,7 +1192,7 @@ app.post('/api/students', async (req, res) => {
 });
 
 // 6. Student - Update
-app.put('/api/students/:id', (req, res) => {
+app.put('/api/students/:id', requireStaff, (req, res) => {
   try {
     const student = db.getStudentById(req.params.id);
     if (!student) {
@@ -1066,7 +1223,7 @@ app.put('/api/students/:id', (req, res) => {
 });
 
 // 7. Student - Delete
-app.delete('/api/students/:id', (req, res) => {
+app.delete('/api/students/:id', requireStaff, (req, res) => {
   try {
     const student = db.getStudentById(req.params.id);
     if (!student) {
@@ -1081,7 +1238,7 @@ app.delete('/api/students/:id', (req, res) => {
 });
 
 // 8. Bulk Import Students (CSV / JSON data payload)
-app.post('/api/students/import', (req, res) => {
+app.post('/api/students/import', requireStaff, (req, res) => {
   try {
     const { rows } = req.body;
     if (!Array.isArray(rows) || rows.length === 0) {
@@ -1502,7 +1659,7 @@ app.post('/api/fetch/student/:id', async (req, res) => {
 });
 
 // 11. Batch Fetch All Students (Async Background Execution)
-app.post('/api/fetch/all', async (req, res) => {
+app.post('/api/fetch/all', requireStaff, async (req, res) => {
   if (batchProgress.is_running) {
     return res.status(409).json({
       error: 'A batch fetch operation is already in progress.',
@@ -1540,7 +1697,7 @@ app.get('/api/fetch/progress', (req, res) => {
 });
 
 // 13. Cancel Batch Fetch
-app.post('/api/fetch/cancel', (req, res) => {
+app.post('/api/fetch/cancel', requireStaff, (req, res) => {
   if (batchProgress.is_running) {
     batchProgress.is_running = false;
     batchProgress.logs.push({
@@ -1608,7 +1765,7 @@ app.get('/api/potd', (req, res) => {
 });
 
 // 15. POTD - Add a new Problem of the Day link/challenge
-app.post('/api/potd', (req, res) => {
+app.post('/api/potd', requireStaff, (req, res) => {
   try {
     const { date, title, titleSlug, difficulty, topic, acceptanceRate, leetcodeUrl, hint, orderIndex } = req.body;
     if (!title && !leetcodeUrl) {
@@ -1638,8 +1795,8 @@ app.post('/api/potd', (req, res) => {
       title: derivedTitle.trim(),
       titleSlug: derivedSlug.trim(),
       difficulty: difficulty || 'Medium',
-      topic: topic || 'DSA',
-      acceptanceRate: Number(acceptanceRate) || 50,
+      topic: topic || 'General',
+      acceptanceRate: acceptanceRate ? Number(acceptanceRate) : undefined,
       leetcodeUrl: leetcodeUrl || `https://leetcode.com/problems/${derivedSlug}/`,
       hint: hint || '',
       orderIndex: Number(orderIndex) || 0,
@@ -1653,7 +1810,7 @@ app.post('/api/potd', (req, res) => {
 });
 
 // 15.1 POTD - Update a Problem of the Day
-app.put('/api/potd/:id', (req, res) => {
+app.put('/api/potd/:id', requireStaff, (req, res) => {
   try {
     const updated = db.updatePOTDItem(req.params.id, req.body);
     if (!updated) return res.status(404).json({ error: 'POTD item not found.' });
@@ -1664,7 +1821,7 @@ app.put('/api/potd/:id', (req, res) => {
 });
 
 // 15.2 POTD - Delete a Problem of the Day
-app.delete('/api/potd/:id', (req, res) => {
+app.delete('/api/potd/:id', requireStaff, (req, res) => {
   try {
     const ok = db.deletePOTDItem(req.params.id);
     if (!ok) return res.status(404).json({ error: 'POTD item not found.' });
@@ -1698,7 +1855,7 @@ app.get('/api/contests/:id', (req, res) => {
 });
 
 // 15.5 Create Contest
-app.post('/api/contests', (req, res) => {
+app.post('/api/contests', requireStaff, (req, res) => {
   try {
     const { title, titleSlug, type, contestUrl, startTime, durationMinutes, description, problems, status } = req.body;
     if (!title) {
@@ -1725,7 +1882,7 @@ app.post('/api/contests', (req, res) => {
 });
 
 // 15.6 Update Contest
-app.put('/api/contests/:id', (req, res) => {
+app.put('/api/contests/:id', requireStaff, (req, res) => {
   try {
     const updated = db.updateContest(req.params.id, req.body);
     if (!updated) return res.status(404).json({ error: 'Contest not found.' });
@@ -1736,7 +1893,7 @@ app.put('/api/contests/:id', (req, res) => {
 });
 
 // 15.7 Delete Contest
-app.delete('/api/contests/:id', (req, res) => {
+app.delete('/api/contests/:id', requireStaff, (req, res) => {
   try {
     const ok = db.deleteContest(req.params.id);
     if (!ok) return res.status(404).json({ error: 'Contest not found.' });
@@ -1837,7 +1994,7 @@ app.get('/api/tracks/:id', (req, res) => {
 });
 
 // 17.1 Create Track
-app.post('/api/tracks', (req, res) => {
+app.post('/api/tracks', requireStaff, (req, res) => {
   try {
     const { title, description, category, icon } = req.body;
     if (!title) return res.status(400).json({ error: 'Track title is required.' });
@@ -1849,7 +2006,7 @@ app.post('/api/tracks', (req, res) => {
 });
 
 // 17.2 Delete Track
-app.delete('/api/tracks/:id', (req, res) => {
+app.delete('/api/tracks/:id', requireStaff, (req, res) => {
   try {
     const ok = db.deleteTrack(req.params.id);
     res.json({ success: ok });
@@ -1859,7 +2016,7 @@ app.delete('/api/tracks/:id', (req, res) => {
 });
 
 // 17.3 Add Problem to Track
-app.post('/api/tracks/:id/problems', (req, res) => {
+app.post('/api/tracks/:id/problems', requireStaff, (req, res) => {
   try {
     const { title, titleSlug, difficulty, topic, leetcodeUrl, orderIndex } = req.body;
     if (!title) return res.status(400).json({ error: 'Problem title is required.' });
@@ -1880,7 +2037,7 @@ app.post('/api/tracks/:id/problems', (req, res) => {
 });
 
 // 17.4 Delete Problem from Track
-app.delete('/api/tracks/problems/:problemId', (req, res) => {
+app.delete('/api/tracks/problems/:problemId', requireStaff, (req, res) => {
   try {
     const ok = db.deleteProblemFromTrack(req.params.problemId);
     res.json({ success: ok });
@@ -1904,7 +2061,7 @@ app.get('/api/scheduler/status', (req, res) => {
 });
 
 // 19. Scheduler - Update Config
-app.post('/api/scheduler/config', (req, res) => {
+app.post('/api/scheduler/config', requireStaff, (req, res) => {
   try {
     const { enabled, intervalHours } = req.body;
     const updated = db.updateSettings({
@@ -2063,7 +2220,7 @@ app.get('/api/settings', (req, res) => {
   res.json(db.getSettings());
 });
 
-app.put('/api/settings', (req, res) => {
+app.put('/api/settings', requireStaff, (req, res) => {
   try {
     const updated = db.updateSettings(req.body);
     db.addLog('INFO', 'Updated department tracker configuration & weight parameters.');
@@ -2074,7 +2231,7 @@ app.put('/api/settings', (req, res) => {
 });
 
 // 20. Reset to Demo Data
-app.post('/api/settings/reset-demo', (req, res) => {
+app.post('/api/settings/reset-demo', requireStaff, (req, res) => {
   try {
     db.resetToDemo();
     db.addLog('INFO', 'Reset system database to default KGiSL CSBS student dataset.');
@@ -2085,7 +2242,7 @@ app.post('/api/settings/reset-demo', (req, res) => {
 });
 
 // 21. Clear Historical Snapshots
-app.post('/api/settings/clear-history', (req, res) => {
+app.post('/api/settings/clear-history', requireStaff, (req, res) => {
   try {
     const { studentId } = req.body || {};
     db.deleteSnapshots(studentId);

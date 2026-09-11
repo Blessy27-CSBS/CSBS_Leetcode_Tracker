@@ -2153,11 +2153,11 @@ export class DatabaseService {
     return newUser;
   }
 
-  public authenticateUser(identifier: string, plainPassword: string, role?: UserRole): { user: DBUser; student?: Student } | null {
-    if (!identifier || !plainPassword) return null;
+  public authenticateUser(identifier: string, plainPassword?: string, role?: UserRole): { user: DBUser; student?: Student } | null {
+    if (!identifier) return null;
 
     const cleanId = identifier.trim();
-    const cleanPwd = plainPassword.trim();
+    const cleanPwd = (plainPassword || '').trim();
     const hashedPwd = this.hashPassword(cleanPwd);
 
     // If Staff Role Requested or matching Faculty_CSBS / staff / admin
@@ -2167,6 +2167,8 @@ export class DatabaseService {
       cleanId.toLowerCase() === 'staff' || 
       cleanId.toLowerCase() === 'admin'
     ) {
+      if (!cleanPwd) return null; // Staff STILL requires password
+
       let staffUser: DBUser | undefined;
 
       if (this.isFallbackMode || !this.sqliteDb) {
@@ -2214,10 +2216,7 @@ export class DatabaseService {
       if (role === 'staff') return null;
     }
 
-    // Student Authentication
-    // Username credential: student's email id, register_no, or username
-    // Password credential: student's register number (default) OR updated password
-
+    // Student Authentication (Passwordless by Email / Register Number / Username)
     let foundStudent: Student | undefined;
     const allStudents = this.getStudents();
     const cleanIdPrefix = cleanId.includes('@') ? cleanId.split('@')[0].trim().toLowerCase() : cleanId.toLowerCase();
@@ -2243,64 +2242,26 @@ export class DatabaseService {
 
     if (foundStudent) {
       const studentUser = this.ensureStudentUser(foundStudent);
-
-      // Check if student is still using default register_no password
-      const defaultRegNoHash = this.hashPassword(foundStudent.register_no.trim());
-      const isDefaultPassword = studentUser.password_hash === defaultRegNoHash;
-
-      // 1. Exact stored password hash match (works for updated password or default password)
-      const isExactHashMatch = studentUser.password_hash === hashedPwd;
-
-      // 2. Default password matches (ONLY allowed if student has NOT changed their password yet)
-      const regNo = (foundStudent.register_no || '').trim().toLowerCase();
-      const uname = (foundStudent.username || '').trim().toLowerCase();
-      const pwdLower = cleanPwd.toLowerCase();
-
-      const isRegNoMatch = isDefaultPassword && pwdLower === regNo;
-      const isUsernameMatch = isDefaultPassword && pwdLower === uname;
-      const isAltHashMatch = isDefaultPassword && (
-        studentUser.password_hash === this.hashPassword(cleanPwd.toLowerCase()) || 
-        studentUser.password_hash === this.hashPassword(cleanPwd.toUpperCase())
-      );
-
-      if (isExactHashMatch || isRegNoMatch || isUsernameMatch || isAltHashMatch) {
-        if (cleanId.includes('@') && studentUser.email !== cleanId) {
-          studentUser.email = cleanId;
-          studentUser.username = cleanId;
-        }
-        return { user: studentUser, student: foundStudent };
-      }
+      // Student login is passwordless by Email ID / Register No / Username
+      return { user: studentUser, student: foundStudent };
     }
 
-    // Direct search in users table for student
+    // Direct search in users table for student by username or email
     let userRow: DBUser | undefined;
     if (this.isFallbackMode || !this.sqliteDb) {
       userRow = this.memStore.users.find(u => 
         u.username.toLowerCase() === cleanId.toLowerCase() || 
-        (u.email && u.email.toLowerCase() === cleanId.toLowerCase()) ||
-        u.username.toLowerCase().startsWith(cleanIdPrefix)
+        (u.email && u.email.toLowerCase() === cleanId.toLowerCase())
       );
     } else {
       userRow = this.sqliteDb.prepare(`
-        SELECT * FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?) OR LOWER(username) LIKE LOWER(?)
-      `).get(cleanId, cleanId, `${cleanIdPrefix}%`) as DBUser | undefined;
+        SELECT * FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?)
+      `).get(cleanId, cleanId) as DBUser | undefined;
     }
 
-    if (userRow) {
+    if (userRow && userRow.role === 'student') {
       const student = userRow.student_id ? this.getStudentById(userRow.student_id) : undefined;
-      const defaultHash = student ? this.hashPassword(student.register_no.trim()) : '';
-      const isDefaultPassword = student ? userRow.password_hash === defaultHash : false;
-
-      const isExactHashMatch = userRow.password_hash === hashedPwd;
-      const isAltHashMatch = isDefaultPassword && (
-        userRow.password_hash === this.hashPassword(cleanPwd.toLowerCase()) ||
-        userRow.password_hash === this.hashPassword(cleanPwd.toUpperCase())
-      );
-      const isRegNoMatch = isDefaultPassword && student && cleanPwd.toLowerCase() === (student.register_no || '').trim().toLowerCase();
-
-      if (isExactHashMatch || isAltHashMatch || isRegNoMatch) {
-        return { user: userRow, student };
-      }
+      return { user: userRow, student };
     }
 
     return null;
