@@ -15,6 +15,7 @@ import { LoginView } from './pages/LoginView';
 import { StudentPortalView } from './pages/StudentPortalView';
 import { QuestView } from './pages/QuestView';
 import { FacultyLeetCode75View } from './pages/FacultyLeetCode75View';
+import { ContestTrackerView } from './pages/ContestTrackerView';
 
 import { StudentDetailModal } from './components/StudentDetailModal';
 import { StudentFormModal } from './components/StudentFormModal';
@@ -276,6 +277,14 @@ export function App() {
             onOpenAddStudent={handleOpenAddStudent}
             onSelectStudent={handleOpenStudentDetail}
             onNavigateTab={setActiveTab}
+          />
+        );
+
+      case 'contestTracker':
+        return (
+          <ContestTrackerView
+            students={students}
+            onSelectStudent={handleOpenStudentDetail}
           />
         );
 

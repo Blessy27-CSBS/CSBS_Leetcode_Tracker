@@ -760,6 +760,42 @@ export const api = {
     if (!res.ok) throw new Error(json.error || 'Failed to delete contest');
     return json;
   },
+
+  async updateContestAttendance(
+    contestId: string, 
+    studentId: string, 
+    status: 'SOLVED' | 'UNSOLVED' | 'ATTENDED', 
+    notes?: string
+  ): Promise<{ success: boolean; record: any }> {
+    const res = await fetch(`/api/contests/${contestId}/attendance`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify({ studentId, status, notes }),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to update contest attendance');
+    return json;
+  },
+
+  async updateContestProblems(
+    contestId: string, 
+    problems: any[]
+  ): Promise<{ success: boolean; contest: ContestItem }> {
+    const res = await fetch(`/api/contests/${contestId}/problems`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify({ problems }),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to update contest problems');
+    return json;
+  },
 };
 
 

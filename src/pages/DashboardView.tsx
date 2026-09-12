@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { 
   Users, 
@@ -9,6 +9,25 @@ import {
   BarChart2,
   ChevronRight,
   Award,
+  Trophy,
+  CheckCircle2,
+  XCircle,
+  ExternalLink,
+  Search,
+  Download,
+  Filter,
+  Clock,
+  Calendar,
+  Edit,
+  Plus,
+  RefreshCw,
+  AlertCircle,
+  UserCheck,
+  UserX,
+  Code2,
+  Copy,
+  Check,
+  HelpCircle,
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 

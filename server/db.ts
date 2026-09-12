@@ -12,6 +12,7 @@ import {
   CuratedTrack,
   CuratedProblem,
   ContestItem,
+  ContestAttendanceRecord,
   AuthUser,
   UserRole
 } from '../src/types.js';
@@ -72,6 +73,7 @@ interface MemoryStore {
   curated_tracks: CuratedTrack[];
   curated_problems: CuratedProblem[];
   contests: ContestItem[];
+  contest_attendance?: ContestAttendanceRecord[];
   users: DBUser[];
 }
 
@@ -88,6 +90,7 @@ export class DatabaseService {
     curated_tracks: [],
     curated_problems: [],
     contests: [],
+    contest_attendance: [],
     users: []
   };
 
@@ -245,6 +248,7 @@ export class DatabaseService {
           title TEXT NOT NULL,
           titleSlug TEXT NOT NULL,
           type TEXT NOT NULL,
+          targetCohort TEXT NOT NULL DEFAULT 'ALL',
           contestUrl TEXT NOT NULL,
           startTime TEXT NOT NULL,
           durationMinutes INTEGER NOT NULL DEFAULT 90,
@@ -252,6 +256,15 @@ export class DatabaseService {
           problems TEXT,
           status TEXT NOT NULL DEFAULT 'UPCOMING',
           created_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS contest_attendance (
+          contest_id TEXT NOT NULL,
+          student_id TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'SOLVED',
+          notes TEXT,
+          updated_at TEXT NOT NULL,
+          PRIMARY KEY (contest_id, student_id)
         );
 
         CREATE TABLE IF NOT EXISTS logs (
@@ -289,6 +302,9 @@ export class DatabaseService {
       } catch (e) {}
       try {
         this.sqliteDb.exec('ALTER TABLE potd_items ADD COLUMN created_at TEXT;');
+      } catch (e) {}
+      try {
+        this.sqliteDb.exec("ALTER TABLE contests ADD COLUMN targetCohort TEXT DEFAULT 'ALL';");
       } catch (e) {}
 
       // Purge any legacy predefined seed tracks so only faculty-created tracks appear
@@ -530,6 +546,7 @@ export class DatabaseService {
           title: c.title,
           titleSlug: c.titleSlug,
           type: c.type,
+          targetCohort: c.targetCohort || c.target_cohort || 'ALL',
           contestUrl: c.contestUrl,
           startTime: c.startTime,
           durationMinutes: c.durationMinutes || 90,
@@ -541,12 +558,12 @@ export class DatabaseService {
         if (this.sqliteDb) {
           try {
             const ins = this.sqliteDb.prepare(`
-              INSERT OR REPLACE INTO contests (id, title, titleSlug, type, contestUrl, startTime, durationMinutes, description, problems, status, created_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              INSERT OR REPLACE INTO contests (id, title, titleSlug, type, targetCohort, contestUrl, startTime, durationMinutes, description, problems, status, created_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
             for (const c of this.memStore.contests) {
               ins.run(
-                c.id, c.title, c.titleSlug, c.type, c.contestUrl, c.startTime,
+                c.id, c.title, c.titleSlug, c.type, c.targetCohort || 'ALL', c.contestUrl, c.startTime,
                 c.durationMinutes, c.description || '', JSON.stringify(c.problems || []),
                 c.status, c.created_at || new Date().toISOString()
               );
@@ -1678,6 +1695,7 @@ export class DatabaseService {
           title: r.title,
           titleSlug: r.titleSlug,
           type: r.type,
+          targetCohort: r.targetCohort || 'ALL',
           contestUrl: r.contestUrl,
           startTime: r.startTime,
           durationMinutes: r.durationMinutes || 90,
@@ -1708,6 +1726,7 @@ export class DatabaseService {
       title: r.title,
       titleSlug: r.titleSlug,
       type: r.type,
+      targetCohort: r.targetCohort || 'ALL',
       contestUrl: r.contestUrl,
       startTime: r.startTime,
       durationMinutes: r.durationMinutes || 90,
@@ -1727,6 +1746,7 @@ export class DatabaseService {
       title: item.title,
       titleSlug: item.titleSlug || item.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
       type: item.type || 'Weekly Contest',
+      targetCohort: item.targetCohort || 'ALL',
       contestUrl: item.contestUrl || `https://leetcode.com/contest/${item.titleSlug || 'contest'}`,
       startTime: item.startTime || new Date(Date.now() + 86400000).toISOString(),
       durationMinutes: item.durationMinutes || 90,
@@ -1750,6 +1770,7 @@ export class DatabaseService {
         title: newContest.title,
         titleSlug: newContest.titleSlug,
         type: newContest.type,
+        target_cohort: newContest.targetCohort,
         contestUrl: newContest.contestUrl,
         startTime: newContest.startTime,
         durationMinutes: newContest.durationMinutes,
@@ -1769,13 +1790,14 @@ export class DatabaseService {
 
     try {
       this.sqliteDb.prepare(`
-        INSERT INTO contests (id, title, titleSlug, type, contestUrl, startTime, durationMinutes, description, problems, status, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO contests (id, title, titleSlug, type, targetCohort, contestUrl, startTime, durationMinutes, description, problems, status, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         newContest.id,
         newContest.title,
         newContest.titleSlug,
         newContest.type,
+        newContest.targetCohort || 'ALL',
         newContest.contestUrl,
         newContest.startTime,
         newContest.durationMinutes,
@@ -1810,6 +1832,7 @@ export class DatabaseService {
         title: updated.title,
         titleSlug: updated.titleSlug,
         type: updated.type,
+        target_cohort: updated.targetCohort,
         contestUrl: updated.contestUrl,
         startTime: updated.startTime,
         durationMinutes: updated.durationMinutes,
@@ -1829,12 +1852,13 @@ export class DatabaseService {
     try {
       this.sqliteDb.prepare(`
         UPDATE contests SET
-          title = ?, titleSlug = ?, type = ?, contestUrl = ?, startTime = ?, durationMinutes = ?, description = ?, problems = ?, status = ?
+          title = ?, titleSlug = ?, type = ?, targetCohort = ?, contestUrl = ?, startTime = ?, durationMinutes = ?, description = ?, problems = ?, status = ?
         WHERE id = ?
       `).run(
         updated.title,
         updated.titleSlug,
         updated.type,
+        updated.targetCohort || 'ALL',
         updated.contestUrl,
         updated.startTime,
         updated.durationMinutes,
@@ -1874,6 +1898,66 @@ export class DatabaseService {
     } catch (e) {
       return this.memStore.contests.length < initial;
     }
+  }
+
+  // ================= CONTEST ATTENDANCE & PARTICIPATION OVERRIDES =================
+  public getContestAttendance(contestId: string): ContestAttendanceRecord[] {
+    if (this.isFallbackMode || !this.sqliteDb) {
+      return (this.memStore.contest_attendance || []).filter(a => a.contest_id === contestId);
+    }
+
+    try {
+      const rows = this.sqliteDb.prepare('SELECT * FROM contest_attendance WHERE contest_id = ?').all(contestId) as any[];
+      if (rows && rows.length > 0) {
+        return rows.map(r => ({
+          contest_id: r.contest_id,
+          student_id: r.student_id,
+          status: r.status,
+          notes: r.notes || '',
+          updated_at: r.updated_at,
+        }));
+      }
+      return (this.memStore.contest_attendance || []).filter(a => a.contest_id === contestId);
+    } catch (e) {
+      return (this.memStore.contest_attendance || []).filter(a => a.contest_id === contestId);
+    }
+  }
+
+  public setContestAttendance(contestId: string, studentId: string, status: 'SOLVED' | 'UNSOLVED' | 'ATTENDED', notes?: string): ContestAttendanceRecord {
+    const updated_at = new Date().toISOString();
+    const record: ContestAttendanceRecord = {
+      contest_id: contestId,
+      student_id: studentId,
+      status,
+      notes: notes || '',
+      updated_at,
+    };
+
+    if (!this.memStore.contest_attendance) this.memStore.contest_attendance = [];
+    const idx = this.memStore.contest_attendance.findIndex(a => a.contest_id === contestId && a.student_id === studentId);
+    if (idx >= 0) {
+      this.memStore.contest_attendance[idx] = record;
+    } else {
+      this.memStore.contest_attendance.push(record);
+    }
+
+    if (this.sqliteDb) {
+      try {
+        this.sqliteDb.prepare(`
+          INSERT INTO contest_attendance (contest_id, student_id, status, notes, updated_at)
+          VALUES (?, ?, ?, ?, ?)
+          ON CONFLICT(contest_id, student_id) DO UPDATE SET
+            status = excluded.status,
+            notes = excluded.notes,
+            updated_at = excluded.updated_at
+        `).run(contestId, studentId, status, notes || '', updated_at);
+      } catch (e) {
+        console.error('Error saving contest attendance to SQLite:', e);
+      }
+    }
+
+    this.persistMemoryStore();
+    return record;
   }
 
   // ================= CURATED TRACKS & PROBLEMS =================

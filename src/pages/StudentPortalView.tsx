@@ -587,9 +587,14 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                     <div key={c.id} className="p-4 bg-purple-50/50 border border-purple-100 rounded-xl flex flex-col justify-between space-y-3">
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="px-2 py-0.5 bg-purple-600 text-white rounded text-[10px] font-bold">
-                            {c.type}
-                          </span>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="px-2 py-0.5 bg-purple-600 text-white rounded text-[10px] font-bold">
+                              {c.type}
+                            </span>
+                            <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-[10px] font-bold">
+                              {c.targetCohort === 'II_III' ? 'II & III Yr' : c.targetCohort === 'II' ? 'II Yr' : c.targetCohort === 'III' ? 'III Yr' : c.targetCohort === 'IV' ? 'Final Yr' : 'All Batches'}
+                            </span>
+                          </div>
                           <span className="px-2 py-0.5 bg-amber-100 text-amber-900 rounded text-[10px] font-bold flex items-center gap-1">
                             <Timer className="w-3 h-3 text-amber-600" />
                             <span>{countdown}</span>
@@ -873,9 +878,14 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                   <div key={c.id} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4 flex flex-col justify-between">
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="px-2.5 py-1 bg-purple-50 text-purple-700 border border-purple-200 rounded-lg text-xs font-extrabold">
-                          {c.type}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="px-2.5 py-1 bg-purple-50 text-purple-700 border border-purple-200 rounded-lg text-xs font-extrabold">
+                            {c.type}
+                          </span>
+                          <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold">
+                            Eligible: {c.targetCohort === 'II_III' ? 'II & III Year' : c.targetCohort === 'II' ? 'II Year' : c.targetCohort === 'III' ? 'III Year' : c.targetCohort === 'IV' ? 'Final Year (IV)' : 'All Batches'}
+                          </span>
+                        </div>
                         <span className="px-2.5 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-lg text-xs font-bold flex items-center gap-1">
                           <Timer className="w-3.5 h-3.5 text-amber-600" />
                           <span>{countdown}</span>

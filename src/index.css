@@ -99,14 +99,4 @@ img, svg {
   }
 }
 
-body.privacy-locked {
-  overflow: hidden !important;
-}
-
-body.privacy-locked * {
-  -webkit-user-select: none !important;
-  -moz-user-select: none !important;
-  user-select: none !important;
-}
-
 

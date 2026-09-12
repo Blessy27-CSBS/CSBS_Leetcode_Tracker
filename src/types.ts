@@ -143,6 +143,44 @@ export interface ContestProblemLink {
   leetcodeUrl: string;
 }
 
+export interface ContestSolvedStudent {
+  studentId: string;
+  studentName: string;
+  registerNo: string;
+  section: string;
+  year: string;
+  username: string;
+  problemsSolvedCount: number;
+  solvedProblems: string[];
+  solvedAt?: string;
+  contestRating?: number;
+  contestsAttended?: number;
+  totalSolved?: number;
+  isManualOverride?: boolean;
+}
+
+export interface ContestUnsolvedStudent {
+  studentId: string;
+  studentName: string;
+  registerNo: string;
+  section: string;
+  year: string;
+  username: string;
+  daysInactive?: number;
+  lastActive?: string;
+  totalSolved?: number;
+  contestRating?: number;
+  isManualOverride?: boolean;
+}
+
+export interface ContestAttendanceRecord {
+  contest_id: string;
+  student_id: string;
+  status: 'SOLVED' | 'UNSOLVED' | 'ATTENDED';
+  notes?: string;
+  updated_at: string;
+}
+
 export interface ContestItem {
   id: string;
   title: string;
@@ -154,8 +192,15 @@ export interface ContestItem {
   description?: string;
   problems?: ContestProblemLink[];
   status: 'UPCOMING' | 'ACTIVE' | 'FINISHED';
+  targetCohort?: 'ALL' | 'II_III' | 'II' | 'III' | 'IV' | string;
   registeredCount?: number;
   created_at?: string;
+  solvedCount?: number;
+  unsolvedCount?: number;
+  totalEligibleCount?: number;
+  participationRate?: number;
+  solvedStudents?: ContestSolvedStudent[];
+  unsolvedStudents?: ContestUnsolvedStudent[];
 }
 
 export interface CuratedProblem {

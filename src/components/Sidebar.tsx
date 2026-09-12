@@ -6,6 +6,7 @@ import {
 
 export type NavTab =
   | 'dashboard'
+  | 'contestTracker'
   | 'quest'
   | 'leetcode75'
   | 'contests'
@@ -37,6 +38,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const analyticsItems: { id: NavTab; label: string; badge: string | null; badgeColor?: string }[] = [
     { id: 'dashboard', label: 'Dashboard', badge: null },
+    { id: 'contestTracker', label: 'Contest Solved Tracker', badge: null },
     { id: 'quest', label: 'DSA Quest Tracker', badge: null, badgeColor: 'bg-emerald-600 text-white' },
     { id: 'leetcode75', label: 'LeetCode 75 Tracker', badge: null, badgeColor: 'bg-blue-600 text-white' },
     { id: 'contests', label: 'LeetCode Contests', badge: null },

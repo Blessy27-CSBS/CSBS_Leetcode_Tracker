@@ -10,6 +10,7 @@ import {
   Sparkles, 
   Award, 
   CheckCircle2, 
+  XCircle,
   AlertCircle, 
   Flame, 
   ChevronRight, 
@@ -17,7 +18,15 @@ import {
   Globe,
   Share2,
   Code2,
-  BookmarkPlus
+  BookmarkPlus,
+  Users,
+  Search,
+  Download,
+  UserCheck,
+  UserX,
+  Copy,
+  Check,
+  GraduationCap
 } from 'lucide-react';
 import { ContestItem, ContestProblemLink, StudentWithLatest } from '../types';
 import { api } from '../services/api';
@@ -39,6 +48,7 @@ export const ContestsView: React.FC<ContestsViewProps> = ({ isFaculty = true, st
     title: string;
     titleSlug: string;
     type: 'Weekly Contest' | 'Biweekly Contest' | 'Department Contest' | 'Virtual Contest';
+    targetCohort: string;
     contestUrl: string;
     startTime: string;
     durationMinutes: number;
@@ -48,17 +58,25 @@ export const ContestsView: React.FC<ContestsViewProps> = ({ isFaculty = true, st
     title: '',
     titleSlug: '',
     type: 'Weekly Contest',
+    targetCohort: 'ALL',
     contestUrl: '',
     startTime: new Date(Date.now() + 86400000).toISOString().slice(0, 16),
     durationMinutes: 90,
     description: '',
     problems: [
-      { title: 'Q1: Easy Problem', difficulty: 'Easy', leetcodeUrl: '' },
-      { title: 'Q2: Medium Problem', difficulty: 'Medium', leetcodeUrl: '' },
-      { title: 'Q3: Medium Problem', difficulty: 'Medium', leetcodeUrl: '' },
-      { title: 'Q4: Hard Problem', difficulty: 'Hard', leetcodeUrl: '' },
+      { title: '', difficulty: 'Easy', leetcodeUrl: '' },
+      { title: '', difficulty: 'Medium', leetcodeUrl: '' },
+      { title: '', difficulty: 'Medium', leetcodeUrl: '' },
+      { title: '', difficulty: 'Hard', leetcodeUrl: '' },
     ],
   });
+
+  // Roster Modal state
+  const [rosterContest, setRosterContest] = useState<ContestItem | null>(null);
+  const [rosterTab, setRosterTab] = useState<'solved' | 'unsolved'>('solved');
+  const [rosterYearFilter, setRosterYearFilter] = useState('ALL');
+  const [rosterSearch, setRosterSearch] = useState('');
+  const [rosterCopiedRegNo, setRosterCopiedRegNo] = useState<string | null>(null);
 
   // Countdown timer clock
   const [now, setNow] = useState(Date.now());
@@ -73,6 +91,10 @@ export const ContestsView: React.FC<ContestsViewProps> = ({ isFaculty = true, st
       setError('');
       const list = await api.getContests();
       setContests(list || []);
+      if (rosterContest) {
+        const updated = (list || []).find(c => c.id === rosterContest.id);
+        if (updated) setRosterContest(updated);
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to load contests');
     } finally {
@@ -90,26 +112,40 @@ export const ContestsView: React.FC<ContestsViewProps> = ({ isFaculty = true, st
       title: '',
       titleSlug: '',
       type: 'Weekly Contest',
+      targetCohort: 'ALL',
       contestUrl: 'https://leetcode.com/contest/',
       startTime: new Date(Date.now() + 86400000).toISOString().slice(0, 16),
       durationMinutes: 90,
       description: '',
-      problems: [],
+      problems: [
+        { title: '', difficulty: 'Easy' as const, leetcodeUrl: '' },
+        { title: '', difficulty: 'Medium' as const, leetcodeUrl: '' },
+        { title: '', difficulty: 'Medium' as const, leetcodeUrl: '' },
+        { title: '', difficulty: 'Hard' as const, leetcodeUrl: '' },
+      ],
     });
     setIsModalOpen(true);
   };
 
   const handleOpenEdit = (c: ContestItem) => {
     setEditingContestId(c.id);
+    const existingProblems: ContestProblemLink[] = c.problems && c.problems.length > 0 ? c.problems : [
+      { title: '', difficulty: 'Easy', leetcodeUrl: '' },
+      { title: '', difficulty: 'Medium', leetcodeUrl: '' },
+      { title: '', difficulty: 'Medium', leetcodeUrl: '' },
+      { title: '', difficulty: 'Hard', leetcodeUrl: '' },
+    ];
+
     setFormData({
       title: c.title,
       titleSlug: c.titleSlug,
       type: c.type,
+      targetCohort: c.targetCohort || 'ALL',
       contestUrl: c.contestUrl,
       startTime: c.startTime ? new Date(c.startTime).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16),
       durationMinutes: c.durationMinutes || 90,
       description: c.description || '',
-      problems: c.problems || [],
+      problems: existingProblems,
     });
     setIsModalOpen(true);
   };
@@ -127,10 +163,11 @@ export const ContestsView: React.FC<ContestsViewProps> = ({ isFaculty = true, st
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const cleanedProblems = (formData.problems || []).filter(p => p.title && p.title.trim() !== '');
       const payload = {
         ...formData,
         startTime: new Date(formData.startTime).toISOString(),
-        problems: [],
+        problems: cleanedProblems,
       };
 
       if (editingContestId) {
@@ -144,6 +181,58 @@ export const ContestsView: React.FC<ContestsViewProps> = ({ isFaculty = true, st
     } catch (err: any) {
       alert(err.message || 'Failed to save contest');
     }
+  };
+
+
+  const handleExportRosterCSV = () => {
+    if (!rosterContest) return;
+    const solved = rosterContest.solvedStudents || [];
+    const unsolved = rosterContest.unsolvedStudents || [];
+
+    const rows = [
+      ['Register No', 'Student Name', 'Cohort Year', 'Section', 'LeetCode Username', 'Contest Status', 'Problems Solved Count', 'Solved Problems', 'Total LeetCode Solved', 'Contest Rating', 'Solve Time / Last Active']
+    ];
+
+    solved.forEach(s => {
+      rows.push([
+        s.registerNo,
+        s.studentName,
+        s.year,
+        s.section,
+        s.username,
+        'SOLVED',
+        String(s.problemsSolvedCount),
+        (s.solvedProblems || []).join('; '),
+        String(s.totalSolved || 0),
+        String(s.contestRating || 0),
+        s.solvedAt || ''
+      ]);
+    });
+
+    unsolved.forEach(u => {
+      rows.push([
+        u.registerNo,
+        u.studentName,
+        u.year,
+        u.section,
+        u.username,
+        'DID NOT SOLVE',
+        '0',
+        '',
+        String(u.totalSolved || 0),
+        String(u.contestRating || 0),
+        u.lastActive || ''
+      ]);
+    });
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + rows.map(e => e.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `${rosterContest.title.replace(/[^a-z0-9]/gi, '_')}_Participation_Roster.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const formatCountdown = (startTimeStr: string) => {
@@ -173,15 +262,32 @@ export const ContestsView: React.FC<ContestsViewProps> = ({ isFaculty = true, st
     <div className={`bg-white/90 backdrop-blur-md border rounded-2xl p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-4 ${isPast ? 'border-slate-200/60 opacity-80' : 'border-slate-200/80 hover:border-purple-300'}`}>
       <div className="space-y-3">
         {/* Type & Status Badge */}
-        <div className="flex items-center justify-between gap-2">
-          <span className={`inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-extrabold rounded-lg border ${
-            c.type === 'Department Contest'
-              ? 'bg-amber-50 border-amber-200 text-amber-700'
-              : 'bg-purple-50 border-purple-200 text-purple-700'
-          }`}>
-            <Trophy className="w-3.5 h-3.5" />
-            <span>{c.type}</span>
-          </span>
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className={`inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-extrabold rounded-lg border ${
+              c.type === 'Department Contest'
+                ? 'bg-amber-50 border-amber-200 text-amber-700'
+                : 'bg-purple-50 border-purple-200 text-purple-700'
+            }`}>
+              <Trophy className="w-3.5 h-3.5" />
+              <span>{c.type}</span>
+            </span>
+
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-extrabold rounded-lg border bg-blue-50 border-blue-200 text-blue-700">
+              <GraduationCap className="w-3.5 h-3.5" />
+              <span>
+                {c.targetCohort === 'II_III'
+                  ? 'II & III Year'
+                  : c.targetCohort === 'II'
+                  ? 'II Year Only'
+                  : c.targetCohort === 'III'
+                  ? 'III Year Only'
+                  : c.targetCohort === 'IV'
+                  ? 'Final Year (IV)'
+                  : 'All Batches'}
+              </span>
+            </span>
+          </div>
 
           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border ${
             isPast
@@ -214,6 +320,33 @@ export const ContestsView: React.FC<ContestsViewProps> = ({ isFaculty = true, st
             <span>{new Date(c.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ({c.durationMinutes}m)</span>
           </div>
         </div>
+
+        {/* Participation Stats Summary */}
+        <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex items-center justify-between text-xs">
+          <div className="flex items-center gap-1 font-extrabold text-emerald-700">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+            <span>{c.solvedCount || 0} Solved ({c.participationRate || 0}%)</span>
+          </div>
+          <div className="flex items-center gap-1 font-bold text-rose-600">
+            <XCircle className="w-3.5 h-3.5" />
+            <span>{c.unsolvedCount || 0} Absent</span>
+          </div>
+        </div>
+
+        {/* View Solved vs Unsolved Button for Faculty */}
+        {isFaculty && (
+          <button
+            type="button"
+            onClick={() => {
+              setRosterContest(c);
+              setRosterTab('solved');
+            }}
+            className="w-full py-2 px-3 bg-purple-50 hover:bg-purple-100 text-purple-700 font-extrabold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-purple-200/80"
+          >
+            <Users className="w-3.5 h-3.5 text-purple-600" />
+            <span>View Solved ({c.solvedCount || 0}) vs Unsolved ({c.unsolvedCount || 0})</span>
+          </button>
+        )}
       </div>
 
       {/* Actions */}
@@ -330,94 +463,299 @@ export const ContestsView: React.FC<ContestsViewProps> = ({ isFaculty = true, st
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
             {upcomingContests.map(c => {
               const { text: countdown, isLive } = formatCountdown(c.startTime);
-
-              return (
-                <div key={c.id} className="bg-white/90 backdrop-blur-md border border-slate-200/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-extrabold rounded-lg border ${
-                        c.type === 'Department Contest'
-                          ? 'bg-amber-50 border-amber-200 text-amber-700'
-                          : 'bg-purple-50 border-purple-200 text-purple-700'
-                      }`}>
-                        <Trophy className="w-3.5 h-3.5" />
-                        <span>{c.type}</span>
-                      </span>
-
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border ${
-                        isLive
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 animate-pulse'
-                          : 'bg-amber-50 text-amber-800 border-amber-200'
-                      }`}>
-                        <Timer className="w-3.5 h-3.5" />
-                        <span>{countdown}</span>
-                      </span>
-                    </div>
-
-                    <div>
-                      <h3 className="text-base font-black text-slate-900">{c.title}</h3>
-                      {c.description && (
-                        <p className="text-xs text-slate-600 mt-1 line-clamp-2">{c.description}</p>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100 font-medium">
-                      <div className="flex items-center gap-1.5">
-                        <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                        <span>{new Date(c.startTime).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5 text-slate-400" />
-                        <span>{new Date(c.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ({c.durationMinutes}m)</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-                    <a
-                      href={c.contestUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex-1 py-2.5 px-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition-all"
-                    >
-                      <span>Enter Contest on LeetCode</span>
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
-
-                    {isFaculty && (
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEdit(c)}
-                          className="p-2 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors cursor-pointer"
-                          title="Edit Contest"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(c.id, c.title)}
-                          className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                          title="Delete Contest"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
+              return <ContestCard key={c.id} c={c} countdown={countdown} isLive={isLive} isPast={false} />;
             })}
           </div>
         )}
       </div>
 
-      {/* 3. MODAL: SCHEDULE / ADD CONTEST (Single Link) */}
+      {/* 2.1 CONCLUDED / PAST CONTESTS */}
+      {pastContests.length > 0 && (
+        <div className="space-y-4 pt-4 border-t border-slate-200/60">
+          <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+            <Clock className="w-4 h-4 text-slate-500" />
+            Concluded Contests ({pastContests.length})
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+            {pastContests.map(c => {
+              const { text: countdown, isLive } = formatCountdown(c.startTime);
+              return <ContestCard key={c.id} c={c} countdown={countdown} isLive={isLive} isPast={true} />;
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 3. ROSTER MODAL: SOLVED VS UNSOLVED STUDENTS */}
+      {rosterContest && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
+            
+            {/* Modal Header */}
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-purple-100 text-purple-700 rounded-xl">
+                  <Trophy className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-black text-slate-900">
+                      {rosterContest.title}
+                    </h3>
+                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-purple-100 text-purple-800">
+                      {rosterContest.type}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Participation & solve roster: {rosterContest.solvedCount || 0} Solved ({rosterContest.participationRate || 0}%) • {rosterContest.unsolvedCount || 0} Absent
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleExportRosterCSV}
+                  className="px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
+                  title="Export Roster CSV"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Export CSV</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRosterContest(null)}
+                  className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg text-lg font-bold cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Filter Bar & Sub-Tabs */}
+            <div className="p-4 border-b border-slate-100 bg-white space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                
+                {/* Tabs */}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setRosterTab('solved')}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 cursor-pointer transition-all ${
+                      rosterTab === 'solved'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Solved ({rosterContest.solvedCount || 0})</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setRosterTab('unsolved')}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 cursor-pointer transition-all ${
+                      rosterTab === 'unsolved'
+                        ? 'bg-rose-600 text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    <XCircle className="w-3.5 h-3.5" />
+                    <span>Did Not Solve ({rosterContest.unsolvedCount || 0})</span>
+                  </button>
+                </div>
+
+                {/* Cohort & Search Filters */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center bg-slate-100 p-0.5 rounded-lg text-xs font-bold">
+                    {[
+                      { id: 'ALL', label: 'All' },
+                      { id: 'II', label: 'II Yr' },
+                      { id: 'III', label: 'III Yr' },
+                      { id: 'IV', label: 'Final Yr (IV)' }
+                    ].map(yr => (
+                      <button
+                        key={yr.id}
+                        type="button"
+                        onClick={() => setRosterYearFilter(yr.id)}
+                        className={`px-2.5 py-1 rounded-md text-xs cursor-pointer ${
+                          rosterYearFilter === yr.id ? 'bg-white text-slate-900 font-extrabold shadow-2xs' : 'text-slate-500 hover:text-slate-900'
+                        }`}
+                      >
+                        {yr.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="relative">
+                    <Search className="w-3 h-3 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={rosterSearch}
+                      onChange={e => setRosterSearch(e.target.value)}
+                      placeholder="Search student..."
+                      className="pl-7 pr-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white"
+                    />
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            {/* Modal Table Content */}
+            <div className="p-4 overflow-y-auto flex-1">
+              {rosterTab === 'solved' ? (
+                <div>
+                  {((rosterContest.solvedStudents || []).filter(s => {
+                    if (rosterYearFilter !== 'ALL' && s.year !== rosterYearFilter) return false;
+                    if (rosterSearch.trim()) {
+                      const q = rosterSearch.toLowerCase();
+                      return s.studentName.toLowerCase().includes(q) || s.registerNo.toLowerCase().includes(q) || s.username.toLowerCase().includes(q);
+                    }
+                    return true;
+                  })).length === 0 ? (
+                    <div className="p-8 text-center text-slate-400 space-y-1">
+                      <CheckCircle2 className="w-6 h-6 text-slate-300 mx-auto" />
+                      <p className="text-xs font-bold text-slate-600">No solved students match the selected filters.</p>
+                    </div>
+                  ) : (
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead className="bg-slate-50 text-slate-500 font-extrabold uppercase text-[10px] border-b border-slate-200">
+                        <tr>
+                          <th className="py-2.5 px-3">Student & Reg No</th>
+                          <th className="py-2.5 px-3">Cohort</th>
+                          <th className="py-2.5 px-3">LeetCode Handle</th>
+                          <th className="py-2.5 px-3">Solves</th>
+                          <th className="py-2.5 px-3">Solve Time</th>
+                          <th className="py-2.5 px-3">Total Solved</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {(rosterContest.solvedStudents || []).filter(s => {
+                          if (rosterYearFilter !== 'ALL' && s.year !== rosterYearFilter) return false;
+                          if (rosterSearch.trim()) {
+                            const q = rosterSearch.toLowerCase();
+                            return s.studentName.toLowerCase().includes(q) || s.registerNo.toLowerCase().includes(q) || s.username.toLowerCase().includes(q);
+                          }
+                          return true;
+                        }).map(s => (
+                          <tr key={s.studentId} className="hover:bg-slate-50/50">
+                            <td className="py-2.5 px-3">
+                              <div className="font-extrabold text-slate-900">{s.studentName}</div>
+                              <div className="font-mono text-[11px] text-slate-400">{s.registerNo}</div>
+                            </td>
+                            <td className="py-2.5 px-3 font-bold text-slate-600">
+                              {s.year} Year
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <a
+                                href={`https://leetcode.com/${s.username}/`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="font-mono font-bold text-purple-600 hover:underline flex items-center gap-1"
+                              >
+                                <span>@{s.username}</span>
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <span className="px-2 py-0.5 rounded-full font-bold text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                {s.problemsSolvedCount > 0 ? `${s.problemsSolvedCount} Solved` : 'Attended'}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 text-slate-500 text-[11px]">
+                              {s.solvedAt ? new Date(s.solvedAt).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Verified'}
+                            </td>
+                            <td className="py-2.5 px-3 font-mono font-bold text-slate-800">
+                              {s.totalSolved || 0}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  {((rosterContest.unsolvedStudents || []).filter(u => {
+                    if (rosterYearFilter !== 'ALL' && u.year !== rosterYearFilter) return false;
+                    if (rosterSearch.trim()) {
+                      const q = rosterSearch.toLowerCase();
+                      return u.studentName.toLowerCase().includes(q) || u.registerNo.toLowerCase().includes(q) || u.username.toLowerCase().includes(q);
+                    }
+                    return true;
+                  })).length === 0 ? (
+                    <div className="p-8 text-center text-slate-400 space-y-1">
+                      <CheckCircle2 className="w-6 h-6 text-emerald-500 mx-auto" />
+                      <p className="text-xs font-bold text-slate-600">No unsolved students found for current filter.</p>
+                    </div>
+                  ) : (
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead className="bg-slate-50 text-slate-500 font-extrabold uppercase text-[10px] border-b border-slate-200">
+                        <tr>
+                          <th className="py-2.5 px-3">Student & Reg No</th>
+                          <th className="py-2.5 px-3">Cohort</th>
+                          <th className="py-2.5 px-3">LeetCode Handle</th>
+                          <th className="py-2.5 px-3">Inactivity</th>
+                          <th className="py-2.5 px-3">Total Solved</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {(rosterContest.unsolvedStudents || []).filter(u => {
+                          if (rosterYearFilter !== 'ALL' && u.year !== rosterYearFilter) return false;
+                          if (rosterSearch.trim()) {
+                            const q = rosterSearch.toLowerCase();
+                            return u.studentName.toLowerCase().includes(q) || u.registerNo.toLowerCase().includes(q) || u.username.toLowerCase().includes(q);
+                          }
+                          return true;
+                        }).map(u => (
+                          <tr key={u.studentId} className="hover:bg-slate-50/50">
+                            <td className="py-2.5 px-3">
+                              <div className="font-extrabold text-slate-900">{u.studentName}</div>
+                              <div className="font-mono text-[11px] text-slate-400">{u.registerNo}</div>
+                            </td>
+                            <td className="py-2.5 px-3 font-bold text-slate-600">
+                              {u.year} Year
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <a
+                                href={`https://leetcode.com/${u.username}/`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="font-mono font-bold text-slate-600 hover:text-purple-600 hover:underline flex items-center gap-1"
+                              >
+                                <span>@{u.username}</span>
+                                <ExternalLink className="w-3 h-3 text-slate-400" />
+                              </a>
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <span className={`text-[11px] font-bold ${
+                                (u.daysInactive || 0) > 14 ? 'text-rose-600' : 'text-slate-600'
+                              }`}>
+                                {u.daysInactive !== undefined ? `${u.daysInactive}d inactive` : 'No activity'}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 font-mono font-bold text-slate-800">
+                              {u.totalSolved || 0}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              )}
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* 4. MODAL: SCHEDULE / ADD CONTEST */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200">
+          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
             
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="p-2 bg-purple-50 text-purple-600 rounded-lg">
                   <Trophy className="w-5 h-5" />
@@ -427,7 +765,7 @@ export const ContestsView: React.FC<ContestsViewProps> = ({ isFaculty = true, st
                     {editingContestId ? 'Edit Contest' : 'Schedule Contest'}
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Enter direct contest link and schedule time.
+                    Enter direct contest link, schedule time, and map contest problems.
                   </p>
                 </div>
               </div>
@@ -440,7 +778,7 @@ export const ContestsView: React.FC<ContestsViewProps> = ({ isFaculty = true, st
               </button>
             </div>
 
-            <form onSubmit={handleFormSubmit} className="space-y-4 text-xs font-semibold text-slate-700">
+            <form onSubmit={handleFormSubmit} className="p-5 overflow-y-auto space-y-4 text-xs font-semibold text-slate-700 flex-1">
               {/* Title */}
               <div>
                 <label className="block mb-1 font-bold">Contest Title *</label>
@@ -466,6 +804,28 @@ export const ContestsView: React.FC<ContestsViewProps> = ({ isFaculty = true, st
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-purple-500"
                 />
                 <span className="text-[10px] text-slate-400 mt-0.5 block">Direct link where students will compete on LeetCode.</span>
+              </div>
+
+              {/* Target Audience / Eligible Years */}
+              <div>
+                <label className="block mb-1 font-bold text-slate-900 flex items-center justify-between">
+                  <span>Target Audience / Eligible Years *</span>
+                  <span className="text-[10px] text-purple-600 font-semibold">Cohort Visibility</span>
+                </label>
+                <select
+                  value={formData.targetCohort || 'ALL'}
+                  onChange={e => setFormData({ ...formData, targetCohort: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:bg-white focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="ALL">All Batches (II, III & Final Year)</option>
+                  <option value="II_III">Both II & III Years</option>
+                  <option value="II">II Year Only</option>
+                  <option value="III">III Year Only</option>
+                  <option value="IV">Final Year (IV Year) Only</option>
+                </select>
+                <span className="text-[10px] text-slate-400 mt-0.5 block">
+                  Select which cohort of students can see this contest and are tracked in the participation roster.
+                </span>
               </div>
 
               {/* Contest Type & Duration */}
@@ -516,6 +876,59 @@ export const ContestsView: React.FC<ContestsViewProps> = ({ isFaculty = true, st
                   placeholder="Instructions or department goals for students..."
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900"
                 />
+              </div>
+
+              {/* Optional Contest Problems Mapping (Q1 - Q4) */}
+              <div className="space-y-2 border-t border-slate-100 pt-3">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-slate-800">Contest Problems (Optional, Q1 - Q4)</label>
+                  <span className="text-[10px] text-slate-400">Maps accepted solves automatically</span>
+                </div>
+                
+                {formData.problems.map((prob, idx) => (
+                  <div key={idx} className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-black text-purple-700">Q{idx + 1}</span>
+                      <select
+                        value={prob.difficulty}
+                        onChange={e => {
+                          const copy = [...formData.problems];
+                          copy[idx].difficulty = e.target.value as any;
+                          setFormData({ ...formData, problems: copy });
+                        }}
+                        className="text-[11px] font-bold p-1 bg-white border border-slate-200 rounded-lg text-slate-700"
+                      >
+                        <option value="Easy">Easy</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Hard">Hard</option>
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        value={prob.title}
+                        onChange={e => {
+                          const copy = [...formData.problems];
+                          copy[idx].title = e.target.value;
+                          setFormData({ ...formData, problems: copy });
+                        }}
+                        placeholder={`e.g. Q${idx + 1}: Two Sum`}
+                        className="p-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800"
+                      />
+                      <input
+                        type="url"
+                        value={prob.leetcodeUrl}
+                        onChange={e => {
+                          const copy = [...formData.problems];
+                          copy[idx].leetcodeUrl = e.target.value;
+                          setFormData({ ...formData, problems: copy });
+                        }}
+                        placeholder="LeetCode problem URL"
+                        className="p-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800"
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
 
               <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">

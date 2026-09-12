@@ -15,6 +15,36 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400;1,700;1,900&display=swap" rel="stylesheet">
+    <script>
+      (function() {
+        document.addEventListener('contextmenu', function(e) {
+          e.preventDefault();
+          return false;
+        }, true);
+        document.addEventListener('keydown', function(e) {
+          var k = e.key ? e.key.toLowerCase() : '';
+          var code = e.keyCode || e.which;
+          var ctrl = e.ctrlKey || e.metaKey;
+          var shift = e.shiftKey;
+          var alt = e.altKey;
+          if (code === 123 || k === 'f12') {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+          }
+          if (ctrl && shift && (k === 'i' || k === 'j' || k === 'c' || k === 'k' || k === 'e')) {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+          }
+          if ((ctrl && alt && (k === 'i' || k === 'j' || k === 'c')) || (ctrl && k === 'u') || (ctrl && k === 's')) {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+          }
+        }, true);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

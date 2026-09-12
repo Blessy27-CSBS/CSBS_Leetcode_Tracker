@@ -1910,11 +1910,179 @@ app.delete('/api/potd/:id', requireStaff, (req, res) => {
 
 // ================= LEETCODE CONTESTS ENDPOINTS =================
 
-// 15.3 Get Contests
+function resolveContestProblems(contest: any): any[] {
+  if (Array.isArray(contest.problems) && contest.problems.length > 0) {
+    return contest.problems;
+  }
+  const url = (contest.contestUrl || '').toLowerCase();
+  const title = (contest.title || '').toLowerCase();
+  
+  // LeetCode Weekly Contest 2
+  if (url.includes('weekly-contest-2') || title.includes('weekly contest 2') || title.includes('challenge for ii & iii')) {
+    return [
+      { title: 'Find the Difference', titleSlug: 'find-the-difference', difficulty: 'Easy', leetcodeUrl: 'https://leetcode.com/problems/find-the-difference/' },
+      { title: 'Elimination Game', titleSlug: 'elimination-game', difficulty: 'Medium', leetcodeUrl: 'https://leetcode.com/problems/elimination-game/' },
+      { title: 'Perfect Rectangle', titleSlug: 'perfect-rectangle', difficulty: 'Hard', leetcodeUrl: 'https://leetcode.com/problems/perfect-rectangle/' }
+    ];
+  }
+
+  return [];
+}
+
+// Helper to compute participation and solved/unsolved students for a contest
+function enrichContestWithParticipation(contest: any, students: StudentWithLatest[]) {
+  const problems = resolveContestProblems(contest);
+  const attendances = db.getContestAttendance(contest.id);
+  const attendanceMap = new Map<string, any>();
+  attendances.forEach(a => attendanceMap.set(a.student_id, a));
+
+  // Determine eligible cohorts: explicit targetCohort property or text matching in title/description
+  let targetYears: string[] = [];
+  const cohort = contest.targetCohort || 'ALL';
+  if (cohort === 'II_III') {
+    targetYears = ['II', 'III'];
+  } else if (cohort === 'II') {
+    targetYears = ['II'];
+  } else if (cohort === 'III') {
+    targetYears = ['III'];
+  } else if (cohort === 'IV') {
+    targetYears = ['IV'];
+  } else {
+    // Fallback: check title or description for legacy contests without explicit targetCohort
+    const textToCheck = `${contest.title} ${contest.description || ''}`.toUpperCase();
+    if (textToCheck.includes('II') && textToCheck.includes('III') && !textToCheck.includes('IV')) {
+      targetYears = ['II', 'III'];
+    } else if (textToCheck.includes('II YEAR') || textToCheck.includes('2ND YEAR')) {
+      targetYears = ['II'];
+    } else if (textToCheck.includes('III YEAR') || textToCheck.includes('3RD YEAR')) {
+      targetYears = ['III'];
+    } else if (textToCheck.includes('IV YEAR') || textToCheck.includes('4TH YEAR') || textToCheck.includes('FINAL YEAR')) {
+      targetYears = ['IV'];
+    }
+  }
+
+  const eligibleStudents = students.filter(s => {
+    if (targetYears.length > 0) {
+      const sYear = (s.year || 'III').toUpperCase().trim();
+      return targetYears.includes(sYear);
+    }
+    return true;
+  });
+
+  const solvedStudents: any[] = [];
+  const unsolvedStudents: any[] = [];
+
+  for (const s of eligibleStudents) {
+    const override = attendanceMap.get(s.id);
+    const subs = db.getSubmissions(s.id);
+    const snap = s.latest_snapshot;
+
+    let isSolved = false;
+    let isManualOverride = false;
+    const solvedContestProblems: string[] = [];
+    let latestSolveTime: string | undefined;
+
+    if (override) {
+      isManualOverride = true;
+      if (override.status === 'SOLVED' || override.status === 'ATTENDED') {
+        isSolved = true;
+        latestSolveTime = override.updated_at;
+      } else if (override.status === 'UNSOLVED') {
+        isSolved = false;
+      }
+    }
+
+    // Only match against problems belonging to this contest
+    if (!override || override.status !== 'UNSOLVED') {
+      if (problems.length > 0) {
+        for (const p of problems) {
+          const pSlug = (p.titleSlug || '').toLowerCase().trim();
+          const pTitle = (p.title || '').toLowerCase().trim();
+          const found = subs.find(sub => {
+            const subSlug = (sub.titleSlug || '').toLowerCase().trim();
+            const subTitle = (sub.title || '').toLowerCase().trim();
+            const isMatch = (pSlug && subSlug === pSlug) || (pTitle && subTitle === pTitle);
+            return isMatch && (sub.statusDisplay?.toLowerCase() === 'accepted' || !sub.statusDisplay);
+          });
+          if (found) {
+            solvedContestProblems.push(p.title);
+            if (!latestSolveTime || new Date(found.timestamp) > new Date(latestSolveTime)) {
+              latestSolveTime = found.timestamp;
+            }
+          }
+        }
+        if (solvedContestProblems.length > 0) {
+          isSolved = true;
+        }
+      }
+    }
+
+    if (isSolved) {
+      solvedStudents.push({
+        studentId: s.id,
+        studentName: s.student_name,
+        registerNo: s.register_no,
+        section: s.section,
+        year: s.year,
+        username: s.username,
+        problemsSolvedCount: Math.max(isManualOverride ? 1 : 0, solvedContestProblems.length),
+        solvedProblems: solvedContestProblems,
+        solvedAt: latestSolveTime,
+        contestRating: snap?.contest_rating || 0,
+        contestsAttended: snap?.contests_attended || 0,
+        totalSolved: snap?.total_solved || 0,
+        isManualOverride,
+      });
+    } else {
+      unsolvedStudents.push({
+        studentId: s.id,
+        studentName: s.student_name,
+        registerNo: s.register_no,
+        section: s.section,
+        year: s.year,
+        username: s.username,
+        daysInactive: s.days_inactive,
+        lastActive: snap?.last_active,
+        totalSolved: snap?.total_solved || 0,
+        contestRating: snap?.contest_rating || 0,
+        isManualOverride,
+      });
+    }
+  }
+
+  // Sort solved by problems solved desc, then total solved desc
+  solvedStudents.sort((a, b) => {
+    if (b.problemsSolvedCount !== a.problemsSolvedCount) return b.problemsSolvedCount - a.problemsSolvedCount;
+    return (b.totalSolved || 0) - (a.totalSolved || 0);
+  });
+
+  // Sort unsolved by total solved desc
+  unsolvedStudents.sort((a, b) => (b.totalSolved || 0) - (a.totalSolved || 0));
+
+  const totalEligibleCount = eligibleStudents.length;
+  const solvedCount = solvedStudents.length;
+  const unsolvedCount = unsolvedStudents.length;
+  const participationRate = totalEligibleCount > 0 ? Math.round((solvedCount / totalEligibleCount) * 100) : 0;
+
+  return {
+    ...contest,
+    problems,
+    totalEligibleCount,
+    solvedCount,
+    unsolvedCount,
+    participationRate,
+    solvedStudents,
+    unsolvedStudents,
+  };
+}
+
+// 15.3 Get Contests (Enriched with Solved vs Unsolved Students)
 app.get('/api/contests', (req, res) => {
   try {
     const contests = db.getContests();
-    res.json(contests);
+    const students = getAllEnrichedStudents();
+    const enrichedContests = contests.map(c => enrichContestWithParticipation(c, students));
+    res.json(enrichedContests);
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Failed to fetch contests.' });
   }
@@ -1925,16 +2093,48 @@ app.get('/api/contests/:id', (req, res) => {
   try {
     const contest = db.getContestById(req.params.id);
     if (!contest) return res.status(404).json({ error: 'Contest not found.' });
-    res.json(contest);
+    const students = getAllEnrichedStudents();
+    res.json(enrichContestWithParticipation(contest, students));
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Failed to fetch contest.' });
+  }
+});
+
+// 15.4.1 Toggle Contest Attendance / Solved Status (Manual override by Faculty)
+app.post('/api/contests/:id/attendance', requireStaff, (req, res) => {
+  try {
+    const { studentId, status, notes } = req.body;
+    if (!studentId || !status) {
+      return res.status(400).json({ error: 'studentId and status are required.' });
+    }
+    const record = db.setContestAttendance(req.params.id, studentId, status, notes);
+    db.addLog('INFO', `Contest attendance updated: contest=${req.params.id}, student=${studentId}, status=${status}`);
+    res.json({ success: true, record });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to update contest attendance.' });
+  }
+});
+
+// 15.4.2 Update Contest Problems
+app.put('/api/contests/:id/problems', requireStaff, (req, res) => {
+  try {
+    const { problems } = req.body;
+    if (!Array.isArray(problems)) {
+      return res.status(400).json({ error: 'problems array is required.' });
+    }
+    const updated = db.updateContest(req.params.id, { problems });
+    if (!updated) return res.status(404).json({ error: 'Contest not found.' });
+    db.addLog('INFO', `Contest problems updated for contest: ${req.params.id} (${problems.length} problems)`);
+    res.json({ success: true, contest: updated });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to update contest problems.' });
   }
 });
 
 // 15.5 Create Contest
 app.post('/api/contests', requireStaff, (req, res) => {
   try {
-    const { title, titleSlug, type, contestUrl, startTime, durationMinutes, description, problems, status } = req.body;
+    const { title, titleSlug, type, targetCohort, contestUrl, startTime, durationMinutes, description, problems, status } = req.body;
     if (!title) {
       return res.status(400).json({ error: 'Contest title is required.' });
     }
@@ -1943,6 +2143,7 @@ app.post('/api/contests', requireStaff, (req, res) => {
       title: title.trim(),
       titleSlug: titleSlug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
       type: type || 'Weekly Contest',
+      targetCohort: targetCohort || 'ALL',
       contestUrl: contestUrl || `https://leetcode.com/contest/${titleSlug || 'weekly-contest'}`,
       startTime: startTime || new Date(Date.now() + 86400000).toISOString(),
       durationMinutes: Number(durationMinutes) || 90,

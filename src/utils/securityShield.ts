@@ -65,50 +65,17 @@ function isEditableElement(target: EventTarget | null): boolean {
   return false;
 }
 
-function ensurePrivacyOverlay(): HTMLDivElement {
-  if (privacyOverlay && document.body.contains(privacyOverlay)) {
-    return privacyOverlay;
+function setPrivacyMode(_active: boolean) {
+  // Disabled: never dim, blank out, or lock the screen
+  if (privacyOverlay && privacyOverlay.parentNode) {
+    privacyOverlay.parentNode.removeChild(privacyOverlay);
+    privacyOverlay = null;
   }
-
-  const overlay = document.createElement('div');
-  overlay.setAttribute('data-security-privacy-overlay', 'true');
-  overlay.setAttribute('aria-hidden', 'true');
-  Object.assign(overlay.style, {
-    position: 'fixed',
-    inset: '0',
-    display: 'none',
-    background: 'transparent',
-    zIndex: '2147483647',
-    pointerEvents: 'all',
-    userSelect: 'none',
-    opacity: '0',
-  });
-
-  overlay.addEventListener('click', () => {
-    setPrivacyMode(false);
-  });
-
-  document.body.appendChild(overlay);
-  privacyOverlay = overlay;
-  return overlay;
-}
-
-function setPrivacyMode(active: boolean) {
-  const overlay = ensurePrivacyOverlay();
-  overlay.style.display = active ? 'block' : 'none';
-
-  document.body.classList.toggle('privacy-locked', active);
-  document.documentElement.classList.toggle('privacy-locked', active);
-
-  if (active) {
-    document.body.style.pointerEvents = 'none';
-    document.body.style.filter = 'brightness(0.7) saturate(0.8)';
-    document.body.style.opacity = '0.7';
-  } else {
-    document.body.style.pointerEvents = '';
-    document.body.style.filter = '';
-    document.body.style.opacity = '';
-  }
+  document.body.classList.remove('privacy-locked');
+  document.documentElement.classList.remove('privacy-locked');
+  document.body.style.pointerEvents = '';
+  document.body.style.filter = '';
+  document.body.style.opacity = '';
 }
 
 export function initSecurityShield(user?: SecurityUser | null): () => void {
@@ -139,16 +106,18 @@ export function initSecurityShield(user?: SecurityUser | null): () => void {
     }
   } catch (e) {}
 
-  const handleContextMenu = (e: MouseEvent) => {
-    if (isEditableElement(e.target)) return;
-    e.preventDefault();
-    e.stopPropagation();
-    emitAlert('contextmenu', 'Right-click is disabled to protect platform data.');
-    return false;
-  };
 
   const triggerScreenshotDeterrence = (reason: string) => {
     emitAlert('screenshot', reason);
+  };
+
+  const handleContextMenu = (e: MouseEvent) => {
+    // Intercept right-click so "Inspect", "Inspect Element", "View Source" cannot be opened.
+    // Does NOT alter screen brightness, lock screen, or turn it white.
+    e.preventDefault();
+    e.stopPropagation();
+    emitAlert('contextmenu', 'Right-click and element inspection are disabled.');
+    return false;
   };
 
   const handleKeyDown = (e: KeyboardEvent) => {
@@ -158,32 +127,7 @@ export function initSecurityShield(user?: SecurityUser | null): () => void {
     const isShift = e.shiftKey;
     const isAlt = e.altKey;
 
-    if (isEditableElement(e.target)) {
-      if (
-        keyCode === 123 ||
-        (isCtrlOrMeta && isShift && ['i', 'j', 'c', 'k', 'e'].includes(key)) ||
-        (isCtrlOrMeta && key === 'u')
-      ) {
-        e.preventDefault();
-        e.stopPropagation();
-        emitAlert('shortcut', 'Developer shortcut disabled for security.');
-        return false;
-      }
-      return;
-    }
-
-    if (
-      (isCtrlOrMeta && isShift && ['s', '3', '4', '5'].includes(key)) ||
-      (e.key === 'Meta' && isShift && key === 's') ||
-      key === 'printscreen' || keyCode === 44
-    ) {
-      e.preventDefault();
-      e.stopPropagation();
-      triggerScreenshotDeterrence('Screenshot or capture shortcut detected. Protected data is hidden.');
-      setPrivacyMode(true);
-      return false;
-    }
-
+    // F12 or Developer Tools
     if (keyCode === 123 || key === 'f12') {
       e.preventDefault();
       e.stopPropagation();
@@ -191,16 +135,18 @@ export function initSecurityShield(user?: SecurityUser | null): () => void {
       return false;
     }
 
+    // Inspection & Console shortcuts (Ctrl+Shift+I, J, C, K, E, P) or Mac equivalents
     if (
-      (isCtrlOrMeta && isShift && ['i', 'j', 'c', 'k', 'e'].includes(key)) ||
-      (isCtrlOrMeta && isAlt && ['i', 'j', 'c'].includes(key))
+      (isCtrlOrMeta && isShift && ['i', 'j', 'c', 'k', 'e', 'p'].includes(key)) ||
+      (isCtrlOrMeta && isAlt && ['i', 'j', 'c', 'u'].includes(key))
     ) {
       e.preventDefault();
       e.stopPropagation();
-      emitAlert('shortcut', 'Inspection shortcut is disabled.');
+      emitAlert('shortcut', 'Inspection and DevTools shortcuts are disabled.');
       return false;
     }
 
+    // View Source (Ctrl+U / Cmd+Opt+U)
     if (isCtrlOrMeta && key === 'u') {
       e.preventDefault();
       e.stopPropagation();
@@ -208,10 +154,23 @@ export function initSecurityShield(user?: SecurityUser | null): () => void {
       return false;
     }
 
+    // Save Page (Ctrl+S / Cmd+S)
     if (isCtrlOrMeta && key === 's') {
       e.preventDefault();
       e.stopPropagation();
       emitAlert('shortcut', 'Save-Page shortcut (Ctrl+S) is disabled.');
+      return false;
+    }
+
+    // Screenshot shortcuts
+    if (
+      (isCtrlOrMeta && isShift && ['s', '3', '4', '5'].includes(key)) ||
+      (e.key === 'Meta' && isShift && key === 's') ||
+      key === 'printscreen' || keyCode === 44
+    ) {
+      e.preventDefault();
+      e.stopPropagation();
+      triggerScreenshotDeterrence('Screenshot or capture shortcut detected.');
       return false;
     }
 
@@ -222,15 +181,6 @@ export function initSecurityShield(user?: SecurityUser | null): () => void {
       e.preventDefault();
       e.stopPropagation();
       emitAlert('print', 'Printing this confidential page is restricted.');
-      setPrivacyMode(true);
-      return false;
-    }
-
-    if (isCtrlOrMeta && isShift && key === 'd') {
-      e.preventDefault();
-      e.stopPropagation();
-      emitAlert('shortcut', 'Inspector shortcut is disabled.');
-      setPrivacyMode(true);
       return false;
     }
   };
@@ -239,7 +189,6 @@ export function initSecurityShield(user?: SecurityUser | null): () => void {
     const key = e.key ? e.key.toLowerCase() : '';
     if (key === 'printscreen' || e.keyCode === 44) {
       triggerScreenshotDeterrence('Screen capture attempt deterred.');
-      setPrivacyMode(true);
     }
   };
 
@@ -277,110 +226,69 @@ export function initSecurityShield(user?: SecurityUser | null): () => void {
   const handleBeforePrint = () => {
     if (user?.role === 'staff') return;
     emitAlert('print', 'Printing is restricted to protect student confidentiality.');
-    setPrivacyMode(true);
   };
 
-  const handleAfterPrint = () => {
-    if (!document.hidden && document.hasFocus()) {
-      setPrivacyMode(false);
-    }
-  };
+  const handleAfterPrint = () => {};
 
-  const handleVisibilityChange = () => {
-    if (document.hidden || !document.hasFocus()) {
-      setPrivacyMode(true);
-      return;
-    }
-    setPrivacyMode(false);
-  };
-
-  const handleWindowBlur = () => setPrivacyMode(true);
-  const handleWindowFocus = () => {
-    if (!document.hidden) setPrivacyMode(false);
-  };
-
+  // DevTools inspection detection via window divergence
   let devToolsDetected = false;
-  const checkDevTools = () => {
+  const detectDevTools = () => {
     const threshold = 160;
-    const widthDiff = window.outerWidth - window.innerWidth;
-    const heightDiff = window.outerHeight - window.innerHeight;
-
-    if (widthDiff > threshold || heightDiff > threshold) {
+    const widthDiff = window.outerWidth - window.innerWidth > threshold;
+    const heightDiff = window.outerHeight - window.innerHeight > threshold;
+    if (widthDiff || heightDiff) {
       if (!devToolsDetected) {
         devToolsDetected = true;
-        emitAlert('devtools', 'Developer inspection environment detected.');
+        emitAlert('devtools', 'Inspection session detected. Source code access is restricted.');
       }
+      try {
+        console.clear();
+      } catch (e) {}
     } else {
       devToolsDetected = false;
     }
   };
 
-  const probe = {
-    get id() {
-      if (!devToolsDetected) {
-        devToolsDetected = true;
-        emitAlert('devtools', 'Console inspection detected.');
-      }
-      return 'sec_probe';
-    },
-  };
+  const devToolsInterval = setInterval(detectDevTools, 1200);
+  window.addEventListener('resize', detectDevTools);
 
-  const devToolsInterval = setInterval(() => {
-    checkDevTools();
+  // Anti-debugging trap: pauses execution if DevTools is active
+  const antiDebugTimer = setInterval(() => {
     try {
-      // @ts-ignore
-      if (window.console && window.console.debug) {
-        // @ts-ignore
-        console.debug(probe);
+      const start = Date.now();
+      const fn = new Function('debugger');
+      fn();
+      if (Date.now() - start > 100) {
+        emitAlert('devtools', 'Active debugger detected. Execution paused.');
       }
-    } catch (e) {}
-  }, 3000);
+    } catch (err) {}
+  }, 2000);
 
-  if (user?.role !== 'staff') {
-    const handlePrintOverride = () => {
-      emitAlert('print', 'Printing is restricted to protect student confidentiality.');
-      setPrivacyMode(true);
-      return undefined;
-    };
-
-    try {
-      const printFn = window.print.bind(window);
-      Object.defineProperty(window, 'print', {
-        value: handlePrintOverride,
-        configurable: true,
-        writable: true,
-      });
-      (window as any).__csbs_original_print__ = printFn;
-    } catch (e) {}
-  }
-
+  document.addEventListener('contextmenu', handleContextMenu, true);
   window.addEventListener('contextmenu', handleContextMenu, true);
   window.addEventListener('keydown', handleKeyDown, true);
   window.addEventListener('keyup', handleKeyUp, true);
   window.addEventListener('dragstart', handleDragStart, true);
-  window.addEventListener('blur', handleWindowBlur, true);
-  window.addEventListener('focus', handleWindowFocus, true);
   window.addEventListener('beforeprint', handleBeforePrint, true);
   window.addEventListener('afterprint', handleAfterPrint, true);
-  document.addEventListener('visibilitychange', handleVisibilityChange, true);
   document.addEventListener('copy', handleCopy, true);
   document.addEventListener('cut', handleCut, true);
 
   setPrivacyMode(false);
 
   return () => {
+    clearInterval(devToolsInterval);
+    clearInterval(antiDebugTimer);
+    document.removeEventListener('contextmenu', handleContextMenu, true);
     window.removeEventListener('contextmenu', handleContextMenu, true);
+    window.removeEventListener('resize', detectDevTools);
     window.removeEventListener('keydown', handleKeyDown, true);
     window.removeEventListener('keyup', handleKeyUp, true);
     window.removeEventListener('dragstart', handleDragStart, true);
-    window.removeEventListener('blur', handleWindowBlur, true);
-    window.removeEventListener('focus', handleWindowFocus, true);
     window.removeEventListener('beforeprint', handleBeforePrint, true);
     window.removeEventListener('afterprint', handleAfterPrint, true);
-    document.removeEventListener('visibilitychange', handleVisibilityChange, true);
     document.removeEventListener('copy', handleCopy, true);
     document.removeEventListener('cut', handleCut, true);
-    clearInterval(devToolsInterval);
 
     if (privacyOverlay && privacyOverlay.parentNode) {
       privacyOverlay.parentNode.removeChild(privacyOverlay);
