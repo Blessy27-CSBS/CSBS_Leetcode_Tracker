@@ -547,8 +547,9 @@ app.post('/api/auth/login', (req, res) => {
     let studentDashboard: any = null;
     let facultyDashboard: any = null;
 
-    if (user.role === 'student' && user.student_id) {
-      const s = student || db.getStudentById(user.student_id);
+    if (user.role === 'student' && (user.student_id || student?.id)) {
+      const targetStudentId = user.student_id || student?.id;
+      const s = student || (targetStudentId ? db.getStudentById(targetStudentId) : undefined);
       if (s) {
         studentDashboard = buildStudentDashboardPayload(s.id);
         enrichedStudent = studentDashboard?.student;

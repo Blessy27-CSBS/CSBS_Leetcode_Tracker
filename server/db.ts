@@ -548,16 +548,27 @@ export class DatabaseService {
 
       // 9. Users
       if (usersRes.data && usersRes.data.length > 0) {
-        this.memStore.users = usersRes.data.map((u: any) => ({
-          id: u.id,
-          username: u.username,
-          password_hash: u.password_hash,
-          role: u.role,
-          student_id: u.student_id || undefined,
-          name: u.name,
-          email: u.email || undefined,
-          created_at: u.created_at,
-        }));
+        this.memStore.users = usersRes.data.map((u: any) => {
+          let sid = u.student_id;
+          if (!sid && u.role === 'student') {
+            const st = this.memStore.students.find((s: any) =>
+              (s.email && u.email && s.email.toLowerCase() === u.email.toLowerCase()) ||
+              (s.register_no && u.username && s.register_no.toLowerCase() === u.username.toLowerCase()) ||
+              (u.id && u.id === `usr_${s.id}`)
+            );
+            if (st) sid = st.id;
+          }
+          return {
+            id: u.id,
+            username: u.username,
+            password_hash: u.password_hash,
+            role: u.role,
+            student_id: sid || undefined,
+            name: u.name,
+            email: u.email || undefined,
+            created_at: u.created_at,
+          };
+        });
       }
 
       // Ensure faculty initial seed user exists in memory store if users was empty
@@ -2348,15 +2359,18 @@ export class DatabaseService {
       if (role === 'staff') return null;
     }
 
-    // Student Authentication (Password verification by Email / Register Number + Password)
+    // Student Authentication (Password verification by Email / Register Number / Username + Password)
     let foundStudent: Student | undefined;
     const allStudents = this.getStudents();
 
     foundStudent = allStudents.find(s => {
       const email = (s.email || '').toLowerCase().trim();
       const regNo = (s.register_no || '').toLowerCase().trim();
+      const username = (s.username || '').toLowerCase().trim();
       const targetId = cleanId.toLowerCase().trim();
-      return (email !== '' && email === targetId) || (regNo !== '' && regNo === targetId);
+      return (email !== '' && email === targetId) || 
+             (regNo !== '' && regNo === targetId) ||
+             (username !== '' && username === targetId);
     });
 
     if (foundStudent) {
@@ -2388,14 +2402,32 @@ export class DatabaseService {
         studentUser = this.ensureStudentUser(foundStudent);
       }
 
-      const defaultRegNoHash = this.hashPassword(foundStudent.register_no.trim());
+      // Ensure student_id is properly linked
+      if (!studentUser.student_id) {
+        studentUser.student_id = foundStudent.id;
+      }
 
-      // Check password: exact hash match (covers both default and custom passwords)
+      const defaultRegNoHashUpper = this.hashPassword(foundStudent.register_no.trim().toUpperCase());
+      const defaultRegNoHashLower = this.hashPassword(foundStudent.register_no.trim().toLowerCase());
+      const defaultRegNoHashOriginal = this.hashPassword(foundStudent.register_no.trim());
+      const isRegNoPassword = cleanPwd.toUpperCase() === foundStudent.register_no.trim().toUpperCase();
+
+      // Check password: exact hash match (custom password) OR register number (default password)
       const isExactMatch = studentUser.password_hash === hashedPwd;
-      // Fallback: if no custom password has been set, allow register_no as default
-      const isDefaultFallback = studentUser.password_hash === defaultRegNoHash && hashedPwd === defaultRegNoHash;
+      const isDefaultFallback = isRegNoPassword || 
+        hashedPwd === defaultRegNoHashUpper || 
+        hashedPwd === defaultRegNoHashLower ||
+        hashedPwd === defaultRegNoHashOriginal;
 
       if (isExactMatch || isDefaultFallback) {
+        studentUser.student_id = foundStudent.id;
+
+        // If authenticated via default register number and stored hash differs, update stored hash
+        if (isDefaultFallback && studentUser.password_hash !== hashedPwd) {
+          studentUser.password_hash = hashedPwd;
+          this.changeUserPassword(studentUser.id, cleanPwd);
+        }
+
         // Ensure memStore is up to date
         const idx = this.memStore.users.findIndex(u => u.id === studentUser!.id);
         if (idx >= 0) this.memStore.users[idx] = studentUser;
