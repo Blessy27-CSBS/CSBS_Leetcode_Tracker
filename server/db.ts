@@ -77,6 +77,7 @@ interface MemoryStore {
 
 export class DatabaseService {
   private sqliteDb: any = null;
+  private loadPromise: Promise<void> | null = null;
   private memStore: MemoryStore = {
     students: [],
     snapshots: [],
@@ -89,6 +90,16 @@ export class DatabaseService {
     contests: [],
     users: []
   };
+
+  public async ensureLoaded(): Promise<void> {
+    if (this.loadPromise) {
+      try {
+        await this.loadPromise;
+      } catch (e) {
+        console.error('[Database] ensureLoaded error:', e);
+      }
+    }
+  }
 
   private isFallbackMode = false;
 
@@ -321,7 +332,7 @@ export class DatabaseService {
     }
 
     if (isSupabaseConfigured) {
-      this.loadFromSupabase().catch(e => console.error('[Supabase] Initial load error:', e));
+      this.loadPromise = this.loadFromSupabase().catch(e => console.error('[Supabase] Initial load error:', e));
     }
   }
 
@@ -820,26 +831,53 @@ export class DatabaseService {
   }
 
   public getStudentById(id: string): Student | undefined {
-    if (this.isFallbackMode || !this.sqliteDb) {
-      return this.memStore.students.find(s => s.id === id);
+    if (!id) return undefined;
+    const clean = id.trim();
+    const cleanLower = clean.toLowerCase();
+    const stripped = clean.startsWith('usr_') ? clean.replace('usr_', '') : clean;
+
+    if (this.memStore.students.length === 0) {
+      this.getStudents();
     }
-    const r = this.sqliteDb.prepare('SELECT * FROM students WHERE id = ?').get(id) as any;
-    if (!r) return undefined;
-    return {
-      id: r.id,
-      register_no: r.register_no,
-      student_name: r.student_name,
-      section: r.section,
-      year: r.year,
-      batch: r.batch,
-      username: r.username,
-      email: r.email || undefined,
-      mentor: r.mentor || undefined,
-      academic_year: r.academic_year,
-      active: Boolean(r.active),
-      created_at: r.created_at,
-      notes: r.notes || undefined,
-    };
+
+    // 1. Search in memStore (fastest & covers both fallback and cached data)
+    const fromMem = this.memStore.students.find(s => 
+      s.id === clean || 
+      s.id === stripped || 
+      (s.register_no && s.register_no.toLowerCase() === cleanLower) ||
+      (s.email && s.email.toLowerCase() === cleanLower) ||
+      (s.username && s.username.toLowerCase() === cleanLower)
+    );
+    if (fromMem) return fromMem;
+
+    // 2. Query SQLite if available
+    if (this.sqliteDb) {
+      try {
+        const r = this.sqliteDb.prepare(`
+          SELECT * FROM students 
+          WHERE id = ? OR id = ? OR LOWER(register_no) = ? OR LOWER(email) = ? OR LOWER(username) = ?
+        `).get(clean, stripped, cleanLower, cleanLower, cleanLower) as any;
+        if (r) {
+          return {
+            id: r.id,
+            register_no: r.register_no,
+            student_name: r.student_name,
+            section: r.section,
+            year: r.year,
+            batch: r.batch,
+            username: r.username,
+            email: r.email || undefined,
+            mentor: r.mentor || undefined,
+            academic_year: r.academic_year,
+            active: Boolean(r.active),
+            created_at: r.created_at,
+            notes: r.notes || undefined,
+          };
+        }
+      } catch (e) {}
+    }
+
+    return undefined;
   }
 
   public getStudentByUsername(username: string): Student | undefined {

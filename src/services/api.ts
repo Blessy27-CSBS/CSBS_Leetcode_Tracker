@@ -125,8 +125,10 @@ export const api = {
 
   // Student Portal
   async getStudentDashboard(studentId?: string): Promise<StudentDashboardData> {
-    const cacheKey = `csbs_student_dash_${studentId || 'me'}`;
-    const url = studentId ? `/api/student/dashboard?studentId=${studentId}` : '/api/student/dashboard';
+    const user = this.getCachedUser();
+    const resolvedId = studentId || user?.student_id || (user?.id?.startsWith('usr_s_') ? user.id.replace('usr_', '') : undefined) || user?.username;
+    const cacheKey = `csbs_student_dash_${resolvedId || 'me'}`;
+    const url = resolvedId ? `/api/student/dashboard?studentId=${encodeURIComponent(resolvedId)}` : '/api/student/dashboard';
     try {
       const res = await fetch(url, {
         headers: { ...getAuthHeaders() },
@@ -140,13 +142,18 @@ export const api = {
         }
         return json;
       }
-    } catch (err) {
+      const errJson = await res.json().catch(() => null);
+      if (errJson?.error) {
+        throw new Error(errJson.error);
+      }
+    } catch (err: any) {
       const cached = localStorage.getItem(cacheKey);
       if (cached) {
         try {
           return JSON.parse(cached);
         } catch (e) {}
       }
+      throw err;
     }
     const cached = localStorage.getItem(cacheKey);
     if (cached) {

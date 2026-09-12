@@ -541,6 +541,9 @@ app.post('/api/auth/login', (req, res) => {
 
     clearFailedLogin(clientIp);
     const { user, student } = authResult;
+    if (student && !user.student_id) {
+      user.student_id = student.id;
+    }
     const token = createAuthToken(user);
 
     let enrichedStudent: StudentWithLatest | undefined;
@@ -731,11 +734,21 @@ app.get('/api/quest/nodes', (req, res) => {
   res.json({ nodes: LEETCODE_DSA_QUEST_NODES });
 });
 
-app.get('/api/quest/student', (req, res) => {
+app.get('/api/quest/student', async (req, res) => {
   try {
+    await db.ensureLoaded();
     const session = parseAuthHeader(req);
     const studentIdQuery = req.query.studentId as string;
-    const studentId = session?.student_id || studentIdQuery;
+    let studentId = studentIdQuery || session?.student_id;
+
+    if (!studentId && session) {
+      if (session.id) {
+        const u = db.getUserById(session.id);
+        if (u?.student_id) studentId = u.student_id;
+        else if (session.id.startsWith('usr_s_')) studentId = session.id.replace('usr_', '');
+      }
+      if (!studentId && session.username) studentId = session.username;
+    }
 
     if (!studentId) {
       return res.status(400).json({ error: 'Student ID required.' });
@@ -827,24 +840,61 @@ app.get('/api/leetcode75/faculty-overview', (req, res) => {
 // ================= STUDENT PORTAL ROUTES =================
 
 // 0.3 Student Personalized Dashboard
-app.get('/api/student/dashboard', (req, res) => {
+app.get('/api/student/dashboard', async (req, res) => {
   try {
+    await db.ensureLoaded();
     const session = parseAuthHeader(req);
     const studentIdQuery = req.query.studentId as string;
-    const studentId = session?.student_id || studentIdQuery;
+    let studentId = studentIdQuery || session?.student_id;
+
+    // Resilient fallback: resolve studentId from session user if query is empty or desynced
+    if (!studentId && session) {
+      if (session.id) {
+        const u = db.getUserById(session.id);
+        if (u?.student_id) {
+          studentId = u.student_id;
+        } else if (session.id.startsWith('usr_s_')) {
+          studentId = session.id.replace('usr_', '');
+        }
+      }
+      if (!studentId && session.username) {
+        studentId = session.username;
+      }
+    }
 
     if (!studentId) {
       return res.status(400).json({ error: 'Student ID required.' });
     }
 
-    // Authorization: logged-in students can only view their own dashboard
-    if (session && session.role === 'student' && session.student_id && studentIdQuery && studentIdQuery !== session.student_id) {
-      return res.status(403).json({ error: 'Access denied. You can only view your own student dashboard.' });
+    const student = db.getStudentById(studentId);
+    if (!student) {
+      return res.status(404).json({ error: 'Student record not found.' });
     }
 
-    const payload = buildStudentDashboardPayload(studentId);
+    // Authorization: logged-in students can only view their own dashboard
+    if (session && session.role === 'student') {
+      const allowed = [
+        session.student_id,
+        session.id,
+        session.id?.startsWith('usr_') ? session.id.replace('usr_', '') : undefined,
+        session.username?.toLowerCase()
+      ].filter(Boolean) as string[];
+
+      const isAuthorized = 
+        allowed.includes(student.id) ||
+        allowed.includes(`usr_${student.id}`) ||
+        (student.email && allowed.includes(student.email.toLowerCase())) ||
+        (student.register_no && allowed.includes(student.register_no.toLowerCase())) ||
+        (student.username && allowed.includes(student.username.toLowerCase()));
+
+      if (!isAuthorized) {
+        return res.status(403).json({ error: 'Access denied. You can only view your own student dashboard.' });
+      }
+    }
+
+    const payload = buildStudentDashboardPayload(student.id);
     if (!payload) {
-      return res.status(404).json({ error: 'Student record not found.' });
+      return res.status(404).json({ error: 'Student dashboard could not be generated.' });
     }
 
     res.json(payload);
@@ -856,21 +906,47 @@ app.get('/api/student/dashboard', (req, res) => {
 // 0.4 Student Live LeetCode Sync
 app.post('/api/student/sync', async (req, res) => {
   try {
+    await db.ensureLoaded();
     const session = parseAuthHeader(req);
-    const studentId = session?.student_id || req.body.studentId;
+    let studentId = session?.student_id || req.body.studentId;
+
+    if (!studentId && session) {
+      if (session.id) {
+        const u = db.getUserById(session.id);
+        if (u?.student_id) studentId = u.student_id;
+        else if (session.id.startsWith('usr_s_')) studentId = session.id.replace('usr_', '');
+      }
+      if (!studentId && session.username) studentId = session.username;
+    }
 
     if (!studentId) {
       return res.status(400).json({ error: 'Student ID required.' });
     }
 
-    // Authorization: students can only synchronize their own profile
-    if (session && session.role === 'student' && session.student_id && req.body.studentId && req.body.studentId !== session.student_id) {
-      return res.status(403).json({ error: 'Access denied. You can only synchronize your own LeetCode account.' });
-    }
-
     const student = db.getStudentById(studentId);
     if (!student) {
       return res.status(404).json({ error: 'Student not found.' });
+    }
+
+    // Authorization: students can only synchronize their own profile
+    if (session && session.role === 'student') {
+      const allowed = [
+        session.student_id,
+        session.id,
+        session.id?.startsWith('usr_') ? session.id.replace('usr_', '') : undefined,
+        session.username?.toLowerCase()
+      ].filter(Boolean) as string[];
+
+      const isAuthorized = 
+        allowed.includes(student.id) ||
+        allowed.includes(`usr_${student.id}`) ||
+        (student.email && allowed.includes(student.email.toLowerCase())) ||
+        (student.register_no && allowed.includes(student.register_no.toLowerCase())) ||
+        (student.username && allowed.includes(student.username.toLowerCase()));
+
+      if (!isAuthorized) {
+        return res.status(403).json({ error: 'Access denied. You can only synchronize your own LeetCode account.' });
+      }
     }
 
     const settings = db.getSettings();

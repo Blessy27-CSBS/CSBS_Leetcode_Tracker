@@ -157,7 +157,11 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
     try {
       if (!dashboardData) setLoading(true);
       setError('');
-      const data = await api.getStudentDashboard(currentUser.student_id);
+      const targetStudentId = currentUser.student_id || (currentUser.id?.startsWith('usr_s_') ? currentUser.id.replace('usr_', '') : undefined) || currentUser.id;
+      const data = await api.getStudentDashboard(targetStudentId);
+      if (data?.student?.id && !currentUser.student_id) {
+        currentUser.student_id = data.student.id;
+      }
       setDashboardData(data);
       try {
         localStorage.setItem(cacheKey, JSON.stringify(data));
